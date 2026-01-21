@@ -1,29 +1,43 @@
 # Voice Service
 
-WebRTC-based voice communication service for Discord Clone.
+**P2P WebRTC** voice communication service for Hermes (MVP).
 
 ## Responsibilities
 
-- WebRTC signaling for voice channels
+- WebRTC signaling for P2P voice channels (2 users max)
 - Voice session management
-- Audio routing coordination
+- SDP offer/answer exchange
+- ICE candidate exchange
 - Mute/unmute state tracking
-- Speaking indicators
-- Voice channel participant management
 
-## WebRTC Flow
+## Important Note
+
+This is the **MVP version** using **Peer-to-Peer WebRTC**.
+- ✅ Works great for 1-on-1 calls
+- ⚠️ Limited to 2 users per voice channel
+- ❌ No media server (no mixing, no routing)
+
+For production with 10+ users, consider using:
+- LiveKit
+- Mediasoup
+- Janus Gateway
+
+## P2P WebRTC Flow
 
 ```
-Client A                Voice Service              Media Server
-   |                          |                          |
-   |--- Join Voice ---------> |                          |
-   |<-- ICE Candidates ---    |                          |
-   |--- SDP Offer ---------> |                          |
-   |                          |--- Create Session -----> |
-   |<-- SDP Answer -------    |<-- Session Info ------   |
-   |                          |                          |
-   |<=== RTP Audio Stream ===========================>   |
-   |                          |                          |
+User A                    Voice Service                    User B
+  |                            |                             |
+  |--- Join Voice ------------>|                             |
+  |<-- Session Info -----------|                             |
+  |                            |<--- Join Voice -------------|
+  |                            |---- Session Info ---------->|
+  |                            |                             |
+  |--- SDP Offer ------------->|                             |
+  |                            |---- Forward Offer --------->|
+  |                            |<--- SDP Answer -------------|
+  |<-- Forward Answer ---------|                             |
+  |                            |                             |
+  |<========= RTP Audio Direct Connection =================>|
 ```
 
 ## API Endpoints
@@ -45,14 +59,12 @@ Response:
 ```json
 {
   "session_id": "uuid",
-  "server_endpoint": "media.example.com:8000",
   "ice_servers": [
     {
-      "urls": ["stun:turn.example.com:3478"],
-      "username": "discord",
-      "credential": "password"
+      "urls": ["stun:stun.l.google.com:19302"]
     }
-  ]
+  ],
+  "peer_id": "uuid" // if another user is already in channel
 }
 ```
 
@@ -110,13 +122,13 @@ Content-Type: application/json
 ## Environment Variables
 
 ```bash
-DATABASE_URL=postgres://discord:password@localhost:5432/discord
+DATABASE_URL=postgres://hermes:password@localhost:5432/hermes
 REDIS_URL=redis://:password@localhost:6379
 NATS_URL=nats://localhost:4222
 MEDIA_SERVER_URL=http://localhost:8089
 TURN_URL=turn:localhost:3478
-TURN_USERNAME=discord
-TURN_PASSWORD=discord_turn_password
+TURN_USERNAME=hermes
+TURN_PASSWORD=hermes_turn_password
 PORT=8085
 ```
 

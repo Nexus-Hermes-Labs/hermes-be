@@ -1,6 +1,6 @@
 # Presence Service
 
-Real-time user presence and status management service for Discord Clone.
+Real-time user presence and status management service for Hermes.
 
 ## Responsibilities
 

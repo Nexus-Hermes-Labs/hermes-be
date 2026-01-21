@@ -31,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     
     let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://discord:discord_dev_password@localhost:5432/discord".to_string());
+        .unwrap_or_else(|_| "postgres://hermes:hermes_dev_password@localhost:5432/hermes".to_string());
     let redis_url = std::env::var("REDIS_URL")
         .unwrap_or_else(|_| "redis://:redis_dev_password@localhost:6379".to_string());
     let nats_url = std::env::var("NATS_URL")

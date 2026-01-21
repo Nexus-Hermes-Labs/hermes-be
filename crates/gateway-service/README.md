@@ -1,6 +1,6 @@
 # Gateway Service
 
-WebSocket gateway and REST API entry point for Discord Clone.
+WebSocket gateway and REST API entry point for Hermes.
 
 ## Responsibilities
 

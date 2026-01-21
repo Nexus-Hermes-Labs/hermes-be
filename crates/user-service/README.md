@@ -1,6 +1,6 @@
 # User Service
 
-User profile and relationship management service for Discord Clone.
+User profile and relationship management service for Hermes.
 
 ## Responsibilities
 
@@ -27,7 +27,7 @@ Content-Type: application/json
 
 {
   "display_name": "New Name",
-  "bio": "Hello, I'm using Discord Clone!",
+  "bio": "Hello, I'm using Hermes!",
   "avatar_url": "https://cdn.example.com/avatar.jpg"
 }
 ```
@@ -101,7 +101,7 @@ Content-Type: application/json
 ## Environment Variables
 
 ```bash
-DATABASE_URL=postgres://discord:password@localhost:5432/discord
+DATABASE_URL=postgres://hermes:password@localhost:5432/hermes
 REDIS_URL=redis://:password@localhost:6379
 NATS_URL=nats://localhost:4222
 MINIO_ENDPOINT=localhost:9000

@@ -7,10 +7,8 @@ members = [
     "crates/channel-service",
     "crates/chat-service",
     "crates/voice-service",
-    "crates/stream-service",
     "crates/presence-service",
     "crates/gateway-service",
-    "crates/media-server",
 ]
 
 [workspace.package]
@@ -18,7 +16,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Your Name <your.email@example.com>"]
 license = "MIT"
-repository = "https://github.com/yourusername/discord-clone"
+repository = "https://github.com/yourusername/hermes-clone"
 
 [workspace.dependencies]
 # Async Runtime

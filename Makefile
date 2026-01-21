@@ -82,7 +82,7 @@ logs-nats: ## Show nats logs
 	docker-compose logs -f nats
 
 db-shell: ## Open PostgreSQL shell
-	docker-compose exec postgres psql -U discord -d discord
+	docker-compose exec postgres psql -U hermes -d hermes
 
 redis-cli: ## Open Redis CLI
 	docker-compose exec redis redis-cli -a redis_dev_password

@@ -1,6 +1,6 @@
 # Chat Service
 
-Text messaging service for Discord Clone.
+Text messaging service for Hermes.
 
 ## Responsibilities
 
@@ -84,7 +84,7 @@ Authorization: Bearer <token>
 ## Environment Variables
 
 ```bash
-DATABASE_URL=postgres://discord:password@localhost:5432/discord
+DATABASE_URL=postgres://hermes:password@localhost:5432/hermes
 REDIS_URL=redis://:password@localhost:6379
 NATS_URL=nats://localhost:4222
 MINIO_ENDPOINT=localhost:9000

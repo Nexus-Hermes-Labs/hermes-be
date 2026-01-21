@@ -1,9 +1,8 @@
-// Common library for Discord Clone
+// Common library for Hermes
 // Shared types, utilities, and infrastructure code
 
 pub mod error;
 pub mod events;
-pub mod models;
 pub mod db;
 pub mod cache;
 pub mod message_queue;

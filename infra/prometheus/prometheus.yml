@@ -39,11 +39,6 @@ scrape_configs:
       - targets: ['voice-service:9095']
     metrics_path: '/metrics'
 
-  - job_name: 'stream-service'
-    static_configs:
-      - targets: ['stream-service:9096']
-    metrics_path: '/metrics'
-
   - job_name: 'presence-service'
     static_configs:
       - targets: ['presence-service:9097']
@@ -52,9 +47,4 @@ scrape_configs:
   - job_name: 'gateway-service'
     static_configs:
       - targets: ['gateway-service:9098']
-    metrics_path: '/metrics'
-
-  - job_name: 'media-server'
-    static_configs:
-      - targets: ['media-server:9099']
     metrics_path: '/metrics'

@@ -1,6 +1,6 @@
 # Channel Service
 
-Server (Guild) and channel management service for Discord Clone.
+Server (Guild) and channel management service for Hermes.
 
 ## Responsibilities
 
@@ -217,7 +217,7 @@ MUTE_MEMBERS = 1 << 22          // 4194304
 ## Environment Variables
 
 ```bash
-DATABASE_URL=postgres://discord:password@localhost:5432/discord
+DATABASE_URL=postgres://hermes:password@localhost:5432/hermes
 REDIS_URL=redis://:password@localhost:6379
 NATS_URL=nats://localhost:4222
 PORT=8083

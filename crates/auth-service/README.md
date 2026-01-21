@@ -1,6 +1,6 @@
 # Auth Service
 
-JWT-based authentication service for Discord Clone.
+JWT-based authentication service for Hermes.
 
 ## Responsibilities
 
@@ -69,7 +69,7 @@ Authorization: Bearer <access_token>
 ## Environment Variables
 
 ```bash
-DATABASE_URL=postgres://discord:password@localhost:5432/discord
+DATABASE_URL=postgres://hermes:password@localhost:5432/hermes
 REDIS_URL=redis://:password@localhost:6379
 JWT_SECRET=your-secret-key
 JWT_ACCESS_EXPIRY=3600

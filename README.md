@@ -1,274 +1,213 @@
-# Hermes - Real-time Communication Platform
+# Hermes 🚀
 
-A production-ready, Discord-like real-time communication platform built with Rust. Features text chat, voice communication, screen sharing, and video streaming using a scalable microservice architecture.
+A production-ready, Discord-like real-time communication platform built with
+Rust. Features text chat, P2P voice communication, and presence tracking using a
+scalable microservice architecture.
 
-## 🎯 Features
+## ✨ Features
 
-- **Text Messaging**: Real-time text chat in channels and direct messages
-- **Voice Communication**: WebRTC-based voice channels with high-quality audio
-- **Screen Sharing**: Share your screen with other users in real-time
-- **Video Streaming**: Live video streaming capabilities
-- **Server/Channel Management**: Create servers, channels, and manage permissions
-- **User Presence**: Real-time online/offline/away status tracking
+### Real-time Communication
+
+- **Text Messaging**: Instant messaging in channels and direct messages with
+  reactions and mentions
+- **Voice Calls**: P2P voice communication using WebRTC (supports 2 users per
+  channel)
+- **Presence Tracking**: Real-time online/offline/idle/dnd status and typing
+  indicators
+- **Event-Driven**: Instant updates across all connected clients using NATS
+
+### Server Management
+
+- **Servers & Channels**: Create and manage Discord-like servers with text and
+  voice channels
+- **Roles & Permissions**: Bitflag-based permission system with role hierarchy
+- **Member Management**: Invite users, manage members, and moderation tools
+
+### User Features
+
+- **Authentication**: Secure JWT-based auth with Argon2id password hashing
+- **User Profiles**: Customizable profiles with avatars and bios
 - **Friend System**: Add friends, accept requests, and manage relationships
-- **Rich Media**: Share files, images, and attachments
-- **Webhooks**: Integration support for external services
 
 ## 🏗️ Architecture
 
-### Microservices
+### 7 Microservices
 
-```
-┌─────────────────┐     ┌──────────────────┐
-│  Gateway Service │────▶│  Auth Service    │
-│  (WebSocket/HTTP)│     │  (JWT Auth)      │
-└─────────────────┘     └──────────────────┘
-         │
-         ├──────────────┐
-         ▼              ▼
-┌─────────────────┐  ┌──────────────────┐
-│  Chat Service   │  │  User Service    │
-│  (Messaging)    │  │  (Profiles)      │
-└─────────────────┘  └──────────────────┘
-         │              │
-         ▼              ▼
-┌─────────────────┐  ┌──────────────────┐
-│ Channel Service │  │ Presence Service │
-│ (Rooms/Servers) │  │ (Online Status)  │
-└─────────────────┘  └──────────────────┘
-         │              │
-         ▼              ▼
-┌─────────────────┐  ┌──────────────────┐
-│ Voice Service   │  │ Stream Service   │
-│ (WebRTC Voice)  │  │ (Screen Share)   │
-└─────────────────┘  └──────────────────┘
-         │              │
-         └──────┬───────┘
-                ▼
-        ┌──────────────────┐
-        │  Media Server    │
-        │  (Media Routing) │
-        └──────────────────┘
-```
+| Service      | Port | Responsibility                          |
+| ------------ | ---- | --------------------------------------- |
+| **Gateway**  | 8080 | WebSocket gateway & REST API router     |
+| **Auth**     | 8081 | User authentication & JWT management    |
+| **User**     | 8082 | User profiles & friend system           |
+| **Channel**  | 8083 | Server, channel & permission management |
+| **Chat**     | 8084 | Text messaging & reactions              |
+| **Voice**    | 8085 | WebRTC P2P signaling                    |
+| **Presence** | 8087 | Online status & typing indicators       |
 
-### Infrastructure
+### Technology Stack
 
-- **PostgreSQL 16**: Primary database for users, messages, channels
-- **Redis**: Caching, pub/sub, presence tracking, rate limiting
-- **NATS**: Event streaming and inter-service communication
-- **MinIO**: Object storage for file uploads and media
-- **Coturn**: TURN/STUN server for WebRTC NAT traversal
-- **Prometheus + Grafana**: Metrics and monitoring
+**Backend:**
 
-## 📁 Project Structure
+- Rust 1.75+ with Axum web framework
+- PostgreSQL 16 for persistent storage
+- Redis 7 for caching and pub/sub
+- NATS for event streaming
+- SQLx for compile-time checked queries
 
-```
-discord-clone/
-├── Cargo.toml                 # Workspace configuration
-├── docker-compose.yml         # Infrastructure services
-├── crates/
-│   ├── common/               # Shared utilities, models, events
-│   ├── auth-service/         # Authentication & JWT
-│   ├── user-service/         # User profiles & friends
-│   ├── channel-service/      # Servers, channels, permissions
-│   ├── chat-service/         # Text messaging
-│   ├── voice-service/        # Voice communication (WebRTC signaling)
-│   ├── stream-service/       # Screen sharing & video streaming
-│   ├── presence-service/     # Online/offline status
-│   ├── gateway-service/      # WebSocket gateway & REST API
-│   └── media-server/         # Media routing & processing
-├── infra/
-│   ├── postgres/            # Database schemas & migrations
-│   ├── coturn/              # TURN server configuration
-│   ├── prometheus/          # Metrics configuration
-│   └── grafana/             # Dashboard provisioning
-└── docs/                    # Additional documentation
-```
+**Real-time:**
 
-## 🚀 Getting Started
+- WebSocket for client connections
+- NATS for inter-service events
+- WebRTC for P2P voice calls
+
+**Infrastructure:**
+
+- Docker & Docker Compose
+- Prometheus + Grafana monitoring
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Rust 1.75+ (stable)
-- Docker & Docker Compose
-- PostgreSQL 16
-- Redis 7
-- NATS 2.10
+- **Rust** 1.75 or higher ([install](https://rustup.rs/))
+- **Docker** & Docker Compose
+- **4GB RAM** minimum
 
-### Infrastructure Setup
+### Installation
 
 ```bash
-# Start all infrastructure services
+# Clone the repository
+git clone <your-repo-url>
+cd hermes-clone
+
+# Copy environment variables
+cp .env.example .env
+
+# Start infrastructure (PostgreSQL, Redis, NATS)
 docker-compose up -d
 
-# Wait for services to be healthy
-docker-compose ps
+# Run database migrations
+sqlx migrate run --source crates/common/migrations
 
-# Check service logs
-docker-compose logs -f postgres redis nats
+# Build the project
+cargo build --workspace
+
+# Start all services (in separate terminals or use tmux)
+cargo run -p gateway-service    # Terminal 1: http://localhost:8080
+cargo run -p auth-service       # Terminal 2: http://localhost:8081
+cargo run -p user-service       # Terminal 3: http://localhost:8082
+cargo run -p channel-service    # Terminal 4: http://localhost:8083
+cargo run -p chat-service       # Terminal 5: http://localhost:8084
+cargo run -p voice-service      # Terminal 6: http://localhost:8085
+cargo run -p presence-service   # Terminal 7: http://localhost:8087
 ```
 
-### Building the Project
+### Verify Installation
 
 ```bash
-# Build all services
-cargo build --workspace --release
+# Check all services are running
+curl http://localhost:8080/health
+curl http://localhost:8081/health
+curl http://localhost:8082/health
+# ... etc
 
 # Run tests
 cargo test --workspace
-
-# Check formatting
-cargo fmt --all --check
-
-# Run lints
-cargo clippy --workspace --all-targets
 ```
 
-### Running Services
+## 📖 Documentation
 
-Each service can be run independently:
+- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system design and
+  service responsibilities
+- **[Development Roadmap](docs/ROADMAP.md)** - 12-week development plan with
+  weekly tasks
+- **Service READMEs** - Each service has detailed documentation in
+  `crates/*/README.md`
 
-```bash
-# Terminal 1: Gateway Service (API & WebSocket)
-cd crates/gateway-service
-RUST_LOG=info cargo run
-
-# Terminal 2: Auth Service
-cd crates/auth-service
-cargo run
-
-# Terminal 3: Chat Service
-cd crates/chat-service
-cargo run
-
-# Terminal 4: Voice Service
-cd crates/voice-service
-cargo run
-
-# Terminal 5: Stream Service
-cd crates/stream-service
-cargo run
-
-# Terminal 6: User Service
-cd crates/user-service
-cargo run
-
-# Terminal 7: Channel Service
-cd crates/channel-service
-cargo run
-
-# Terminal 8: Presence Service
-cd crates/presence-service
-cargo run
-
-# Terminal 9: Media Server
-cd crates/media-server
-cargo run
-```
-
-## 🔧 Configuration
-
-All services use environment variables for configuration:
-
-```bash
-# Database
-DATABASE_URL=postgres://discord:discord_dev_password@localhost:5432/discord
-
-# Redis
-REDIS_URL=redis://:redis_dev_password@localhost:6379
-
-# NATS
-NATS_URL=nats://localhost:4222
-
-# MinIO (Object Storage)
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=discord_minio
-MINIO_SECRET_KEY=discord_minio_password
-
-# JWT Secret
-JWT_SECRET=your-secret-key-change-in-production
-
-# TURN Server
-TURN_URL=turn:localhost:3478
-TURN_USERNAME=discord
-TURN_PASSWORD=discord_turn_password
-
-# Logging
-RUST_LOG=info
-```
-
-Create a `.env` file in each service directory or export these variables.
-
-## 🗄️ Database Schema
-
-### Core Tables
-
-- **users**: User accounts, profiles, authentication
-- **servers**: Discord-like servers (guilds)
-- **channels**: Text, voice, and category channels
-- **messages**: Chat messages and attachments
-- **voice_sessions**: Active voice channel participants
-- **friendships**: Friend relationships and requests
-- **server_members**: Server membership and roles
-- **direct_messages**: Private message channels
-
-See `infra/postgres/init.sql` for complete schema.
-
-## 🔌 API Endpoints
+## 🎯 API Examples
 
 ### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login and get JWT token
-- `POST /api/auth/refresh` - Refresh access token
 
-### Users
-- `GET /api/users/@me` - Get current user
-- `PATCH /api/users/@me` - Update current user
-- `GET /api/users/{id}` - Get user by ID
+```bash
+# Register a new user
+curl -X POST http://localhost:8081/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "alice",
+    "email": "alice@example.com",
+    "password": "SecurePass123!"
+  }'
 
-### Servers
-- `GET /api/servers` - List user's servers
-- `POST /api/servers` - Create new server
-- `GET /api/servers/{id}` - Get server details
-- `PATCH /api/servers/{id}` - Update server
-- `DELETE /api/servers/{id}` - Delete server
+# Login
+curl -X POST http://localhost:8081/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "password": "SecurePass123!"
+  }'
+```
 
-### Channels
-- `GET /api/channels/{id}` - Get channel details
-- `POST /api/servers/{id}/channels` - Create channel
-- `PATCH /api/channels/{id}` - Update channel
-- `DELETE /api/channels/{id}` - Delete channel
+### Server & Channel Management
 
-### Messages
-- `GET /api/channels/{id}/messages` - Get channel messages
-- `POST /api/channels/{id}/messages` - Send message
-- `PATCH /api/messages/{id}` - Edit message
-- `DELETE /api/messages/{id}` - Delete message
+```bash
+# Create a server (requires JWT token)
+curl -X POST http://localhost:8083/servers \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Server",
+    "icon_url": "https://example.com/icon.jpg"
+  }'
 
-### WebSocket Gateway
-- `wss://gateway/` - WebSocket connection for real-time events
+# Create a channel
+curl -X POST http://localhost:8083/servers/<server-id>/channels \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "general",
+    "type": "text"
+  }'
+```
 
-## 📊 Monitoring
+### Messaging
 
-### Prometheus Metrics
-Access at: http://localhost:9090
+```bash
+# Send a message
+curl -X POST http://localhost:8084/channels/<channel-id>/messages \
+  -H "Authorization: Bearer <your-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Hello, world!"
+  }'
 
-Example queries:
-- `up{job="gateway-service"}` - Service availability
-- `http_requests_total` - Total HTTP requests
-- `websocket_connections` - Active WebSocket connections
+# Get message history
+curl http://localhost:8084/channels/<channel-id>/messages \
+  -H "Authorization: Bearer <your-token>"
+```
 
-### Grafana Dashboards
-Access at: http://localhost:3000 (admin/admin)
+### WebSocket Connection
 
-Pre-configured dashboards for:
-- Service health and uptime
-- Message throughput
-- Active users and connections
-- Database performance
+```javascript
+// Connect to WebSocket gateway
+const ws = new WebSocket("ws://localhost:8080/ws?token=<your-jwt-token>");
 
-### NATS Monitoring
-Access at: http://localhost:8222
+// Listen for messages
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log("Received:", data);
+};
+
+// Send a message
+ws.send(
+  JSON.stringify({
+    op: 2,
+    t: "MESSAGE_CREATE",
+    d: {
+      channel_id: "channel-uuid",
+      content: "Hello from WebSocket!",
+    },
+  }),
+);
+```
 
 ## 🧪 Testing
 
@@ -276,48 +215,140 @@ Access at: http://localhost:8222
 # Run all tests
 cargo test --workspace
 
-# Run specific service tests
-cargo test -p chat-service
+# Run tests for a specific service
+cargo test -p auth-service
 
 # Run with output
 cargo test --workspace -- --nocapture
 
-# Run integration tests
-cargo test --workspace --test '*'
+# Run linter
+cargo clippy --workspace
 ```
 
-## 📈 Performance Considerations
+## 📦 Project Structure
 
-- **WebSocket Scaling**: Use multiple gateway instances behind load balancer
-- **Database Sharding**: Shard by server ID for large deployments
-- **Redis Clustering**: Enable Redis cluster for high availability
-- **Media Server**: Deploy regional media servers for low latency
-- **CDN**: Use CDN for static assets and uploaded files
+```
+hermes-clone/
+├── crates/
+│   ├── common/              # Shared library (models, errors, utilities)
+│   │   ├── migrations/      # Database migrations
+│   │   └── seeds/           # Test data
+│   ├── auth-service/        # Authentication
+│   ├── user-service/        # User management
+│   ├── channel-service/     # Server & channel management
+│   ├── chat-service/        # Text messaging
+│   ├── voice-service/       # P2P voice signaling
+│   ├── presence-service/    # Online status
+│   └── gateway-service/     # WebSocket gateway & API router
+├── docs/                    # Documentation
+│   ├── ARCHITECTURE.md      # System architecture
+│   └── ROADMAP.md           # Development roadmap
+├── infra/                   # Infrastructure configs
+│   ├── postgres/            # Database init scripts
+│   ├── prometheus/          # Metrics
+│   └── grafana/             # Dashboards
+├── docker-compose.yml       # Infrastructure services
+├── Cargo.toml              # Workspace configuration
+└── README.md               # This file
+```
 
-## 🔐 Security
+## 🎓 Learning Path
 
-- JWT-based authentication with refresh tokens
-- Argon2 password hashing
-- Rate limiting on all endpoints
-- CORS configuration for web clients
-- SQL injection prevention via SQLx
-- Input validation with validator crate
+This project is designed to be completed in 12 weeks at 6 hours per week:
+
+| Phase       | Weeks | Focus                                        |
+| ----------- | ----- | -------------------------------------------- |
+| **Phase 1** | 1-4   | Infrastructure, Auth, User, Channel services |
+| **Phase 2** | 5-8   | Chat service, Gateway, WebSocket, Real-time  |
+| **Phase 3** | 9-12  | Presence, P2P Voice, Testing, Polish         |
+
+See [ROADMAP.md](docs/ROADMAP.md) for detailed weekly tasks.
+
+## 🔧 Configuration
+
+Configuration is managed through environment variables:
+
+```bash
+# Database
+DATABASE_URL=postgres://hermes:hermes_dev_password@localhost:5432/hermes
+
+# Redis
+REDIS_URL=redis://:redis_dev_password@localhost:6379
+
+# NATS
+NATS_URL=nats://localhost:4222
+
+# JWT
+JWT_SECRET=your-secret-key-change-in-production
+
+# Service Ports
+AUTH_SERVICE_PORT=8081
+USER_SERVICE_PORT=8082
+CHANNEL_SERVICE_PORT=8083
+CHAT_SERVICE_PORT=8084
+VOICE_SERVICE_PORT=8085
+PRESENCE_SERVICE_PORT=8087
+GATEWAY_SERVICE_PORT=8080
+```
+
+## 📊 Monitoring
+
+### Prometheus Metrics
+
+Access Prometheus at: `http://localhost:9090`
+
+Example queries:
+
+```
+up{job="gateway-service"}
+http_requests_total
+websocket_connections_active
+messages_sent_total
+```
+
+### Grafana Dashboards
+
+Access Grafana at: `http://localhost:3000` (admin/admin)
+
+Pre-configured dashboards for:
+
+- Service health
+- Request latency
+- Message throughput
+- WebSocket connections
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Contributions are welcome! This is a learning project, so feel free to:
 
-## 📝 License
+- Add new features
+- Fix bugs
+- Improve documentation
+- Share your learnings
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
 - Inspired by Discord's architecture
 - Built with the amazing Rust ecosystem
-- WebRTC for real-time communication
-- PostgreSQL for reliable data storage
+- Thanks to the open-source community
+
+## 📚 Additional Resources
+
+- [Rust Book](https://doc.rust-lang.org/book/)
+- [Axum Documentation](https://docs.rs/axum)
+- [SQLx Documentation](https://docs.rs/sqlx)
+- [WebRTC Guide](https://webrtc.org/)
+- [NATS Documentation](https://docs.nats.io/)
+
+---
+
+**Built with 🦀 Rust**
+
+For questions or discussions, open an issue or check out the
+[documentation](docs/).
+
+Happy coding! 🚀

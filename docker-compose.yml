@@ -4,28 +4,28 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: discord-postgres
+    container_name: hermes-postgres
     environment:
-      POSTGRES_USER: discord
-      POSTGRES_PASSWORD: discord_dev_password
-      POSTGRES_DB: discord
+      POSTGRES_USER: hermes
+      POSTGRES_PASSWORD: hermes_dev_password
+      POSTGRES_DB: hermes
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U discord"]
+      test: ["CMD-SHELL", "pg_isready -U hermes"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - discord-network
+      - hermes-network
 
   # Redis Cache & Pub/Sub
   redis:
     image: redis:7-alpine
-    container_name: discord-redis
+    container_name: hermes-redis
     command: redis-server --appendonly yes --requirepass redis_dev_password
     ports:
       - "6379:6379"
@@ -37,12 +37,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - discord-network
+      - hermes-network
 
   # NATS Message Broker
   nats:
     image: nats:2.10-alpine
-    container_name: discord-nats
+    container_name: hermes-nats
     command: "-js -m 8222"
     ports:
       - "4222:4222"  # Client connections
@@ -55,42 +55,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - discord-network
-
-  # MinIO Object Storage (for file uploads)
-  minio:
-    image: minio/minio:latest
-    container_name: discord-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: discord_minio
-      MINIO_ROOT_PASSWORD: discord_minio_password
-    ports:
-      - "9000:9000"  # API
-      - "9001:9001"  # Console
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    networks:
-      - discord-network
-
-  # Coturn TURN/STUN Server (for WebRTC NAT traversal)
-  coturn:
-    image: coturn/coturn:latest
-    container_name: discord-coturn
-    network_mode: "host"
-    volumes:
-      - ./infra/coturn/turnserver.conf:/etc/coturn/turnserver.conf
-    command: -c /etc/coturn/turnserver.conf
+      - hermes-network
 
   # Prometheus Metrics
   prometheus:
     image: prom/prometheus:latest
-    container_name: discord-prometheus
+    container_name: hermes-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -100,12 +70,12 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
     networks:
-      - discord-network
+      - hermes-network
 
   # Grafana Dashboard
   grafana:
     image: grafana/grafana:latest
-    container_name: discord-grafana
+    container_name: hermes-grafana
     ports:
       - "3000:3000"
     environment:
@@ -117,16 +87,15 @@ services:
     depends_on:
       - prometheus
     networks:
-      - discord-network
+      - hermes-network
 
 volumes:
   postgres_data:
   redis_data:
   nats_data:
-  minio_data:
   prometheus_data:
   grafana_data:
 
 networks:
-  discord-network:
+  hermes-network:
     driver: bridge
