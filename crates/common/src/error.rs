@@ -1,10 +1,10 @@
-use thiserror::Error;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
 use serde_json::json;
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, AppError>;
 
@@ -52,11 +52,12 @@ impl IntoResponse for AppError {
             AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
-            AppError::Database(msg) | 
-            AppError::Cache(msg) | 
-            AppError::MessageQueue(msg) => {
+            AppError::Database(msg) | AppError::Cache(msg) | AppError::MessageQueue(msg) => {
                 tracing::error!("Internal error: {}", msg);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
             AppError::Jwt(msg) => (StatusCode::UNAUTHORIZED, msg),
             AppError::Validation(msg) => (StatusCode::BAD_REQUEST, msg),
@@ -74,12 +75,6 @@ impl IntoResponse for AppError {
     }
 }
 
-impl From<sqlx::Error> for AppError {
-    fn from(err: sqlx::Error) -> Self {
-        AppError::Database(err.to_string())
-    }
-}
-
 impl From<redis::RedisError> for AppError {
     fn from(err: redis::RedisError) -> Self {
         AppError::Cache(err.to_string())
@@ -89,5 +84,11 @@ impl From<redis::RedisError> for AppError {
 impl From<jsonwebtoken::errors::Error> for AppError {
     fn from(err: jsonwebtoken::errors::Error) -> Self {
         AppError::Jwt(err.to_string())
+    }
+}
+
+impl From<sqlx::Error> for AppError {
+    fn from(err: sqlx::Error) -> Self {
+        AppError::Database(err.to_string())
     }
 }

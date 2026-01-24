@@ -13,6 +13,29 @@ path = "src/lib.rs"
 
 [dependencies]
 # ============================================================================
+# WEB FRAMEWORK
+# ============================================================================
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# ============================================================================
+# AUTHENTICATION & SECURITY (Auth-specific)
+# ============================================================================
+argon2 = { workspace = true }       # Password hashing
+jsonwebtoken = { workspace = true } # JWT generation
+rand = { workspace = true }         # Token secrets
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+once_cell = { workspace = true }
+config = { workspace = true }
+dotenvy = { workspace = true }
+
+# ============================================================================
 # SERIALIZATION & VALIDATION
 # ============================================================================
 serde = { workspace = true }
@@ -28,7 +51,6 @@ thiserror = { workspace = true }
 # ASYNC
 # ============================================================================
 async-trait = { workspace = true }
-tokio = { workspace = true }
 
 # ============================================================================
 # DATABASE (for models and utilities)
@@ -50,11 +72,6 @@ redis = { workspace = true }
 # NATS (event types and publisher)
 # ============================================================================
 async-nats = { workspace = true }
-
-# ============================================================================
-# JWT (shared JWT utilities)
-# ============================================================================
-jsonwebtoken = { workspace = true }
 
 # ============================================================================
 # LOGGING (shared logging setup)

@@ -142,11 +142,6 @@ once_cell = "1.19"
 # ============================================================================
 testcontainers = "0.26"
 testcontainers-modules = { version = "0.14", features = ["postgres"] }
-
-# ============================================================================
-# DEV DEPENDENCIES (Available to all crates)
-# ============================================================================
-[workspace.dev-dependencies]
 mockall = "0.13"
 fake = { version = "2.9", features = ["derive", "chrono"] }
 rstest = "0.21"

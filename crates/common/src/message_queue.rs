@@ -1,5 +1,5 @@
 use async_nats::Client;
-use crate::{Event, error::{AppError, Result}};
+use crate::{AppError, Event, Result};
 
 pub struct MessageQueue {
     client: Client,
