@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # PostgreSQL Database
@@ -7,7 +7,7 @@ services:
     container_name: hermes-postgres
     environment:
       POSTGRES_USER: hermes
-      POSTGRES_PASSWORD: hermes_dev_password
+      POSTGRES_PASSWORD: hermes
       POSTGRES_DB: hermes
     ports:
       - "5432:5432"
@@ -45,8 +45,8 @@ services:
     container_name: hermes-nats
     command: "-js -m 8222"
     ports:
-      - "4222:4222"  # Client connections
-      - "8222:8222"  # HTTP monitoring
+      - "4222:4222" # Client connections
+      - "8222:8222" # HTTP monitoring
     volumes:
       - nats_data:/data
     healthcheck:
@@ -67,8 +67,8 @@ services:
       - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
     networks:
       - hermes-network
 

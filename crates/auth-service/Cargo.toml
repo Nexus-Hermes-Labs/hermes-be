@@ -1,52 +1,110 @@
+# Auth Service - Cargo.toml
+# Handles authentication, registration, and JWT token management
+
 [package]
 name = "auth-service"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [[bin]]
 name = "auth-service"
 path = "src/main.rs"
 
 [dependencies]
+# ============================================================================
+# LOCAL DEPENDENCIES
+# ============================================================================
 common = { path = "../common" }
 
-# Async Runtime
-tokio.workspace = true
+# ============================================================================
+# WEB FRAMEWORK
+# ============================================================================
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
 
-# Web Framework
-axum.workspace = true
-tower.workspace = true
-tower-http.workspace = true
+# ============================================================================
+# DATABASE
+# ============================================================================
+sqlx = { workspace = true }
 
-# Serialization
-serde.workspace = true
-serde_json.workspace = true
+# ============================================================================
+# SERIALIZATION & VALIDATION
+# ============================================================================
+serde = { workspace = true }
+serde_json = { workspace = true }
+validator = { workspace = true }
 
-# Database
-sqlx.workspace = true
-redis.workspace = true
+# ============================================================================
+# ERROR HANDLING
+# ============================================================================
+thiserror = { workspace = true }
+anyhow = { workspace = true }
 
-# Message Queue
-async-nats.workspace = true
+# ============================================================================
+# AUTHENTICATION & SECURITY (Auth-specific)
+# ============================================================================
+argon2 = { workspace = true }       # Password hashing
+jsonwebtoken = { workspace = true } # JWT generation
+rand = { workspace = true }         # Token secrets
 
-# Authentication
-jsonwebtoken.workspace = true
-argon2.workspace = true
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+config = { workspace = true }
+dotenvy = { workspace = true }
 
-# UUID & Time
-uuid.workspace = true
-chrono.workspace = true
+# ============================================================================
+# LOGGING & OBSERVABILITY
+# ============================================================================
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
-# Tracing
-tracing.workspace = true
-tracing-subscriber.workspace = true
+# ============================================================================
+# METRICS
+# ============================================================================
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
 
-# Error Handling
-anyhow.workspace = true
-thiserror.workspace = true
+# ============================================================================
+# TIME & UUID
+# ============================================================================
+uuid = { workspace = true }
+chrono = { workspace = true }
 
-# Environment
-dotenvy.workspace = true
+# ============================================================================
+# REDIS (for refresh tokens)
+# ============================================================================
+redis = { workspace = true }
 
-# Validation
-validator.workspace = true
+# ============================================================================
+# NATS (for publishing user.created events)
+# ============================================================================
+async-nats = { workspace = true }
+
+# ============================================================================
+# API DOCUMENTATION
+# ============================================================================
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+
+# ============================================================================
+# TESTING
+# ============================================================================
+[dev-dependencies]
+mockall = { workspace = true }
+fake = { workspace = true }
+rstest = { workspace = true }
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true }
+
+# ============================================================================
+# FEATURES
+# ============================================================================
+[features]
+default = []
+# Future: Add feature flags if needed (e.g., "oauth", "2fa")

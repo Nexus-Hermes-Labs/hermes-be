@@ -1,36 +1,78 @@
+# Common Crate - Cargo.toml
+# Shared utilities, models, error types, and integrations
+
 [package]
 name = "common"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
 
 [dependencies]
-# Async Runtime
-tokio.workspace = true
+# ============================================================================
+# SERIALIZATION & VALIDATION
+# ============================================================================
+serde = { workspace = true }
+serde_json = { workspace = true }
+validator = { workspace = true }
 
-# Serialization
-serde.workspace = true
-serde_json.workspace = true
+# ============================================================================
+# ERROR HANDLING
+# ============================================================================
+thiserror = { workspace = true }
 
-# Database
-sqlx.workspace = true
-redis.workspace = true
+# ============================================================================
+# ASYNC
+# ============================================================================
+async-trait = { workspace = true }
+tokio = { workspace = true }
 
-# Message Queue
-async-nats.workspace = true
+# ============================================================================
+# DATABASE (for models and utilities)
+# ============================================================================
+sqlx = { workspace = true }
 
-# UUID & Time
-uuid.workspace = true
-chrono.workspace = true
+# ============================================================================
+# TIME & UUID (for models)
+# ============================================================================
+uuid = { workspace = true }
+chrono = { workspace = true }
 
-# Tracing
-tracing.workspace = true
+# ============================================================================
+# REDIS (wrapper utilities)
+# ============================================================================
+redis = { workspace = true }
 
-# Error Handling
-anyhow.workspace = true
-thiserror.workspace = true
+# ============================================================================
+# NATS (event types and publisher)
+# ============================================================================
+async-nats = { workspace = true }
 
-# Validation
-validator.workspace = true
+# ============================================================================
+# JWT (shared JWT utilities)
+# ============================================================================
+jsonwebtoken = { workspace = true }
 
-# JWT
-jsonwebtoken.workspace = true
+# ============================================================================
+# LOGGING (shared logging setup)
+# ============================================================================
+tracing = { workspace = true }
+
+# ============================================================================
+# TESTING
+# ============================================================================
+[dev-dependencies]
+mockall = { workspace = true }
+fake = { workspace = true }
+rstest = { workspace = true }
+tokio-test = "0.4"
+
+# ============================================================================
+# FEATURES
+# ============================================================================
+[features]
+default = []
+# Future features if needed

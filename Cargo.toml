@@ -1,68 +1,179 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/common",
-    "crates/auth-service",
-    "crates/user-service",
-    "crates/channel-service",
-    "crates/chat-service",
-    "crates/voice-service",
-    "crates/presence-service",
-    "crates/gateway-service",
+  "crates/common",
+  "crates/auth-service",
+  "crates/user-service",
+  "crates/channel-service",
+  "crates/chat-service",
+  "crates/voice-service",
+  "crates/presence-service",
+  "crates/gateway-service",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["Bulut Can Gocer <gocerbulutcan@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/yourusername/hermes-clone"
+repository = "https://github.com/bulutcan99/hermes"
 
 [workspace.dependencies]
-# Async Runtime
-tokio = { version = "1.35", features = ["full"] }
-tokio-util = "0.7"
+# ============================================================================
+# WEB FRAMEWORK & HTTP
+# ============================================================================
+axum = { version = "0.7.6", features = ["macros", "multipart"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tokio = { version = "1.38", features = ["full"] }
+tower = { version = "0.4", features = ["limit", "buffer", "timeout"] }
+tower-http = { version = "0.5.2", features = [
+  "cors",
+  "trace",
+  "compression-gzip",
+  "request-id",
+] }
 
-# Web Framework
-axum = { version = "0.7", features = ["ws", "multipart"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace", "compression-full"] }
+# ============================================================================
+# DATABASE (PostgreSQL)
+# ============================================================================
+sqlx = { version = "0.8", default-features = false, features = [
+  "runtime-tokio",
+  "postgres",
+  "uuid",
+  "chrono",
+  "migrate",
+  "json",
+  "tls-rustls",
+  "macros",
+] }
 
-# Serialization
+# ============================================================================
+# SERIALIZATION & VALIDATION
+# ============================================================================
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+validator = { version = "0.19", features = ["derive"] }
 
-# Database
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json"] }
-redis = { version = "0.24", features = ["tokio-comp", "connection-manager"] }
-
-# Message Queue
-async-nats = "0.33"
-
-# WebRTC
-webrtc = "0.9"
-
-# Authentication
-jsonwebtoken = "9.2"
-argon2 = "0.5"
-
-# UUID & Time
-uuid = { version = "1.6", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
-
-# Tracing & Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-
-# Error Handling
-anyhow = "1.0"
+# ============================================================================
+# ERROR HANDLING
+# ============================================================================
 thiserror = "1.0"
+anyhow = "1.0"
 
-# Environment
+# ============================================================================
+# ASYNC & CONCURRENCY
+# ============================================================================
+async-trait = "0.1"
+futures = "0.3"
+
+# ============================================================================
+# AUTHENTICATION & SECURITY
+# ============================================================================
+jsonwebtoken = "9.3"
+argon2 = "0.5"
+rand = "0.8"
+
+# ============================================================================
+# CONFIGURATION & ENVIRONMENT
+# ============================================================================
+config = "0.14"
 dotenvy = "0.15"
 
-# Validation
-validator = { version = "0.18", features = ["derive"] }
+# ============================================================================
+# LOGGING & OBSERVABILITY
+# ============================================================================
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-appender = "0.2"
 
-# HTTP Client
-reqwest = { version = "0.11", features = ["json"] }
+# ============================================================================
+# METRICS (Prometheus)
+# ============================================================================
+metrics = "0.22"
+metrics-exporter-prometheus = { version = "0.15", default-features = false }
+
+# ============================================================================
+# TIME & UUID
+# ============================================================================
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.8", features = ["v4", "serde"] }
+
+# ============================================================================
+# HTTP CLIENT (for inter-service communication)
+# ============================================================================
+reqwest = { version = "0.12", features = [
+  "json",
+  "rustls-tls",
+], default-features = false }
+
+# ============================================================================
+# REDIS (Caching & Presence)
+# ============================================================================
+redis = { version = "0.25", features = ["tokio-comp", "connection-manager"] }
+
+# ============================================================================
+# RATE LIMITING
+# ============================================================================
+governor = "0.6"
+
+# ============================================================================
+# MESSAGE QUEUE (NATS for event-driven architecture)
+# ============================================================================
+async-nats = "0.33"
+
+# ============================================================================
+# WEBSOCKET (for Gateway Service)
+# ============================================================================
+tokio-tungstenite = "0.21"
+
+# ============================================================================
+# API DOCUMENTATION (Swagger/OpenAPI)
+# ============================================================================
+utoipa = { version = "5", features = ["axum_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "8", features = ["axum"] }
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+once_cell = "1.19"
+
+# ============================================================================
+# TESTING
+# ============================================================================
+testcontainers = "0.26"
+testcontainers-modules = { version = "0.14", features = ["postgres"] }
+
+# ============================================================================
+# DEV DEPENDENCIES (Available to all crates)
+# ============================================================================
+[workspace.dev-dependencies]
+mockall = "0.13"
+fake = { version = "2.9", features = ["derive", "chrono"] }
+rstest = "0.21"
+
+# ============================================================================
+# PROFILE CONFIGURATIONS
+# ============================================================================
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.test]
+opt-level = 1
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - All services inherit dependencies from workspace
+# - Each service Cargo.toml uses: dependency = { workspace = true }
+# - Common crate provides shared utilities
+# - NATS for event streaming between services
+# - Redis for caching and presence tracking
+# - PostgreSQL for persistent storage

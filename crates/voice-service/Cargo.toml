@@ -1,29 +1,110 @@
+# Voice Service - Cargo.toml
+# Handles P2P WebRTC signaling for voice channels (2 users max)
+
 [package]
 name = "voice-service"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
+license.workspace = true
 
 [[bin]]
 name = "voice-service"
 path = "src/main.rs"
 
 [dependencies]
+# ============================================================================
+# LOCAL DEPENDENCIES
+# ============================================================================
 common = { path = "../common" }
-tokio.workspace = true
-axum.workspace = true
-tower.workspace = true
-tower-http.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-sqlx.workspace = true
-redis.workspace = true
-async-nats.workspace = true
-webrtc.workspace = true
-uuid.workspace = true
-chrono.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-anyhow.workspace = true
-thiserror.workspace = true
-dotenvy.workspace = true
-validator.workspace = true
+
+# ============================================================================
+# WEB FRAMEWORK
+# ============================================================================
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+
+# ============================================================================
+# DATABASE (light usage - session tracking)
+# ============================================================================
+sqlx = { workspace = true }
+
+# ============================================================================
+# SERIALIZATION
+# ============================================================================
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# ============================================================================
+# ERROR HANDLING
+# ============================================================================
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+config = { workspace = true }
+dotenvy = { workspace = true }
+
+# ============================================================================
+# LOGGING & OBSERVABILITY
+# ============================================================================
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# ============================================================================
+# METRICS
+# ============================================================================
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+
+# ============================================================================
+# TIME & UUID
+# ============================================================================
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+# ============================================================================
+# REDIS (for voice session state)
+# ============================================================================
+redis = { workspace = true }
+
+# ============================================================================
+# NATS (for signaling between peers)
+# ============================================================================
+async-nats = { workspace = true }
+
+# ============================================================================
+# API DOCUMENTATION
+# ============================================================================
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+
+# ============================================================================
+# TESTING
+# ============================================================================
+[dev-dependencies]
+mockall = { workspace = true }
+fake = { workspace = true }
+rstest = { workspace = true }
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true }
+
+# ============================================================================
+# FEATURES
+# ============================================================================
+[features]
+default = []
+
+# ============================================================================
+# NOTES
+# ============================================================================
+# - P2P WebRTC signaling (no media server)
+# - Supports 2 users per voice channel
+# - SDP offer/answer exchange via HTTP
+# - ICE candidates forwarded via NATS
+# - Session state in Redis for reconnection
