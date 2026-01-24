@@ -1,122 +1,144 @@
--- Migration: 20240101000000_create_users
+-- Migration: 20260121135148_create_users
 -- Description: Create users table for authentication and user management
 -- Service: Auth Service (primary), User Service (secondary)
 -- Author: Bulut
 -- Date: 2026-01-21
 
-begin;
+BEGIN;
 
--- enable required extensions
-create extension if not exists "uuid-ossp";
+-- =====================================================
+-- EXTENSIONS
+-- =====================================================
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- custom types
-create type user_status as enum ('online', 'offline', 'idle', 'dnd');
-create type user_role as enum ('user', 'moderator', 'admin');
+-- =====================================================
+-- CUSTOM TYPES
+-- =====================================================
+CREATE TYPE user_status AS ENUM ('online', 'offline', 'idle', 'dnd');
+CREATE TYPE user_role   AS ENUM ('user', 'moderator', 'admin');
 
--- users table
-create table users (
-    id uuid primary key default uuid_generate_v4(),
-    
-    -- authentication
-    username varchar(32) not null unique
-        check (username ~* '^[a-z0-9_-]+$' and length(username) >= 3),
-    email varchar(255) not null unique
-        check (email ~* '^[a-za-z0-9._%+-]+@[a-za-z0-9.-]+\.[a-za-z]{2,}$'),
-    password_hash varchar(255) not null,
-    
-    -- profile
-    display_name varchar(100) not null
-        check (length(trim(display_name)) >= 1),
-    avatar_url varchar(512)
-        check (avatar_url is null or avatar_url ~* '^https?://'),
-    bio text
-        check (bio is null or length(bio) <= 500),
-    
-    -- status
-    status user_status not null default 'offline',
-    custom_status varchar(128),
-    
-    -- access control
-    role user_role not null default 'user',
-    is_active boolean not null default true,
-    
-    -- verification
-    email_verified boolean not null default false,
-    email_verification_token varchar(64),
-    
-    -- soft delete
-    deleted_at timestamptz,
-    
-    -- timestamps
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
+-- =====================================================
+-- USERS TABLE
+-- =====================================================
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+
+    -- ================= AUTH DOMAIN =================
+    username VARCHAR(32) NOT NULL UNIQUE
+        CHECK (username ~* '^[a-z0-9_-]+$' AND LENGTH(username) >= 3),
+
+    email VARCHAR(255) NOT NULL UNIQUE
+        CHECK (email ~* '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+
+    password_hash VARCHAR(255) NOT NULL,
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    email_verification_token VARCHAR(64),
+    role user_role NOT NULL DEFAULT 'user',
+
+    -- ================= USER DOMAIN =================
+    display_name VARCHAR(100) NOT NULL
+        CHECK (LENGTH(TRIM(display_name)) >= 1),
+
+    avatar_url VARCHAR(512)
+        CHECK (avatar_url IS NULL OR avatar_url ~* '^https?://'),
+
+    bio TEXT
+        CHECK (bio IS NULL OR LENGTH(bio) <= 500),
+
+    -- ================ PRESENCE DOMAIN ================
+    status user_status NOT NULL DEFAULT 'offline',
+    custom_status VARCHAR(128),
+
+    -- ================= SHARED =================
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    deleted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- primary indexes
-create index idx_users_email on users(email) where deleted_at is null;
-create index idx_users_username on users(username) where deleted_at is null;
-create index idx_users_status on users(status) where deleted_at is null;
-create index idx_users_role on users(role);
+-- =====================================================
+-- INDEXES
+-- =====================================================
+CREATE INDEX idx_users_email
+    ON users(email)
+    WHERE deleted_at IS NULL;
 
--- verification index
-create index idx_users_email_verification on users(email_verification_token)
-    where email_verification_token is not null;
+CREATE INDEX idx_users_username
+    ON users(username)
+    WHERE deleted_at IS NULL;
 
--- active users index
-create index idx_users_active on users(is_active, status) 
-    where deleted_at is null and is_active = true;
+CREATE INDEX idx_users_status
+    ON users(status)
+    WHERE deleted_at IS NULL;
 
--- soft delete index
-create index idx_users_deleted_at on users(deleted_at) where deleted_at is not null;
+CREATE INDEX idx_users_role
+    ON users(role);
 
--- search index (optional, can be added later if needed)
-create index idx_users_search on users using gin(
-    to_tsvector('english', display_name || ' ' || username)
-) where deleted_at is null;
+CREATE INDEX idx_users_email_verification
+    ON users(email_verification_token)
+    WHERE email_verification_token IS NOT NULL;
 
--- function to auto-update updated_at
-create or replace function update_updated_at_column()
-returns trigger as $$
-begin
-    new.updated_at = now();
-    return new;
-end;
-$$ language 'plpgsql';
+CREATE INDEX idx_users_active
+    ON users(is_active, status)
+    WHERE deleted_at IS NULL AND is_active = TRUE;
 
--- function to validate email change
-create or replace function validate_email_change()
-returns trigger as $$
-begin
-    -- if email changed, reset verification
-    if old.email is distinct from new.email then
-        new.email_verified = false;
-        new.email_verification_token = null;
-    end if;
-    return new;
-end;
-$$ language 'plpgsql';
+CREATE INDEX idx_users_deleted_at
+    ON users(deleted_at)
+    WHERE deleted_at IS NOT NULL;
 
--- triggers
-create trigger update_users_updated_at 
-    before update on users
-    for each row
-    execute function update_updated_at_column();
+CREATE INDEX idx_users_search
+    ON users USING GIN (
+        to_tsvector('english', display_name || ' ' || username)
+    )
+    WHERE deleted_at IS NULL;
 
-create trigger validate_users_email_change
-    before update on users
-    for each row
-    execute function validate_email_change();
+-- =====================================================
+-- FUNCTIONS
+-- =====================================================
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- comments for documentation
-comment on table users is 'user accounts and authentication data (mvp)';
-comment on column users.id is 'unique user identifier (uuid v4)';
-comment on column users.username is 'unique username for login (3-32 chars, lowercase alphanumeric)';
-comment on column users.email is 'unique email for login and notifications';
-comment on column users.password_hash is 'argon2id hashed password';
-comment on column users.display_name is 'user-facing display name (min 1 char)';
-comment on column users.status is 'current online status: online, offline, idle, dnd';
-comment on column users.role is 'user role: user, moderator, admin';
-comment on column users.is_active is 'account active status (soft disable)';
-comment on column users.deleted_at is 'soft delete timestamp';
+CREATE OR REPLACE FUNCTION validate_email_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.email IS DISTINCT FROM NEW.email THEN
+        NEW.email_verified = FALSE;
+        NEW.email_verification_token = NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
-commit;
+-- =====================================================
+-- TRIGGERS
+-- =====================================================
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER validate_users_email_change
+    BEFORE UPDATE ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION validate_email_change();
+
+-- =====================================================
+-- COMMENTS
+-- =====================================================
+COMMENT ON TABLE users IS 'User accounts and authentication data (MVP)';
+COMMENT ON COLUMN users.id IS 'Unique user identifier (UUID v4)';
+COMMENT ON COLUMN users.username IS 'Unique username for login (3–32 chars)';
+COMMENT ON COLUMN users.email IS 'Unique email for login and notifications';
+COMMENT ON COLUMN users.password_hash IS 'Argon2id hashed password';
+COMMENT ON COLUMN users.display_name IS 'User-facing display name';
+COMMENT ON COLUMN users.status IS 'Current online status';
+COMMENT ON COLUMN users.role IS 'User role';
+COMMENT ON COLUMN users.is_active IS 'Account active status (soft disable)';
+COMMENT ON COLUMN users.deleted_at IS 'Soft delete timestamp';
+
+COMMIT;

@@ -8,8 +8,12 @@ pub mod events;
 pub mod jwt;
 pub mod message_queue;
 pub mod middleware;
+pub mod observability;
 pub mod pagination;
+pub mod persistance;
+pub mod utils;
 
 // Re-export commonly used types
 pub use error::{AppError, Result};
 pub use events::Event;
+pub use persistance::repository::Repository;

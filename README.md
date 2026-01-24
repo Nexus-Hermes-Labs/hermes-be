@@ -1,8 +1,8 @@
 # Hermes 🚀
 
-A production-ready, Discord-like real-time communication platform built with
-Rust. Features text chat, P2P voice communication, and presence tracking using a
-scalable microservice architecture.
+A production-ready, Discord-like real-time communication platform built with Rust.
+It uses a modular monolith architecture with service-oriented boundaries, featuring text chat, P2P voice communication,
+and presence tracking. The system is designed to evolve toward full microservices when scale demands it.
 
 ## ✨ Features
 
@@ -34,7 +34,7 @@ scalable microservice architecture.
 ### 7 Microservices
 
 | Service      | Port | Responsibility                          |
-| ------------ | ---- | --------------------------------------- |
+|--------------|------|-----------------------------------------|
 | **Gateway**  | 8080 | WebSocket gateway & REST API router     |
 | **Auth**     | 8081 | User authentication & JWT management    |
 | **User**     | 8082 | User profiles & friend system           |
@@ -192,20 +192,20 @@ const ws = new WebSocket("ws://localhost:8080/ws?token=<your-jwt-token>");
 
 // Listen for messages
 ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log("Received:", data);
+    const data = JSON.parse(event.data);
+    console.log("Received:", data);
 };
 
 // Send a message
 ws.send(
-  JSON.stringify({
-    op: 2,
-    t: "MESSAGE_CREATE",
-    d: {
-      channel_id: "channel-uuid",
-      content: "Hello from WebSocket!",
-    },
-  }),
+    JSON.stringify({
+        op: 2,
+        t: "MESSAGE_CREATE",
+        d: {
+            channel_id: "channel-uuid",
+            content: "Hello from WebSocket!",
+        },
+    }),
 );
 ```
 
@@ -257,7 +257,7 @@ hermes-clone/
 This project is designed to be completed in 12 weeks at 6 hours per week:
 
 | Phase       | Weeks | Focus                                        |
-| ----------- | ----- | -------------------------------------------- |
+|-------------|-------|----------------------------------------------|
 | **Phase 1** | 1-4   | Infrastructure, Auth, User, Channel services |
 | **Phase 2** | 5-8   | Chat service, Gateway, WebSocket, Real-time  |
 | **Phase 3** | 9-12  | Presence, P2P Voice, Testing, Polish         |
