@@ -1,6 +1,6 @@
 # Staging environment configuration
 
-[app]
+[service]
 environment = "staging"
 allowed_origins = [
     "https://staging.yourdomain.com"

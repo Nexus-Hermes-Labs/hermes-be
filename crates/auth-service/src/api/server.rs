@@ -66,7 +66,7 @@ impl Server {
             .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
             .allow_origin(
                 self.config
-                    .app
+                    .service
                     .allowed_origins
                     .iter()
                     .map(|origin| origin.parse::<HeaderValue>().unwrap())
@@ -89,7 +89,7 @@ impl Server {
         let app = super::routes::create_router(app_state, health_check, cors, trace_layer);
 
         // Create a server address
-        let addr = SocketAddr::from(([0, 0, 0, 0], self.config.app.port));
+        let addr = SocketAddr::from(([0, 0, 0, 0], self.config.service.port));
 
         info!("Server listening on {}", addr);
 

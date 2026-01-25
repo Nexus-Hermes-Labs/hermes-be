@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use tracing::info;
 
 use crate::api::server::Server;
-use common::config::{Config, CONFIG};
+use common::config::{config, Config, CONFIG};
 use common::observability;
 
 pub mod api;
@@ -15,21 +15,30 @@ async fn main() -> Result<()> {
     // ============================================
     // 1. Load Configuration
     // ============================================
-    Config::load().context("Failed to load configuration")?;
+    let service_name = env!("CARGO_PKG_NAME");
+    common::config::init_config(service_name);
 
     // ============================================
     // 2. Initialize Observability
     // ============================================
     observability::tracing::init_tracing(
-        &CONFIG.logging,
-        &CONFIG.app.name,
-        &CONFIG.app.environment.to_string(),
+        &config().logging,
+        &config().service.name,
+        &config().service.environment.to_string(),
     )
     .context("Failed to initialize tracing")?;
 
-    info!("🚀 Starting {} v{}", CONFIG.app.name, CONFIG.app.version);
-    info!("📍 Environment: {}", CONFIG.app.environment);
-    info!("🌐 Host: {}:{}", CONFIG.app.host, CONFIG.app.port);
+    info!(
+        "🚀 Starting {} v{}",
+        config().service.name,
+        config().service.version
+    );
+    info!("📍 Environment: {}", config().service.environment);
+    info!(
+        "🌐 Host: {}:{}",
+        config().service.host,
+        config().service.port
+    );
 
     let metrics =
         observability::metrics::Metrics::init().context("Failed to initialize metrics")?;
@@ -38,7 +47,7 @@ async fn main() -> Result<()> {
     // 3. Initialize Database
     // ============================================
     info!("📦 Connecting to PostgreSQL...");
-    let db_pool = infrastructure::db::create_pool(&CONFIG.database)
+    let db_pool = infrastructure::db::create_pool(&config().database)
         .await
         .context("Failed to connect to database")?;
     info!("✅ Database connected");
@@ -48,7 +57,7 @@ async fn main() -> Result<()> {
     // ============================================
     info!("🔴 Connecting to Redis...");
     let redis_client =
-        redis::Client::open(CONFIG.redis.url.clone()).context("Failed to create Redis client")?;
+        redis::Client::open(config().redis.url.clone()).context("Failed to create Redis client")?;
     let redis_manager = redis::aio::ConnectionManager::new(redis_client)
         .await
         .context("Failed to connect to Redis")?;
@@ -59,7 +68,7 @@ async fn main() -> Result<()> {
     // ============================================
     info!("🎯 Auth Service ready!");
 
-    let server = Server::new(&CONFIG, db_pool, redis_manager, metrics)
+    let server = Server::new(&config(), db_pool, redis_manager, metrics)
         .await
         .context("Failed to initialize server")?;
 

@@ -1,10 +1,10 @@
-# Default configuration - shared across all environments
+# Default configuration - shared across all services
 
-[app]
-name = "Hermes"
+[service]
+name = "hermes-service"
 version = "0.1.0"
 host = "0.0.0.0"
-port = 8081
+port = 8080  # Default port for Gateway
 max_request_size = 10485760  # 10MB
 request_timeout_secs = 30
 graceful_shutdown_timeout_secs = 30
@@ -18,9 +18,12 @@ idle_timeout_secs = 600
 [redis]
 pool_size = 10
 
+[nats]
+max_reconnects = 10
+
 [jwt]
-access_secret = "9dc8eacb4e6cb2f2ba49919e4713adca"
-refresh_secret = "5f4dcc3b5aa765d61d8327deb882cf99"
+access_secret = "dev-access-secret-change-in-production"
+refresh_secret = "dev-refresh-secret-change-in-production"
 expiration_hours = 24
 refresh_expiration_days = 30
 

@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::fmt;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct AppConfig {
+pub struct ServiceConfig {
     pub name: String,
     pub version: String,
     pub host: String,
@@ -28,6 +28,18 @@ fn default_request_timeout() -> u64 {
 
 fn default_graceful_shutdown_timeout() -> u64 {
     30
+}
+
+impl ServiceConfig {
+    /// Get the service's bind address
+    pub fn bind_address(&self) -> String {
+        format!("{}:{}", self.host, self.port)
+    }
+
+    /// Get the service's public URL
+    pub fn public_url(&self) -> String {
+        format!("http://{}:{}", self.host, self.port)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]

@@ -1,10 +1,11 @@
 # Production environment configuration
 
-[app]
+[service]
 environment = "production"
 allowed_origins = [
     "https://yourdomain.com",
-    "https://www.yourdomain.com"
+    "https://www.yourdomain.com",
+    "https://app.yourdomain.com"
 ]
 
 [database]
