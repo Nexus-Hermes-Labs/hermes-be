@@ -1,4 +1,4 @@
-use super::entity::{ UserRoleEntity};
+use super::entity::UserRoleEntity;
 use crate::domain::user::{entity::User, UserRole};
 use crate::infrastructure::persistence::AuthUserEntity;
 
@@ -33,7 +33,7 @@ impl UserMapper {
             email_verified: entity.email_verified,
             created_at: entity.created_at,
             updated_at: entity.updated_at,
-            email_verification_token: entity.email_verification_token
+            email_verification_token: entity.email_verification_token,
         }
     }
 

@@ -1,7 +1,7 @@
 use anyhow::Result;
+use common::config::DatabaseConfig;
 use sqlx::migrate::Migrator;
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use common::config::DatabaseConfig;
 
 pub async fn create_pool(config: &DatabaseConfig) -> Result<PgPool> {
     let pool = PgPoolOptions::new()

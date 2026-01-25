@@ -1,15 +1,15 @@
+use crate::api::dto::auth::{
+    LoginRequest, LogoutRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
+};
+use crate::api::state::AppState;
 use axum::{
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
-use validator::Validate;
 use common::AppError;
-use crate::api::dto::auth::{
-    LoginRequest, LogoutRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
-};
-use crate::api::state::AppState;
+use validator::Validate;
 
 /// Register a new user
 pub async fn register_handler(

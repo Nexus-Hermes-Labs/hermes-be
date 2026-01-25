@@ -1,6 +1,6 @@
 use crate::domain::user::filters::UserFilters;
-use sqlx::{Postgres, QueryBuilder};
 use common::persistance::sql_utils::escape_like_pattern;
+use sqlx::{Postgres, QueryBuilder};
 
 pub struct UserQueryBuilder;
 
@@ -38,7 +38,7 @@ impl UserQueryBuilder {
         // Role filter (enum - safe)
         if let Some(ref role) = filters.role {
             separator.push(qb);
-            qb.push("role = ").push_bind(role.as_str()); 
+            qb.push("role = ").push_bind(role.as_str());
         }
 
         if let Some(ref search) = filters.search {

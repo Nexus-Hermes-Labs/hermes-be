@@ -2,12 +2,12 @@ use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserRes
 use crate::domain::user::{AuthUserRepository, User};
 use crate::infrastructure::persistence::user::UserMapper;
 use anyhow::Context;
+use common::jwt::JwtManager;
 use common::utils::{hash_password, verify_password};
 use common::AppError;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 use uuid::Uuid;
-use common::jwt::JwtManager;
 
 /// AuthService
 ///
@@ -41,16 +41,17 @@ impl<R: AuthUserRepository> AuthService<R> {
 
         // Hash password
         let password_hash = hash_password(&request.password).map_err(|e| {
-            AppError::InternalServerError(
-                anyhow::anyhow!("Password hashing failed: {}", e).to_string(),
-            )
+            error!(error = %e, "Password hashing failed");
+            AppError::InternalServerError("Failed to process password".to_string())
         })?;
 
         // Create user
-        let user = User::new(request.email, request.username, password_hash);
+        let user = User::new(request.username, request.email, password_hash);
 
         // Save user
         self.save_user(&user).await?;
+
+        info!(user_id = %user.id, email = %user.email, "User registered successfully");
 
         // Generate tokens
         self.build_auth_response(&user).await
@@ -65,60 +66,47 @@ impl<R: AuthUserRepository> AuthService<R> {
         let user = self
             .get_user_by_email(&request.email)
             .await?
-            .ok_or_else(|| AppError::Unauthorized("Invalid credentials".to_string()))?;
+            .ok_or_else(|| {
+                warn!(email = %request.email, "Login attempt with non-existent email");
+                AppError::Unauthorized("Invalid credentials".to_string())
+            })?;
 
         // Verify password
         let password_valid =
             verify_password(&request.password, &user.password_hash).map_err(|e| {
-                AppError::InternalServerError(format!("Password verification failed: {}", e))
+                error!(error = %e, user_id = %user.id, "Password verification failed");
+                AppError::InternalServerError("Authentication error".to_string())
             })?;
 
         if !password_valid {
+            warn!(user_id = %user.id, "Login attempt with invalid password");
             return Err(AppError::Unauthorized("Invalid credentials".to_string()));
         }
 
         // Check user status
         if !user.is_active {
+            warn!(user_id = %user.id, "Login attempt on deactivated account");
             return Err(AppError::Forbidden("Account is deactivated".to_string()));
         }
+
+        info!(user_id = %user.id, email = %user.email, "User logged in successfully");
 
         // Generate tokens
         self.build_auth_response(&user).await
     }
 
     /// Logout user by revoking refresh token
-    ///
-    /// Current implementation:
-    /// 1. Validates refresh token
-    /// 2. Logs audit event
-    /// 3. Returns success to client
-    ///
-    /// Future enhancements (when needed):
-    /// - Add token to blacklist database
-    /// - Invalidate token family (for rotation)
-    /// - Trigger logout webhooks/events
-    /// - Update user's last_logout_at timestamp
-    ///
-    /// # Arguments
-    /// * `refresh_token` - The refresh token to revoke
-    ///
-    /// # Returns
-    /// * `Ok(())` - Token successfully validated and logged
-    /// * `Err(AppError)` - Invalid or expired token
     pub async fn logout(&self, refresh_token: String) -> Result<(), AppError> {
-        // 1. Verify and decode refresh token
+        // Verify and decode refresh token
         let claims = self
             .jwt_manager
             .verify_refresh_token(&refresh_token)
             .map_err(|e| {
-                warn!(
-                    error = %e,
-                    "Invalid refresh token provided during logout"
-                );
+                warn!(error = %e, "Invalid refresh token provided during logout");
                 AppError::Unauthorized("Invalid or expired refresh token".to_string())
             })?;
 
-        // 2. Audit logging (important for security)
+        // Audit logging
         info!(
             user_id = %claims.sub,
             token_jti = %claims.jti,
@@ -126,57 +114,29 @@ impl<R: AuthUserRepository> AuthService<R> {
             "User logged out successfully"
         );
 
-        // TODO:
-        // 3. Future: Blacklist token
-        // When blacklist is implemented, uncomment:
-        //
-        // let expires_at = DateTime::from_timestamp(claims.exp, 0)
-        //     .unwrap_or_else(|| Utc::now() + Duration::days(30));
-        //
-        // self.blacklist_repository
-        //     .blacklist_token(
-        //         claims.sub,
-        //         claims.jti,
-        //         "refresh",
-        //         expires_at,
-        //     )
-        //     .await
-        //     .map_err(|e| {
-        //         error!("Failed to blacklist token: {}", e);
-        //         AppError::Internal(e.into())
-        //     })?;
-
-        // 4. Future: Trigger events
-        // self.event_bus.publish(UserLoggedOutEvent {
-        //     user_id: claims.sub,
-        //     logged_out_at: Utc::now(),
-        // }).await?;
+        // TODO: Future implementation
+        // - Blacklist token
+        // - Trigger logout events
 
         Ok(())
     }
 
     /// Logout from all devices (future feature)
-    ///
-    /// This would revoke all refresh tokens for a user
-    /// Requires token family tracking or user-level revocation
     #[allow(dead_code)]
     pub async fn logout_all_devices(&self, user_id: Uuid) -> Result<(), AppError> {
         info!(user_id = %user_id, "Logout from all devices requested");
-
-        // TODO: Future implementation:
-        // 1. Add user_id to global blacklist with timestamp
-        // 2. All tokens issued before this timestamp are invalid
-        // 3. Or: Track and revoke all refresh tokens for user
-
         todo!("Logout from all devices not yet implemented")
     }
-    
-        pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthResponse, AppError> {
+
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthResponse, AppError> {
         // Verify refresh token
         let claims = self
             .jwt_manager
             .verify_refresh_token(refresh_token)
-            .map_err(|_| AppError::Unauthorized("Invalid refresh token".to_string()))?;
+            .map_err(|e| {
+                warn!(error = %e, "Invalid refresh token during token refresh");
+                AppError::Unauthorized("Invalid refresh token".to_string())
+            })?;
 
         // Get user
         let user_id = claims.sub;
@@ -184,10 +144,13 @@ impl<R: AuthUserRepository> AuthService<R> {
 
         // Check user status
         if !user.is_active {
+            warn!(user_id = %user.id, "Token refresh attempt on inactive account");
             return Err(AppError::Unauthorized("Account is not active".to_string()));
         }
 
-        // TODO: Add token to blacklist here
+        info!(user_id = %user.id, "Token refreshed successfully");
+
+        // TODO: Add old token to blacklist
 
         // Generate new tokens
         self.build_auth_response(&user).await
@@ -196,57 +159,75 @@ impl<R: AuthUserRepository> AuthService<R> {
     // ============================================
     // USER OPERATIONS
     // ============================================
+
     async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
-        let entity = self
-            .user_repository
+        self.user_repository
             .find_by_email(email)
             .await
-            .map_err(|_| {
-                AppError::InternalServerError("Faield to fetch user from database".to_string())
-            })?;
-        Ok(entity.map(UserMapper::to_domain))
+            .map(|entity| entity.map(UserMapper::to_domain))
+            .map_err(|e| {
+                error!(
+                    error = ?e,
+                    email = %email,
+                    "Database error while fetching user by email"
+                );
+                AppError::InternalServerError("Failed to fetch user from database".to_string())
+            })
     }
 
     async fn get_user_by_id(&self, id: Uuid) -> Result<User, AppError> {
-        let entity = self
-            .user_repository
+        self.user_repository
             .find_by_id(id)
             .await
-            .context("Failed to fetch user")
-            .map_err(|_| {
-                AppError::InternalServerError(
-                    "Failed to fetch user from database: {:?}".to_string(),
-                )
+            .map_err(|e| {
+                error!(
+                    error = ?e,
+                    user_id = %id,
+                    "Database error while fetching user by id"
+                );
+                AppError::InternalServerError("Failed to fetch user from database".to_string())
             })?
-            .ok_or_else(|| AppError::NotFound {
-                entity_type: "User".to_string(),
-            })?;
-
-        Ok(UserMapper::to_domain(entity))
+            .map(UserMapper::to_domain)
+            .ok_or_else(|| {
+                warn!(user_id = %id, "User not found");
+                AppError::NotFound {
+                    entity_type: "User".to_string(),
+                }
+            })
     }
 
     async fn get_user_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
-        let entity = self
-            .user_repository
+        self.user_repository
             .find_by_username(username)
             .await
-            .map_err(|_| {
+            .map(|entity| entity.map(UserMapper::to_domain))
+            .map_err(|e| {
+                error!(
+                    error = ?e,
+                    username = %username,
+                    "Database error while fetching user by username"
+                );
                 AppError::InternalServerError("Failed to fetch user from database".to_string())
-            })?;
-        Ok(entity.map(UserMapper::to_domain))
+            })
     }
 
     async fn save_user(&self, user: &User) -> Result<(), AppError> {
         let entity = UserMapper::to_entity(user);
-        self.user_repository.save(&entity).await.map_err(|_| {
+        self.user_repository.save(&entity).await.map_err(|e| {
+            error!(
+                error = ?e,
+                user_id = %user.id,
+                email = %user.email,
+                "Database error while saving user"
+            );
             AppError::InternalServerError("Failed to save user to database".to_string())
-        })?;
-        Ok(())
+        })
     }
 
     // ============================================
-    // HELPER METHODS (for AuthService)
+    // HELPER METHODS
     // ============================================
+
     async fn build_auth_response(&self, user: &User) -> Result<AuthResponse, AppError> {
         let role_str = format!("{:?}", user.role).to_lowercase();
 
@@ -254,18 +235,16 @@ impl<R: AuthUserRepository> AuthService<R> {
             .jwt_manager
             .create_user_token(user.id, user.email.clone(), role_str.clone(), 6)
             .map_err(|e| {
-                AppError::InternalServerError(
-                    anyhow::anyhow!("Token generation failed: {}", e).to_string(),
-                )
+                error!(error = %e, user_id = %user.id, "Failed to create access token");
+                AppError::InternalServerError("Token generation failed".to_string())
             })?;
 
         let refresh_token = self
             .jwt_manager
             .create_refresh_token(user.id, user.email.clone(), role_str.clone(), 30)
             .map_err(|e| {
-                AppError::InternalServerError(
-                    anyhow::anyhow!("Refresh token generation failed: {}", e).to_string(),
-                )
+                error!(error = %e, user_id = %user.id, "Failed to create refresh token");
+                AppError::InternalServerError("Token generation failed".to_string())
             })?;
 
         Ok(AuthResponse {

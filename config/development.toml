@@ -1,0 +1,15 @@
+# Development environment configuration
+
+[app]
+environment = "development"
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:8080"
+]
+
+[database]
+max_connections = 5  # Lower connections for development
+
+[logging]
+level = "debug"
+format = "pretty"  # More readable in development

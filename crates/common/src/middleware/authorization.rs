@@ -1,11 +1,11 @@
+use crate::jwt::Claims;
+use crate::middleware::authentication::{AuthError, AuthenticatedUser};
 use axum::http::StatusCode;
 use axum::{
     extract::Request,
     middleware::Next,
     response::{IntoResponse, Response},
 };
-use crate::jwt::Claims;
-use crate::middleware::authentication::{AuthError, AuthenticatedUser};
 
 const REQUIRED_ADMIN: &str = "admin";
 
@@ -30,9 +30,7 @@ pub async fn require_role(
     request: Request,
     next: Next,
 ) -> Result<Response, AuthError> {
-    let role = authenticated_user
-        .0
-        .role;
+    let role = authenticated_user.0.role;
 
     if role != required_role {
         return Err(AuthError::InsufficientPermissions);

@@ -1,0 +1,18 @@
+# Production environment configuration
+
+[app]
+environment = "production"
+allowed_origins = [
+    "https://yourdomain.com",
+    "https://www.yourdomain.com"
+]
+
+[database]
+max_connections = 20  # Higher connections for production load
+
+[redis]
+pool_size = 20
+
+[logging]
+level = "warn"
+format = "json"  # Structured logging for production

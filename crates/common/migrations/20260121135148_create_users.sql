@@ -36,7 +36,7 @@ CREATE TABLE users (
     role user_role NOT NULL DEFAULT 'user',
 
     -- ================= USER DOMAIN =================
-    display_name VARCHAR(100) NOT NULL
+    display_name VARCHAR(100)
         CHECK (LENGTH(TRIM(display_name)) >= 1),
 
     avatar_url VARCHAR(512)

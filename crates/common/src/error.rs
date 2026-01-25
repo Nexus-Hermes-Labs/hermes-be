@@ -78,7 +78,7 @@ impl AppError {
             Self::Jwt(_) => "JWT_ERROR",
             Self::Config(_) => "CONFIG_ERROR",
             Self::BadRequest(_) => "BAD_REQUEST",
-            Self::MessageQueue(_) => "MESSAGE_QUEUE_ERROR"
+            Self::MessageQueue(_) => "MESSAGE_QUEUE_ERROR",
         }
     }
 

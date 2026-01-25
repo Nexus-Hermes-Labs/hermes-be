@@ -1,45 +1,104 @@
-# Rust
-/target
+# Rust Build Artifacts
+/target/
 **/*.rs.bk
 *.pdb
+
+# Cargo
 Cargo.lock
 
-# Environment Variables
-.env
-.env.local
+# Compilation files
+*.rmeta
+*.rlib
+*.so
+*.dylib
+*.dll
 
-# IDE
-.idea/
+# Debug and Crash reports
+core
+core.*
+*.stackdump
+
+# Documentation
+/doc/
+/target/doc/
+
+# IDEs and Editors
 .vscode/
+*.code-workspace
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
 *.swp
 *.swo
 *~
-.DS_Store
+.*.sw[a-z]
+.fleet/
+.zed/
 
-# Build artifacts
-dist/
-build/
+# OS Specific
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.directory
+.Trash-*
+
+# Environment and Configuration
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# Secrets
+*.key
+*.pem
+secrets.toml
+credentials.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
 
 # Logs
 *.log
 logs/
 
-# Database
-*.db
-*.sqlite
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
 
-# Docker
-docker-compose.override.yml
+# Backup files
+*.bak
+*.backup
+*~
 
-# OS
-.DS_Store
-Thumbs.db
+# Distribution
+/dist/
 
-# Profiling
-flamegraph.svg
-perf.data
-perf.data.old
-
-# Test coverage
+# Coverage
+htmlcov/
+*.profdata
+*.profraw
+coverage/
 tarpaulin-report.html
 cobertura.xml
+lcov.info
+
+# Node modules (if using WASM or frontend)
+node_modules/
+npm-debug.log
+yarn-error.log

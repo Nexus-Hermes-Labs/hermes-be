@@ -29,14 +29,6 @@ pub struct RegisterRequest {
     /// Password (minimum 8 characters)
     #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
-
-    /// User's first name
-    #[validate(length(min = 1, max = 100, message = "First name is required"))]
-    pub first_name: String,
-
-    /// User's last name
-    #[validate(length(min = 1, max = 100, message = "Last name is required"))]
-    pub last_name: String,
 }
 
 /// Response type: AuthResponse (defined below)

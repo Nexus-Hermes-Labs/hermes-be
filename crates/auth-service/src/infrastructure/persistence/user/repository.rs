@@ -25,8 +25,7 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     type Error = RepositoryError;
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<AuthUserEntity>, Self::Error> {
-        let user = sqlx::query_as!(
-            AuthUserEntity,
+        let user = sqlx::query_as::<_, AuthUserEntity>(
             r#"
             SELECT
                 id,
@@ -42,8 +41,8 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
             FROM users
             WHERE id = $1 AND deleted_at IS NULL
             "#,
-            id
         )
+        .bind(id)
         .fetch_optional(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -52,8 +51,7 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn find_all(&self) -> Result<Vec<AuthUserEntity>, Self::Error> {
-        let users = sqlx::query_as!(
-            AuthUserEntity,
+        let users = sqlx::query_as::<_, AuthUserEntity>(
             r#"
             SELECT
                 id,
@@ -69,7 +67,7 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
             FROM users
             WHERE deleted_at IS NULL
             ORDER BY created_at DESC
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await
@@ -79,33 +77,22 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn save(&self, entity: &AuthUserEntity) -> Result<(), Self::Error> {
-        sqlx::query!(
+        println!("INFOLOG ENTITY: {:?}", entity);
+        sqlx::query(
             r#"
             INSERT INTO users (
                 id,
                 username,
                 email,
-                password_hash,
-                email_verified,
-                email_verification_token,
-                role,
-                is_active,
-                created_at,
-                updated_at
+                password_hash
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            VALUES ($1, $2, $3, $4)
             "#,
-            entity.id,
-            entity.username,
-            entity.email,
-            entity.password_hash,
-            entity.email_verified,
-            entity.email_verification_token,
-            entity.role,
-            entity.is_active,
-            entity.created_at,
-            entity.updated_at
         )
+        .bind(entity.id)
+        .bind(&entity.username)
+        .bind(&entity.email)
+        .bind(&entity.password_hash)
         .execute(&self.pool)
         .await
         .map_err(|e| {
@@ -123,7 +110,7 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn update(&self, entity: &AuthUserEntity) -> Result<(), Self::Error> {
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             UPDATE users SET
                 username = $2,
@@ -136,16 +123,16 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
                 updated_at = $9
             WHERE id = $1 AND deleted_at IS NULL
             "#,
-            entity.id,
-            entity.username,
-            entity.email,
-            entity.password_hash,
-            entity.email_verified,
-            entity.email_verification_token,
-            entity.role,
-            entity.is_active,
-            entity.updated_at
         )
+        .bind(entity.id)
+        .bind(&entity.username)
+        .bind(&entity.email)
+        .bind(&entity.password_hash)
+        .bind(entity.email_verified)
+        .bind(&entity.email_verification_token)
+        .bind(&entity.role)
+        .bind(entity.is_active)
+        .bind(entity.updated_at)
         .execute(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -159,14 +146,14 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
 
     async fn delete(&self, id: Uuid) -> Result<(), Self::Error> {
         // Soft delete
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             UPDATE users
             SET deleted_at = NOW()
             WHERE id = $1 AND deleted_at IS NULL
             "#,
-            id
         )
+        .bind(id)
         .execute(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -179,15 +166,15 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn exists(&self, id: Uuid) -> Result<bool, Self::Error> {
-        let exists: bool = sqlx::query_scalar!(
+        let exists: bool = sqlx::query_scalar(
             r#"
             SELECT EXISTS(
                 SELECT 1 FROM users
                 WHERE id = $1 AND deleted_at IS NULL
-            ) as "exists!"
+            )
             "#,
-            id
         )
+        .bind(id)
         .fetch_one(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -196,12 +183,12 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn count(&self) -> Result<i64, Self::Error> {
-        let count: i64 = sqlx::query_scalar!(
+        let count: i64 = sqlx::query_scalar(
             r#"
-            SELECT COUNT(*) as "count!"
+            SELECT COUNT(*)
             FROM users
             WHERE deleted_at IS NULL
-            "#
+            "#,
         )
         .fetch_one(&self.pool)
         .await
@@ -218,8 +205,7 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
 #[async_trait]
 impl AuthUserRepository for PostgresAuthUserRepository {
     async fn find_by_email(&self, email: &str) -> Result<Option<AuthUserEntity>, RepositoryError> {
-        let user = sqlx::query_as!(
-            AuthUserEntity,
+        let user = sqlx::query_as::<_, AuthUserEntity>(
             r#"
             SELECT
                 id,
@@ -235,8 +221,8 @@ impl AuthUserRepository for PostgresAuthUserRepository {
             FROM users
             WHERE email = $1 AND deleted_at IS NULL
             "#,
-            email
         )
+        .bind(email)
         .fetch_optional(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -248,8 +234,7 @@ impl AuthUserRepository for PostgresAuthUserRepository {
         &self,
         username: &str,
     ) -> Result<Option<AuthUserEntity>, RepositoryError> {
-        let user = sqlx::query_as!(
-            AuthUserEntity,
+        let user = sqlx::query_as::<_, AuthUserEntity>(
             r#"
             SELECT
                 id,
@@ -265,8 +250,8 @@ impl AuthUserRepository for PostgresAuthUserRepository {
             FROM users
             WHERE username = $1 AND deleted_at IS NULL
             "#,
-            username
         )
+        .bind(username)
         .fetch_optional(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -275,15 +260,15 @@ impl AuthUserRepository for PostgresAuthUserRepository {
     }
 
     async fn exists_by_email(&self, email: &str) -> Result<bool, RepositoryError> {
-        let exists: bool = sqlx::query_scalar!(
+        let exists: bool = sqlx::query_scalar(
             r#"
             SELECT EXISTS(
                 SELECT 1 FROM users
                 WHERE email = $1 AND deleted_at IS NULL
-            ) as "exists!"
+            )
             "#,
-            email
         )
+        .bind(email)
         .fetch_one(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -292,15 +277,15 @@ impl AuthUserRepository for PostgresAuthUserRepository {
     }
 
     async fn exists_by_username(&self, username: &str) -> Result<bool, RepositoryError> {
-        let exists: bool = sqlx::query_scalar!(
+        let exists: bool = sqlx::query_scalar(
             r#"
             SELECT EXISTS(
                 SELECT 1 FROM users
                 WHERE username = $1 AND deleted_at IS NULL
-            ) as "exists!"
+            )
             "#,
-            username
         )
+        .bind(username)
         .fetch_one(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;

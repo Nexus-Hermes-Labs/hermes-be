@@ -1,6 +1,6 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -8,41 +8,41 @@ pub enum Event {
     // Auth Events
     UserCreated(UserCreatedEvent),
     UserDeleted(UserDeletedEvent),
-    
+
     // User Events
     UserProfileUpdated(UserProfileUpdatedEvent),
     FriendAdded(FriendEvent),
     FriendRemoved(FriendEvent),
     UserBlocked(UserBlockedEvent),
-    
+
     // Server Events
     ServerCreated(ServerEvent),
     ServerUpdated(ServerEvent),
     ServerDeleted(ServerDeletedEvent),
-    
+
     // Channel Events
     ChannelCreated(ChannelEvent),
     ChannelUpdated(ChannelEvent),
     ChannelDeleted(ChannelDeletedEvent),
-    
+
     // Message Events
     MessageCreated(MessageEvent),
     MessageUpdated(MessageEvent),
     MessageDeleted(MessageDeletedEvent),
-    
+
     // Voice Events
     VoiceSessionCreated(VoiceSessionEvent),
     VoiceSessionUpdated(VoiceSessionEvent),
     VoiceSessionEnded(VoiceSessionEndedEvent),
     VoiceSpeakingStarted(VoiceSpeakingEvent),
     VoiceSpeakingStopped(VoiceSpeakingEvent),
-    
+
     // Stream Events
     StreamStarted(StreamEvent),
     StreamStopped(StreamStoppedEvent),
     StreamViewerJoined(StreamViewerEvent),
     StreamViewerLeft(StreamViewerEvent),
-    
+
     // Presence Events
     PresenceStatusChanged(PresenceEvent),
     PresenceTypingStarted(TypingEvent),
@@ -227,6 +227,7 @@ impl Event {
             Event::StreamViewerLeft(_) => "stream.viewer.left",
             Event::PresenceStatusChanged(_) => "presence.status.changed",
             Event::PresenceTypingStarted(_) => "presence.typing.started",
-        }.to_string()
+        }
+        .to_string()
     }
 }

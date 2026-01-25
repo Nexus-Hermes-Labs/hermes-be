@@ -1,8 +1,8 @@
 use crate::infrastructure::persistence::user::entity::AuthUserEntity;
 use async_trait::async_trait;
-use uuid::Uuid;
 use common::persistance::error::RepositoryError;
 use common::Repository;
+use uuid::Uuid;
 
 /// User-specific repository trait extending generic Repository
 #[async_trait]

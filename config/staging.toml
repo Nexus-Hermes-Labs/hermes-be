@@ -1,0 +1,17 @@
+# Staging environment configuration
+
+[app]
+environment = "staging"
+allowed_origins = [
+    "https://staging.yourdomain.com"
+]
+
+[database]
+max_connections = 15  # Medium connections for staging
+
+[redis]
+pool_size = 15
+
+[logging]
+level = "info"
+format = "json"

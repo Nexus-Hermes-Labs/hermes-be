@@ -1,7 +1,7 @@
 use crate::api::handlers;
 use axum::{routing::get, Router};
-use std::sync::Arc;
 use common::observability::HealthCheck;
+use std::sync::Arc;
 
 pub fn routes() -> Router<Arc<HealthCheck>> {
     Router::new()
