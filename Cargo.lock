@@ -4700,7 +4700,9 @@ name = "user-service"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "argon2",
  "async-nats",
+ "async-trait",
  "axum 0.7.9",
  "axum-extra",
  "chrono",
@@ -4708,9 +4710,12 @@ dependencies = [
  "config",
  "dotenvy",
  "fake",
+ "jsonwebtoken",
  "metrics 0.22.4",
  "metrics-exporter-prometheus",
  "mockall",
+ "rand 0.8.5",
+ "redis",
  "rstest",
  "serde",
  "serde_json",

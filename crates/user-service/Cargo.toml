@@ -12,6 +12,7 @@ license.workspace = true
 name = "user-service"
 path = "src/main.rs"
 
+
 [dependencies]
 # ============================================================================
 # LOCAL DEPENDENCIES
@@ -46,6 +47,13 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 # ============================================================================
+# AUTHENTICATION & SECURITY (Auth-specific)
+# ============================================================================
+argon2 = { workspace = true }       # Password hashing
+jsonwebtoken = { workspace = true } # JWT generation
+rand = { workspace = true }         # Token secrets
+
+# ============================================================================
 # CONFIGURATION
 # ============================================================================
 config = { workspace = true }
@@ -70,7 +78,17 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 
 # ============================================================================
-# NATS (for publishing friendship events)
+# REDIS (for refresh tokens)
+# ============================================================================
+redis = { workspace = true }
+
+# ============================================================================
+# ASYNC
+# ============================================================================
+async-trait = { workspace = true }
+
+# ============================================================================
+# NATS (for publishing user.created events)
 # ============================================================================
 async-nats = { workspace = true }
 
@@ -95,3 +113,4 @@ testcontainers-modules = { workspace = true }
 # ============================================================================
 [features]
 default = []
+# Future: Add feature flags if needed (e.g., "oauth", "2fa")
