@@ -2,11 +2,20 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
 pub enum UserRole {
     User,
     Moderator,
     Admin,
+}
+
+impl UserRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            UserRole::User => "user",
+            UserRole::Moderator => "moderator",
+            UserRole::Admin => "admin",
+        }
+    }
 }
 
 impl FromStr for UserRole {
