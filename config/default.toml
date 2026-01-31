@@ -1,31 +1,45 @@
-# Default configuration - shared across all services
+# config/default.toml
+# Base configuration - applies to all services and environments
 
 [service]
-name = "hermes-service"
-version = "0.1.0"
+version = "1.0.0"
 host = "0.0.0.0"
-port = 8080  # Default port for Gateway
+port = 8000  # Will be overridden per service
+environment = "development"
+allowed_origins = []
 max_request_size = 10485760  # 10MB
 request_timeout_secs = 30
 graceful_shutdown_timeout_secs = 30
 
 [database]
+url = "postgres://hermes:hermes@localhost:5432/hermes"
 max_connections = 10
 min_connections = 2
 acquire_timeout_secs = 30
 idle_timeout_secs = 600
 
 [redis]
+url = "redis://localhost:6379"
 pool_size = 10
+connection_timeout_secs = 5
+max_retries = 3
 
 [nats]
+url = "nats://localhost:4222"
 max_reconnects = 10
+reconnect_delay_ms = 100
+max_reconnect_delay_secs = 4
 
-[jwt]
-access_secret = "dev-access-secret-change-in-production"
-refresh_secret = "dev-refresh-secret-change-in-production"
+[secrets.jwt]
+access_secret = "change-me-in-production-min-32-chars"
+refresh_secret = "change-me-in-production-min-32-chars-different"
 expiration_hours = 24
 refresh_expiration_days = 30
+
+[secrets.password]
+pepper = "change-me-in-production-min-16-chars"
+min_length = 8
+bcrypt_cost = 12
 
 [logging]
 level = "info"

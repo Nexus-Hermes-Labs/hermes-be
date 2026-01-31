@@ -1,5 +1,5 @@
 use crate::domain::user::repository::AuthUserRepository;
-use crate::infrastructure::persistence::user::entity::AuthUserEntity;
+use crate::infrastructure::persistence::user_repository::entity::AuthUserEntity;
 use async_trait::async_trait;
 use common::persistance::error::RepositoryError;
 use common::Repository;

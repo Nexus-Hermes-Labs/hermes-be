@@ -72,6 +72,10 @@ CREATE TABLE users (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     deleted_at TIMESTAMPTZ,
 
+    -- ================= LOGIN SECURITY =================
+		failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+		locked_until TIMESTAMPTZ,
+
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

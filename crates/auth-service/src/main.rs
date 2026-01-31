@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use tracing::info;
 
 use crate::api::server::Server;
-use common::config::{config, Config, CONFIG};
+use common::config::{config, Config};
 use common::observability;
 
 pub mod api;
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
     // 3. Initialize Database
     // ============================================
     info!("📦 Connecting to PostgreSQL...");
-    let db_pool = infrastructure::db::create_pool(&config().database)
+    let db_pool = infrastructure::persistence::postgres::connection::create_pool(&config().database)
         .await
         .context("Failed to connect to database")?;
     info!("✅ Database connected");

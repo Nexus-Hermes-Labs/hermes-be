@@ -1,6 +1,6 @@
 use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
 use crate::domain::user::{AuthUserRepository, User};
-use crate::infrastructure::persistence::user::UserMapper;
+use crate::infrastructure::persistence::user_repository::UserMapper;
 use anyhow::Context;
 use common::jwt::JwtManager;
 use common::utils::{hash_password, verify_password};

@@ -1,4 +1,3 @@
-pub mod user;
+pub mod postgres;
 
 // Re-exports for convenience
-pub use user::{entity::AuthUserEntity, repository::PostgresAuthUserRepository};

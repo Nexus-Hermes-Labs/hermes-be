@@ -96,6 +96,7 @@ async-nats = { workspace = true }
 # ============================================================================
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
+rand_core = "0.6.4"
 
 # ============================================================================
 # TESTING
