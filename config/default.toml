@@ -31,13 +31,13 @@ reconnect_delay_ms = 100
 max_reconnect_delay_secs = 4
 
 [secrets.jwt]
-access_secret = "change-me-in-production-min-32-chars"
-refresh_secret = "change-me-in-production-min-32-chars-different"
+access_secret = "8b07440a32ff4876d6b1b1cc66acf40c"
+refresh_secret = "87df4f0009973850e291d4425bdedfee"
 expiration_hours = 24
 refresh_expiration_days = 30
 
 [secrets.password]
-pepper = "change-me-in-production-min-16-chars"
+pepper = "df9a53317617038e"
 min_length = 8
 bcrypt_cost = 12
 

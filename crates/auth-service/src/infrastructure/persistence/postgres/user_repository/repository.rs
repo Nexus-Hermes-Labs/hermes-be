@@ -1,10 +1,10 @@
 use crate::domain::user::repository::AuthUserRepository;
-use crate::infrastructure::persistence::user_repository::entity::AuthUserEntity;
 use async_trait::async_trait;
 use common::persistance::error::RepositoryError;
 use common::Repository;
 use sqlx::PgPool;
 use uuid::Uuid;
+use crate::infrastructure::persistence::postgres::user_repository::models::AuthUserEntity;
 
 pub struct PostgresAuthUserRepository {
     pool: PgPool,
@@ -32,9 +32,9 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
                 username,
                 email,
                 password_hash,
+                role,
                 email_verified,
                 email_verification_token,
-                role,
                 is_active,
                 created_at,
                 updated_at
@@ -58,9 +58,9 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
                 username,
                 email,
                 password_hash,
+                role,
                 email_verified,
                 email_verification_token,
-                role,
                 is_active,
                 created_at,
                 updated_at
@@ -77,22 +77,23 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn save(&self, entity: &AuthUserEntity) -> Result<(), Self::Error> {
-        println!("INFOLOG ENTITY: {:?}", entity);
         sqlx::query(
             r#"
             INSERT INTO users (
                 id,
                 username,
                 email,
-                password_hash
+                password_hash,
+                role
             )
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3, $4, $5)
             "#,
         )
         .bind(entity.id)
         .bind(&entity.username)
         .bind(&entity.email)
         .bind(&entity.password_hash)
+        .bind(&entity.role)
         .execute(&self.pool)
         .await
         .map_err(|e| {
@@ -145,7 +146,6 @@ impl Repository<AuthUserEntity, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), Self::Error> {
-        // Soft delete
         let result = sqlx::query(
             r#"
             UPDATE users
@@ -212,9 +212,9 @@ impl AuthUserRepository for PostgresAuthUserRepository {
                 username,
                 email,
                 password_hash,
+                role,
                 email_verified,
                 email_verification_token,
-                role,
                 is_active,
                 created_at,
                 updated_at
@@ -241,9 +241,9 @@ impl AuthUserRepository for PostgresAuthUserRepository {
                 username,
                 email,
                 password_hash,
+                role,
                 email_verified,
                 email_verification_token,
-                role,
                 is_active,
                 created_at,
                 updated_at

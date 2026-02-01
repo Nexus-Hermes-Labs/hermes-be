@@ -1,26 +1,35 @@
 use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
+use crate::domain::user::service::PasswordService;
 use crate::domain::user::{AuthUserRepository, User};
-use crate::infrastructure::persistence::user_repository::UserMapper;
-use anyhow::Context;
 use common::jwt::JwtManager;
-use common::utils::{hash_password, verify_password};
 use common::AppError;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
+use crate::infrastructure::persistence::postgres::user_repository::models::AuthUserEntity;
 
 /// AuthService
 ///
 /// Handles user registration and authentication
-pub struct AuthService<R: AuthUserRepository> {
-    user_repository: Arc<R>,
+pub struct AuthService<AR, PS>
+where
+    AR: AuthUserRepository,
+    PS: PasswordService,
+{
+    user_repository: Arc<AR>,
+    password_service: Arc<PS>,
     jwt_manager: JwtManager,
 }
 
-impl<R: AuthUserRepository> AuthService<R> {
-    pub fn new(user_repository: Arc<R>, jwt_manager: JwtManager) -> Self {
+impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
+    pub fn new(
+        user_repository: Arc<AR>,
+        password_service: Arc<PS>,
+        jwt_manager: JwtManager,
+    ) -> Self {
         Self {
             user_repository,
+            password_service,
             jwt_manager,
         }
     }
@@ -30,7 +39,6 @@ impl<R: AuthUserRepository> AuthService<R> {
     // ============================================
 
     pub async fn register(&self, request: RegisterRequest) -> Result<AuthResponse, AppError> {
-        // Check if user exists
         if !self.is_email_available(&request.email).await? {
             return Err(AppError::Conflict("Email already in use".to_string()));
         }
@@ -39,22 +47,26 @@ impl<R: AuthUserRepository> AuthService<R> {
             return Err(AppError::Conflict("Username already taken".to_string()));
         }
 
-        // Hash password
-        let password_hash = hash_password(&request.password).map_err(|e| {
-            error!(error = %e, "Password hashing failed");
-            AppError::InternalServerError("Failed to process password".to_string())
-        })?;
+        let password_hash = self
+            .password_service
+            .hash_password(&request.password)
+            .map_err(|e| {
+                error!(error = %e, "Password hashing failed");
+                AppError::InternalServerError("Failed to process password".to_string())
+            })?;
 
-        // Create user
+        println!("INFOLOG - PASSWORD HASH: {:?}", password_hash.get_hash());
         let user = User::new(request.username, request.email, password_hash);
 
-        // Save user
         self.save_user(&user).await?;
 
-        info!(user_id = %user.id, email = %user.email, "User registered successfully");
+        info!(
+            user_id = %user.id(),
+            email = %user.email(),
+            "User registered successfully"
+        );
 
-        // Generate tokens
-        self.build_auth_response(&user).await
+        self.build_auth_response(&user)
     }
 
     // ============================================
@@ -62,7 +74,6 @@ impl<R: AuthUserRepository> AuthService<R> {
     // ============================================
 
     pub async fn login(&self, request: LoginRequest) -> Result<AuthResponse, AppError> {
-        // Find user
         let user = self
             .get_user_by_email(&request.email)
             .await?
@@ -71,42 +82,43 @@ impl<R: AuthUserRepository> AuthService<R> {
                 AppError::Unauthorized("Invalid credentials".to_string())
             })?;
 
-        // Verify password
-        let password_valid =
-            verify_password(&request.password, &user.password_hash).map_err(|e| {
-                error!(error = %e, user_id = %user.id, "Password verification failed");
+        user.ensure_active().map_err(|_| {
+            warn!(user_id = %user.id(), "Login attempt on deactivated account");
+            AppError::Forbidden("Account is deactivated".to_string())
+        })?;
+
+        let is_valid = self
+            .password_service
+            .verify_password(&request.password, user.password_hash())
+            .map_err(|e| {
+                error!(error = %e, user_id = %user.id(), "Password verification failed");
                 AppError::InternalServerError("Authentication error".to_string())
             })?;
 
-        if !password_valid {
-            warn!(user_id = %user.id, "Login attempt with invalid password");
+        if !is_valid {
+            warn!(user_id = %user.id(), "Login attempt with invalid password");
             return Err(AppError::Unauthorized("Invalid credentials".to_string()));
         }
 
-        // Check user status
-        if !user.is_active {
-            warn!(user_id = %user.id, "Login attempt on deactivated account");
-            return Err(AppError::Forbidden("Account is deactivated".to_string()));
-        }
+        info!(
+            user_id = %user.id(),
+            email = %user.email(),
+            "User logged in successfully"
+        );
 
-        info!(user_id = %user.id, email = %user.email, "User logged in successfully");
-
-        // Generate tokens
-        self.build_auth_response(&user).await
+        self.build_auth_response(&user)
     }
 
     /// Logout user by revoking refresh token
-    pub async fn logout(&self, refresh_token: String) -> Result<(), AppError> {
-        // Verify and decode refresh token
+    pub async fn logout(&self, refresh_token: &str) -> Result<(), AppError> {
         let claims = self
             .jwt_manager
-            .verify_refresh_token(&refresh_token)
+            .verify_refresh_token(refresh_token)
             .map_err(|e| {
                 warn!(error = %e, "Invalid refresh token provided during logout");
                 AppError::Unauthorized("Invalid or expired refresh token".to_string())
             })?;
 
-        // Audit logging
         info!(
             user_id = %claims.sub,
             token_jti = %claims.jti,
@@ -114,9 +126,7 @@ impl<R: AuthUserRepository> AuthService<R> {
             "User logged out successfully"
         );
 
-        // TODO: Future implementation
-        // - Blacklist token
-        // - Trigger logout events
+        // TODO: token blacklist
 
         Ok(())
     }
@@ -129,7 +139,6 @@ impl<R: AuthUserRepository> AuthService<R> {
     }
 
     pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthResponse, AppError> {
-        // Verify refresh token
         let claims = self
             .jwt_manager
             .verify_refresh_token(refresh_token)
@@ -138,22 +147,18 @@ impl<R: AuthUserRepository> AuthService<R> {
                 AppError::Unauthorized("Invalid refresh token".to_string())
             })?;
 
-        // Get user
-        let user_id = claims.sub;
-        let user = self.get_user_by_id(user_id).await?;
+        let user = self.get_user_by_id(claims.sub).await?;
 
-        // Check user status
-        if !user.is_active {
-            warn!(user_id = %user.id, "Token refresh attempt on inactive account");
-            return Err(AppError::Unauthorized("Account is not active".to_string()));
-        }
+        user.ensure_active().map_err(|_| {
+            warn!(user_id = %user.id(), "Token refresh attempt on inactive account");
+            AppError::Unauthorized("Account is not active".to_string())
+        })?;
 
-        info!(user_id = %user.id, "Token refreshed successfully");
+        info!(user_id = %user.id(), "Token refreshed successfully");
 
-        // TODO: Add old token to blacklist
+        // TODO: old token blacklist
 
-        // Generate new tokens
-        self.build_auth_response(&user).await
+        self.build_auth_response(&user)
     }
 
     // ============================================
@@ -164,14 +169,10 @@ impl<R: AuthUserRepository> AuthService<R> {
         self.user_repository
             .find_by_email(email)
             .await
-            .map(|entity| entity.map(UserMapper::to_domain))
+            .map(|entity| entity.map(Into::into))
             .map_err(|e| {
-                error!(
-                    error = ?e,
-                    email = %email,
-                    "Database error while fetching user by email"
-                );
-                AppError::InternalServerError("Failed to fetch user from database".to_string())
+                error!(error = ?e, email = %email, "Database error while fetching user by email");
+                AppError::InternalServerError("Failed to fetch user".to_string())
             })
     }
 
@@ -180,14 +181,10 @@ impl<R: AuthUserRepository> AuthService<R> {
             .find_by_id(id)
             .await
             .map_err(|e| {
-                error!(
-                    error = ?e,
-                    user_id = %id,
-                    "Database error while fetching user by id"
-                );
-                AppError::InternalServerError("Failed to fetch user from database".to_string())
+                error!(error = ?e, user_id = %id, "Database error while fetching user by id");
+                AppError::InternalServerError("Failed to fetch user".to_string())
             })?
-            .map(UserMapper::to_domain)
+            .map(Into::into)
             .ok_or_else(|| {
                 warn!(user_id = %id, "User not found");
                 AppError::NotFound {
@@ -200,27 +197,24 @@ impl<R: AuthUserRepository> AuthService<R> {
         self.user_repository
             .find_by_username(username)
             .await
-            .map(|entity| entity.map(UserMapper::to_domain))
+            .map(|entity| entity.map(Into::into))
             .map_err(|e| {
-                error!(
-                    error = ?e,
-                    username = %username,
-                    "Database error while fetching user by username"
-                );
-                AppError::InternalServerError("Failed to fetch user from database".to_string())
+                error!(error = ?e, username = %username, "Database error while fetching user by username");
+                AppError::InternalServerError("Failed to fetch user".to_string())
             })
     }
 
     async fn save_user(&self, user: &User) -> Result<(), AppError> {
-        let entity = UserMapper::to_entity(user);
+        let entity: AuthUserEntity = user.into();
+
         self.user_repository.save(&entity).await.map_err(|e| {
             error!(
                 error = ?e,
-                user_id = %user.id,
-                email = %user.email,
+                user_id = %user.id(),
+                email = %user.email(),
                 "Database error while saving user"
             );
-            AppError::InternalServerError("Failed to save user to database".to_string())
+            AppError::InternalServerError("Failed to save user".to_string())
         })
     }
 
@@ -228,22 +222,22 @@ impl<R: AuthUserRepository> AuthService<R> {
     // HELPER METHODS
     // ============================================
 
-    async fn build_auth_response(&self, user: &User) -> Result<AuthResponse, AppError> {
-        let role_str = format!("{:?}", user.role).to_lowercase();
+    fn build_auth_response(&self, user: &User) -> Result<AuthResponse, AppError> {
+        let role_str = user.role().as_str().to_string();
 
         let access_token = self
             .jwt_manager
-            .create_user_token(user.id, user.email.clone(), role_str.clone(), 6)
+            .create_user_token(user.id(), user.email().to_string(), role_str.clone(), 6)
             .map_err(|e| {
-                error!(error = %e, user_id = %user.id, "Failed to create access token");
+                error!(error = %e, user_id = %user.id(), "Failed to create access token");
                 AppError::InternalServerError("Token generation failed".to_string())
             })?;
 
         let refresh_token = self
             .jwt_manager
-            .create_refresh_token(user.id, user.email.clone(), role_str.clone(), 30)
+            .create_refresh_token(user.id(), user.email().to_string(), role_str.clone(), 30)
             .map_err(|e| {
-                error!(error = %e, user_id = %user.id, "Failed to create refresh token");
+                error!(error = %e, user_id = %user.id(), "Failed to create refresh token");
                 AppError::InternalServerError("Token generation failed".to_string())
             })?;
 
@@ -251,12 +245,12 @@ impl<R: AuthUserRepository> AuthService<R> {
             access_token,
             refresh_token,
             user: UserResponse {
-                id: user.id.to_string(),
-                email: user.email.clone(),
-                username: user.username.clone(),
+                id: user.id().to_string(),
+                email: user.email().to_string(),
+                username: user.username().to_string(),
                 role: role_str,
-                is_active: user.is_active,
-                email_verified: user.email_verified,
+                is_active: user.is_active(),
+                email_verified: user.is_email_verified(),
             },
         })
     }

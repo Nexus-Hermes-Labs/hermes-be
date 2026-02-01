@@ -1,7 +1,7 @@
+use crate::domain::user::valueobject::PasswordHashVO;
 use crate::domain::user::{AuthDomainError, UserRole};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use crate::domain::user::valueobject::PasswordHashVO;
 
 /// Auth domain view of User - only auth-related fields
 #[derive(Debug, Clone)]
@@ -21,21 +21,88 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(username: String, email: String, password_plain: String) -> Result<Self, AuthDomainError> {
+    pub fn new(username: String, email: String, password_hash: PasswordHashVO) -> Self {
         let now = Utc::now();
-        let password = PasswordHashVO::new(&password_plain)?;
-        Ok(Self {
+
+        Self {
             id: Uuid::new_v4(),
             email,
             username,
-            password,
+            password: password_hash,
             role: UserRole::User,
             is_active: true,
             email_verified: false,
             email_verification_token: None,
             created_at: now,
             updated_at: now,
-        })
+        }
+    }
+
+    /// DB reconstruction
+    pub fn from_persisted(
+        id: Uuid,
+        username: String,
+        email: String,
+        password_hash: PasswordHashVO,
+        role: UserRole,
+        is_active: bool,
+        email_verified: bool,
+        email_verification_token: Option<String>,
+        created_at: DateTime<Utc>,
+        updated_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            id,
+            username,
+            email,
+            password: password_hash,
+            role,
+            is_active,
+            email_verified,
+            email_verification_token,
+            created_at,
+            updated_at,
+        }
+    }
+
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+
+    pub fn username(&self) -> &str {
+        &self.username
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
+    }
+
+    pub fn password_hash(&self) -> &PasswordHashVO {
+        &self.password
+    }
+
+    pub fn role(&self) -> &UserRole {
+        &self.role
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.is_active
+    }
+
+    pub fn is_email_verified(&self) -> bool {
+        self.email_verified
+    }
+
+    pub fn email_verification_token(&self) -> Option<&str> {
+        self.email_verification_token.as_deref()
+    }
+
+    pub fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+
+    pub fn updated_at(&self) -> DateTime<Utc> {
+        self.updated_at
     }
 
     pub fn is_user(&self) -> bool {
@@ -50,47 +117,10 @@ impl User {
         self.role == UserRole::Moderator
     }
 
-    pub fn generate_
-
-    pub fn generate_email_verification_token(&mut self) {
-        let token = Uuid::new_v4().to_string();
-        self.email_verification_token = Some(token);
-        self.updated_at = Utc::now();
-    }
-
-    pub fn verify_email_with_token(&mut self, provided: &str) -> Result<(), AuthDomainError> {
-        let current = self
-            .email_verification_token
-            .as_deref()
-            .ok_or(AuthDomainError::InvalidVerificationToken)?;
-
-        if current != provided {
-            return Err(AuthDomainError::InvalidVerificationToken);
-        }
-
-        self.email_verified = true;
-        self.email_verification_token = None;
-        self.updated_at = Utc::now();
-
-        Ok(())
-    }
-
     pub fn ensure_admin(&self) -> Result<(), AuthDomainError> {
         if !self.is_admin() {
             return Err(AuthDomainError::InsufficientPermissions);
         }
-        Ok(())
-    }
-
-    pub fn verify_email(&mut self) -> Result<(), AuthDomainError> {
-        if self.email_verified {
-            return Err(AuthDomainError::EmailAlreadyVerified);
-        }
-
-        self.email_verified = true;
-        self.email_verification_token = None;
-        self.updated_at = Utc::now();
-
         Ok(())
     }
 

@@ -27,7 +27,7 @@ INSERT INTO users (
     (
         'admin',
         'admin@hermes.dev',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'System Admin',
         'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
         'System administrator account',
@@ -40,7 +40,7 @@ INSERT INTO users (
     (
         'moderator',
         'mod@hermes.dev',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'Moderator User',
         'https://api.dicebear.com/7.x/avataaars/svg?seed=mod',
         'Community moderator',
@@ -53,7 +53,7 @@ INSERT INTO users (
     (
         'alice',
         'alice@example.com',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'Alice Johnson',
         'https://api.dicebear.com/7.x/avataaars/svg?seed=alice',
         'Software engineer who loves coding 💻',
@@ -65,7 +65,7 @@ INSERT INTO users (
     (
         'bob',
         'bob@example.com',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'Bob Smith',
         'https://api.dicebear.com/7.x/avataaars/svg?seed=bob',
         'Designer and UI/UX enthusiast 🎨',
@@ -77,7 +77,7 @@ INSERT INTO users (
     (
         'charlie',
         'charlie@example.com',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'Charlie Brown',
         'https://api.dicebear.com/7.x/avataaars/svg?seed=charlie',
         'Product manager and coffee lover ☕',
@@ -90,7 +90,7 @@ INSERT INTO users (
     (
         'newuser',
         'newuser@example.com',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'New User',
         NULL,
         NULL,
@@ -103,7 +103,7 @@ INSERT INTO users (
     (
         'inactive',
         'inactive@example.com',
-        '$argon2id$v=19$m=19456,t=2,p=1$dwK6T+IggC9sZuYb6pAXpA$AoTBQtDfBii8Xfa8EfT50HZ7Z4T8VlazuLSxoXT7Vfc',
+        '$argon2id$v=19$m=65536,t=3,p=1$pq6/PGqbN2GUB5BS8b1hNw$64G0iDW54eq0MZlOUw88oG+hWOfaW2Yj4DCVUaB9Et8',
         'Inactive User',
         NULL,
         'This account is disabled',

@@ -1,15 +1,11 @@
 BEGIN;
 
--- =====================================================
--- EXTENSIONS
--- =====================================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
--- ENUM TYPES (lowercase snake_case)
+-- ENUM TYPES
 -- =====================================================
 CREATE TYPE user_role AS ENUM ('user','moderator','admin');
-
 CREATE TYPE user_status AS ENUM ('online','offline','idle','dnd');
 
 CREATE TYPE dm_privacy AS ENUM (
@@ -31,29 +27,31 @@ CREATE TYPE friend_request_privacy AS ENUM (
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 
-    -- ================= AUTH DOMAIN =================
     username VARCHAR(32) NOT NULL
         CHECK (username ~* '^[a-z0-9_-]+$' AND LENGTH(username) >= 3),
 
-    discriminator VARCHAR(4) NOT NULL DEFAULT '0000',
-
     email VARCHAR(255) NOT NULL UNIQUE
-        CHECK (email ~* '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'),
+        CHECK (email LIKE '%@%'),
 
-    password_hash VARCHAR(255) NOT NULL,
-    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-    email_verification_token VARCHAR(64),
     role user_role NOT NULL DEFAULT 'user',
 
+    -- ================= AUTH DOMAIN =================
+    password_hash TEXT NOT NULL,
+    email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    email_verification_token VARCHAR(64),
+
     -- ================= USER PROFILE =================
+    discriminator VARCHAR(4) NOT NULL DEFAULT '0000',
+
     display_name VARCHAR(100)
         CHECK (display_name IS NULL OR LENGTH(TRIM(display_name)) >= 1),
 
+    -- URL regex gevşetildi
     avatar_url VARCHAR(512)
-        CHECK (avatar_url IS NULL OR avatar_url ~* '^https?://'),
+        CHECK (avatar_url IS NULL OR avatar_url ~* '^https?://.+'),
 
     banner_url VARCHAR(512)
-        CHECK (banner_url IS NULL OR banner_url ~* '^https?://'),
+        CHECK (banner_url IS NULL OR banner_url ~* '^https?://.+'),
 
     bio TEXT CHECK (bio IS NULL OR LENGTH(bio) <= 500),
 
@@ -73,9 +71,10 @@ CREATE TABLE users (
     deleted_at TIMESTAMPTZ,
 
     -- ================= LOGIN SECURITY =================
-		failed_login_attempts INTEGER NOT NULL DEFAULT 0,
-		locked_until TIMESTAMPTZ,
+    failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until TIMESTAMPTZ,
 
+    -- ================= COMMON =================
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
@@ -86,7 +85,6 @@ CREATE TABLE users (
 -- INDEXES
 -- =====================================================
 
--- active users lookup
 CREATE INDEX idx_users_active
     ON users(is_active, status)
     WHERE deleted_at IS NULL AND is_active = TRUE;
@@ -100,7 +98,10 @@ CREATE INDEX idx_users_email
     WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_status ON users(status);
+
+CREATE INDEX idx_users_locked_until
+    ON users(locked_until)
+    WHERE locked_until IS NOT NULL;
 
 CREATE INDEX idx_users_deleted_at
     ON users(deleted_at)
@@ -110,7 +111,7 @@ CREATE INDEX idx_users_email_verification
     ON users(email_verification_token)
     WHERE email_verification_token IS NOT NULL;
 
--- search index
+-- Search index
 CREATE INDEX idx_users_search
     ON users USING GIN (
         to_tsvector('english',

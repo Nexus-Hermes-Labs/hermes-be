@@ -3,6 +3,7 @@ pub mod error;
 pub mod filters;
 pub mod repository;
 pub mod valueobject;
+pub mod service;
 
 pub use entity::User;
 pub use error::AuthDomainError;

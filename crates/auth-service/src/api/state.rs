@@ -1,20 +1,21 @@
 use crate::application::AuthService;
-use crate::infrastructure::persistence::PostgresAuthUserRepository;
 use common::jwt::JwtManager;
 use sqlx::PgPool;
 use std::sync::Arc;
+use crate::infrastructure::persistence::postgres::user_repository::PostgresAuthUserRepository;
+use crate::infrastructure::security::argon2_password_service::Argon2PasswordService;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: PgPool,
-    pub auth_service: Arc<AuthService<PostgresAuthUserRepository>>,
+    pub auth_service: Arc<AuthService<PostgresAuthUserRepository, Argon2PasswordService>>,
     pub jwt_manager: Arc<JwtManager>,
 }
 
 impl AppState {
     pub fn new(
         db: PgPool,
-        auth_service: AuthService<PostgresAuthUserRepository>,
+        auth_service: AuthService<PostgresAuthUserRepository, Argon2PasswordService>,
         jwt_manager: JwtManager,
     ) -> Self {
         Self {

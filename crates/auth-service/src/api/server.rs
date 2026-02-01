@@ -1,6 +1,6 @@
 use crate::api::state::AppState;
 use crate::application::services::AuthService;
-use crate::infrastructure::persistence::PostgresAuthUserRepository;
+use crate::infrastructure::persistence::postgres::user_repository::PostgresAuthUserRepository;
 use axum::http::{header, HeaderValue, Method};
 use common::config::Config;
 use common::jwt::JwtManager;
@@ -41,15 +41,24 @@ impl Server {
 
         // Create a JWT manager
         let jwt_manager = JwtManager::new(
-            &self.config.jwt.access_secret,
-            &self.config.jwt.refresh_secret,
+            &self.config.secrets.jwt.access_secret,
+            &self.config.secrets.jwt.refresh_secret,
         );
 
         // Create repositories and services
         let user_repository = Arc::new(PostgresAuthUserRepository::new(self.pool.clone()));
 
+        // Create password service
+        let argon2_password_service = Arc::new(
+            crate::infrastructure::security::argon2_password_service::Argon2PasswordService::new(),
+        );
+
         // Create AuthService with UserService and JwtManager
-        let auth_service = AuthService::new(Arc::clone(&user_repository), jwt_manager.clone());
+        let auth_service = AuthService::new(
+            Arc::clone(&user_repository),
+            argon2_password_service,
+            jwt_manager.clone(),
+        );
 
         // Create unified AppState
         let app_state = AppState::new(self.pool.clone(), auth_service, jwt_manager);

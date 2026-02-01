@@ -12,7 +12,7 @@ pub struct UserFilters {
     /// Filter by role
     pub role: Option<UserRole>,
 
-    /// Search across email, username, first_name, last_name
+    /// Search across email, username, displayname
     pub search: Option<String>,
 
     /// Filter active/deleted users (None = all, Some(true) = only active, Some(false) = only deleted)

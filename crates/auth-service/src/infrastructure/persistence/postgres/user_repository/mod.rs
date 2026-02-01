@@ -1,7 +1,5 @@
-pub mod entity;
-pub mod mapper;
+pub mod models;
 mod query_builder;
 pub mod repository;
 
-pub use mapper::UserMapper;
 pub use repository::PostgresAuthUserRepository;

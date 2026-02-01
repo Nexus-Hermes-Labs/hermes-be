@@ -82,7 +82,7 @@ pub async fn logout_handler(
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
     // Revoke token
-    state.auth_service.logout(request.refresh_token).await?;
+    state.auth_service.logout(request.refresh_token.as_str()).await?;
 
     Ok((
         StatusCode::OK,
