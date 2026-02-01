@@ -1,10 +1,8 @@
-use serde::{Deserialize, Serialize};
-
-/// Pagination parameters
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Pagination query parameters
+#[derive(Debug, Clone)]
 pub struct PaginationParams {
-    pub page: u32,
-    pub page_size: u32,
+    pub page: i64,
+    pub page_size: i64,
 }
 
 impl Default for PaginationParams {
@@ -17,48 +15,87 @@ impl Default for PaginationParams {
 }
 
 impl PaginationParams {
-    pub fn new(page: u32, page_size: u32) -> Self {
-        Self { page, page_size }
+    /// Clamped constructor: page min 1, page_size 1..=100
+    pub fn new(page: i64, page_size: i64) -> Self {
+        Self {
+            page: page.max(1),
+            page_size: page_size.max(1).min(100),
+        }
     }
 
+    /// SQL OFFSET = (page - 1) * page_size
     pub fn offset(&self) -> i64 {
-        ((self.page - 1) * self.page_size) as i64
-    }
-
-    pub fn limit(&self) -> i64 {
-        self.page_size as i64
+        (self.page - 1) * self.page_size
     }
 }
 
-/// Paginated response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Paginated response wrapper
+#[derive(Debug, Clone)]
 pub struct Paginated<T> {
     pub items: Vec<T>,
     pub total: i64,
-    pub page: u32,
-    pub page_size: u32,
-    pub total_pages: u32,
+    pub page: i64,
+    pub page_size: i64,
+    pub total_pages: i64,
 }
 
 impl<T> Paginated<T> {
-    pub fn new(items: Vec<T>, total: i64, params: PaginationParams) -> Self {
-        let total_pages = ((total as f64) / (params.page_size as f64)).ceil() as u32;
+    pub fn new(items: Vec<T>, total: i64, page: i64, page_size: i64) -> Self {
+        let total_pages = if page_size > 0 {
+            (total as f64 / page_size as f64).ceil() as i64
+        } else {
+            0
+        };
+
         Self {
             items,
             total,
-            page: params.page,
-            page_size: params.page_size,
+            page,
+            page_size,
             total_pages,
         }
     }
 
-    pub fn empty(params: PaginationParams) -> Self {
-        Self {
-            items: vec![],
-            total: 0,
-            page: params.page,
-            page_size: params.page_size,
-            total_pages: 0,
-        }
+    pub fn has_next(&self) -> bool {
+        self.page < self.total_pages
+    }
+
+    pub fn has_prev(&self) -> bool {
+        self.page > 1
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pagination_params_clamping() {
+        let params = PaginationParams::new(0, 200);
+        assert_eq!(params.page, 1);
+        assert_eq!(params.page_size, 100);
+    }
+
+    #[test]
+    fn test_offset_calculation() {
+        let params = PaginationParams::new(3, 20);
+        assert_eq!(params.offset(), 40); // (3-1) * 20
+    }
+
+    #[test]
+    fn test_paginated_total_pages() {
+        let paginated: Paginated<i32> = Paginated::new(vec![], 45, 1, 20);
+        assert_eq!(paginated.total_pages, 3); // ceil(45/20)
+    }
+
+    #[test]
+    fn test_paginated_has_next_prev() {
+        let p: Paginated<i32> = Paginated::new(vec![], 60, 2, 20);
+        assert!(p.has_next());  // page 2, total 3
+        assert!(p.has_prev());  // page 2 > 1
     }
 }

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use crate::domain::user::AuthDomainError;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UserRole {
@@ -19,17 +20,17 @@ impl UserRole {
 }
 
 impl FromStr for UserRole {
-    type Err = String;
+    type Err = AuthDomainError;
+
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "admin" => Ok(UserRole::Admin),
             "moderator" => Ok(UserRole::Moderator),
             "user" => Ok(UserRole::User),
-            _ => Err("Invalid role".to_string()),
+            _ => Err(AuthDomainError::InvalidRole(s.to_owned())),
         }
     }
 }
-
 
 #[derive(Debug, Clone)]
 pub struct PasswordHashVO {

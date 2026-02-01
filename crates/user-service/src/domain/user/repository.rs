@@ -1,28 +1,34 @@
-use crate::infrastructure::persistence::user::entity::UserEntity;
+use crate::domain::user::User;
 use async_trait::async_trait;
 use common::pagination::{Paginated, PaginationParams};
-use common::persistance::error::RepositoryError;
+use common::Repository;
 use uuid::Uuid;
 
 /// User-specific repository trait for User Service domain
 #[async_trait]
-pub trait UserRepository: Send + Sync {
-    async fn find_by_id(&self, id: Uuid) -> Result<Option<UserEntity>, RepositoryError>;
+pub trait UserRepository: Repository<User, Uuid> + Send + Sync {
+    // ─── Single lookups ──────────────────────────────
 
-    async fn find_by_username(&self, username: &str)
-        -> Result<Option<UserEntity>, RepositoryError>;
+    /// Find active user by username.
+    /// Used when sending a friend request by username.
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, Self::Error>;
 
-    async fn find_by_email(&self, email: &str) -> Result<Option<UserEntity>, RepositoryError>;
+    // ─── Bulk lookups ────────────────────────────────
 
-    /// Bulk query for efficiency
-    async fn find_by_ids(&self, ids: &[Uuid]) -> Result<Vec<UserEntity>, RepositoryError>;
+    /// Fetch multiple users by IDs in one query.
+    /// Used by Domain Service for cross-aggregate enrichment
+    /// (e.g. attach UserSnapshot to each friend-request row).
+    /// Silently skips IDs that don't match an active user.
+    async fn find_by_ids(&self, ids: &[Uuid]) -> Result<Vec<User>, Self::Error>;
 
-    async fn update(&self, user: &UserEntity) -> Result<(), RepositoryError>;
+    // ─── Search ──────────────────────────────────────
 
+    /// Full-text search across username, display_name, and bio.
+    /// Backed by the GIN tsvector index on the users table.
+    /// Returns paginated results sorted by relevance.
     async fn search(
         &self,
         query: &str,
         params: &PaginationParams,
-    ) -> Result<Paginated<UserEntity>, RepositoryError>;
+    ) -> Result<Paginated<User>, Self::Error>;
 }
-

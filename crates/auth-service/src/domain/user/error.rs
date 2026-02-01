@@ -10,4 +10,7 @@ pub enum AuthDomainError {
 
     #[error("Insufficient permissions")]
     InsufficientPermissions,
+
+    #[error("Invalid role: {0}")]
+    InvalidRole(String),
 }

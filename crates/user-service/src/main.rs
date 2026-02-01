@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
     // 3. Initialize Database
     // ============================================
     info!("📦 Connecting to PostgreSQL...");
-    let db_pool = infrastructure::db::create_pool(&config().database)
+    let db_pool = infrastructure::connection::create_pool(&config().database)
         .await
         .context("Failed to connect to database")?;
     info!("✅ Database connected");

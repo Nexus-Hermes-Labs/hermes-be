@@ -16,6 +16,8 @@ pub struct User {
 
     // Shared fields
     is_active: bool,
+
+    // Metada
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }

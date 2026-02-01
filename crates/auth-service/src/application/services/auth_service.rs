@@ -6,7 +6,7 @@ use common::AppError;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
-use crate::infrastructure::persistence::postgres::user_repository::models::AuthUserEntity;
+use crate::infrastructure::persistence::postgres::user_repository::models::UserRow;
 
 /// AuthService
 ///
@@ -205,9 +205,7 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     }
 
     async fn save_user(&self, user: &User) -> Result<(), AppError> {
-        let entity: AuthUserEntity = user.into();
-
-        self.user_repository.save(&entity).await.map_err(|e| {
+        self.user_repository.save(&user).await.map_err(|e| {
             error!(
                 error = ?e,
                 user_id = %user.id(),
