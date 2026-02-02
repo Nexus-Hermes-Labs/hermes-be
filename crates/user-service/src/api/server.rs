@@ -1,6 +1,5 @@
 use crate::api::state::AppState;
-use crate::application::services::AuthService;
-use crate::infrastructure::persistence::PostgresAuthUserRepository;
+
 use axum::http::{header, HeaderValue, Method};
 use common::config::Config;
 use common::jwt::JwtManager;
@@ -13,6 +12,8 @@ use tower_http::{
     LatencyUnit,
 };
 use tracing::info;
+use crate::application::services::user::service::UserApplicationService;
+use crate::infrastructure::persistence::postgres::user_repository::repository::PostgresUserRepository;
 
 pub struct Server {
     config: &'static Config,
@@ -39,20 +40,14 @@ impl Server {
     pub async fn run(self) -> Result<(), anyhow::Error> {
         let health_check = Arc::new(HealthCheck::new(self.pool.clone(), self.redis.clone()));
 
-        // Create a JWT manager
-        let jwt_manager = JwtManager::new(
-            &self.config.jwt.access_secret,
-            &self.config.jwt.refresh_secret,
-        );
-
         // Create repositories and services
-        let user_repository = Arc::new(PostgresAuthUserRepository::new(self.pool.clone()));
+        let user_repository = Arc::new(PostgresUserRepository::new(self.pool.clone()));
 
-        // Create AuthService with UserService and JwtManager
-        let auth_service = AuthService::new(Arc::clone(&user_repository), jwt_manager.clone());
+        // Create UserApplicationService with UserService and JwtManager
+        let user_service = UserApplicationService::new(Arc::clone(&user_repository));
 
         // Create unified AppState
-        let app_state = AppState::new(self.pool.clone(), auth_service, jwt_manager);
+        let app_state = AppState::new(self.pool.clone(), user_service);
 
         // Build CORS layer
         let cors = CorsLayer::new()

@@ -1,5 +1,4 @@
 use crate::api::state::AppState;
-use crate::application::services::AuthService;
 use crate::infrastructure::persistence::postgres::user_repository::PostgresAuthUserRepository;
 use axum::http::{header, HeaderValue, Method};
 use common::config::Config;
@@ -13,6 +12,7 @@ use tower_http::{
     LatencyUnit,
 };
 use tracing::info;
+use crate::application::services::auth::service::AuthService;
 
 pub struct Server {
     config: &'static Config,

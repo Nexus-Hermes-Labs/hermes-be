@@ -223,7 +223,7 @@ impl Repository<User, Uuid> for PostgresUserRepository {
 impl UserRepository for PostgresUserRepository {
     /// Lookup by username — used when sending a friend request.
     /// Case-sensitive: the DB CHECK constraint already enforces lowercase.
-    async fn find_by_username(&self, username: &str) -> Result<Option<User>, RepositoryError> {
+    async fn find_by_username(&self, username: &str) -> Result<Option<User>, Self::Error> {
         let row = sqlx::query_as::<_, UserRow>(&format!(
             r#"SELECT {} FROM users WHERE username = $1 AND {}"#,
             USER_COLUMNS, BASE_FILTER

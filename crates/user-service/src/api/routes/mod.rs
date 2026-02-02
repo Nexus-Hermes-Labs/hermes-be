@@ -1,4 +1,4 @@
-mod auth;
+mod user;
 mod health;
 
 use crate::api::state::AppState;
@@ -16,7 +16,7 @@ pub fn create_router(
     >,
 ) -> Router {
     // Public routes
-    let public_routes = Router::new().nest("/auth", auth::public_routes());
+    let public_routes = Router::new().nest("/auth", user::public_routes());
 
     // Combine and add state
     let api_routes = Router::new().merge(public_routes).with_state(app_state);

@@ -1,4 +1,3 @@
-use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
 use crate::domain::user::service::PasswordService;
 use crate::domain::user::{AuthUserRepository, User};
 use common::jwt::JwtManager;
@@ -6,6 +5,7 @@ use common::AppError;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
+use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
 use crate::infrastructure::persistence::postgres::user_repository::models::UserRow;
 
 /// AuthService
@@ -55,7 +55,6 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
                 AppError::InternalServerError("Failed to process password".to_string())
             })?;
 
-        println!("INFOLOG - PASSWORD HASH: {:?}", password_hash.get_hash());
         let user = User::new(request.username, request.email, password_hash);
 
         self.save_user(&user).await?;

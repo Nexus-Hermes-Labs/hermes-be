@@ -72,7 +72,6 @@ async fn main() -> Result<()> {
         .await
         .context("Failed to initialize server")?;
 
-    // Server içinde zaten graceful shutdown var
     server.run().await.context("Server error")?;
 
     // ============================================
