@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use crate::jwt::{Claims, JwtManager};
 use async_trait::async_trait;
 use axum::extract::{FromRef, FromRequestParts};
@@ -11,7 +12,7 @@ use axum::{
 };
 
 pub async fn auth_middleware<S>(
-    State(jwt_manager): State<JwtManager>,
+    State(jwt_manager): State<Arc<JwtManager>>,
     mut req: Request,
     next: Next,
 ) -> Result<Response, StatusCode>

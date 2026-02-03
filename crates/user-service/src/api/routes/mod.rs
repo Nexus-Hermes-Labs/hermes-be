@@ -2,10 +2,11 @@ mod user;
 mod health;
 
 use crate::api::state::AppState;
-use axum::Router;
+use axum::{middleware, Router};
 use common::observability::HealthCheck;
 use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use common::middleware::authentication::auth_middleware;
 
 pub fn create_router(
     app_state: AppState,
@@ -16,10 +17,16 @@ pub fn create_router(
     >,
 ) -> Router {
     // Protected routes
-    let protected_routes = Router::new().nest("/user", user::protected_routes());
+   let user_routes = user::protected_routes();
 
-    // Combine and add state
-    let api_routes = Router::new().merge(protected_routes).with_state(app_state);
+    // API routes
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .with_state(app_state.clone())
+        .layer(middleware::from_fn_with_state(
+            app_state.clone(),
+            auth_middleware,
+        ));
 
     // Complete router
     Router::new()

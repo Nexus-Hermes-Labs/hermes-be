@@ -1,4 +1,5 @@
 use thiserror::Error;
+use common::AppError;
 use common::persistance::error::RepositoryError;
 use crate::domain::user::error::UserDomainError;
 
@@ -29,3 +30,25 @@ pub enum ApplicationError {
 
 // ─── Conversion to common::AppError (for HTTP layer) ────────────────────────
 // This will be implemented when we add the presentation layer
+
+impl From<ApplicationError> for common::AppError {
+    fn from(err: ApplicationError) -> Self {
+        match err {
+            ApplicationError::UserNotFound => AppError::NotFound {
+                entity_type: "User".to_string(),
+            },
+            ApplicationError::UsernameNotFound(username) => AppError::NotFound {
+                entity_type: format!("User with username '{}'", username),
+            },
+            ApplicationError::InvalidInput(msg) => AppError::Validation(msg),
+            ApplicationError::Unauthorized(msg) => AppError::Unauthorized(msg),
+            ApplicationError::Domain(e) => AppError::Validation(e.to_string()),
+            ApplicationError::Repository(e) => {
+                AppError::InternalServerError(e.to_string())
+            }
+            ApplicationError::InternalServerError(msg) => {
+                AppError::InternalServerError(msg)
+            }
+        }
+    }
+}

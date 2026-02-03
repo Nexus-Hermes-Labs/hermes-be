@@ -17,10 +17,10 @@ const USER_COLUMNS: &str = r#"
     username,
     email,
     password_hash,
-    role,
+    role::TEXT, 
+    is_active,
     email_verified,
     email_verification_token,
-    is_active,
     created_at,
     updated_at
 "#;
@@ -128,15 +128,15 @@ impl Repository<User, Uuid> for PostgresAuthUserRepository {
             WHERE id = $1 AND deleted_at IS NULL
             "#,
         )
-        .bind(entity.id())                          // $1
-        .bind(entity.username())                    // $2
-        .bind(entity.email())                       // $3
-        .bind(entity.password_hash().get_hash())    // $4
-        .bind(entity.is_email_verified())           // $5
-        .bind(entity.email_verification_token())    // $6
-        .bind(entity.role().as_str())               // $7
-        .bind(entity.is_active())                   // $8
-        .bind(entity.updated_at())                  // $9
+        .bind(entity.id()) // $1
+        .bind(entity.username()) // $2
+        .bind(entity.email()) // $3
+        .bind(entity.password_hash().get_hash()) // $4
+        .bind(entity.is_email_verified()) // $5
+        .bind(entity.email_verification_token()) // $6
+        .bind(entity.role().as_str()) // $7
+        .bind(entity.is_active()) // $8
+        .bind(entity.updated_at()) // $9
         .execute(&self.pool)
         .await
         .map_err(RepositoryError::Database)?;
@@ -210,8 +210,10 @@ impl AuthUserRepository for PostgresAuthUserRepository {
         .bind(email)
         .fetch_optional(&self.pool)
         .await
-        .map_err(RepositoryError::Database)?;
-
+        .map_err(|e| {
+            eprintln!("SQLX ERROR: {:?}", e); // ← Detaylı error
+            RepositoryError::Database(e)
+        })?;
         match row {
             Some(r) => Ok(Some(to_domain(r)?)),
             None => Ok(None),

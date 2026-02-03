@@ -46,8 +46,13 @@ impl Server {
         // Create UserApplicationService with UserService and JwtManager
         let user_service = UserApplicationService::new(Arc::clone(&user_repository));
 
+            let jwt_manager = JwtManager::new(
+            &self.config.secrets.jwt.access_secret,
+            &self.config.secrets.jwt.refresh_secret,
+        );
+
         // Create unified AppState
-        let app_state = AppState::new(self.pool.clone(), user_service);
+        let app_state = AppState::new(self.pool.clone(), user_service, jwt_manager);
 
         // Build CORS layer
         let cors = CorsLayer::new()

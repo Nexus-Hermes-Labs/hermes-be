@@ -25,7 +25,7 @@ pub fn protected_routes() -> Router<AppState> {
         )
         // ─── Custom Status ───────────────────────────────────────
         .route(
-            "/me/status",
+            "/me/custom-status",
             put(handlers::user::set_custom_status_handler)
                 .delete(handlers::user::clear_custom_status_handler),
         )

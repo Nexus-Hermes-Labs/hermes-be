@@ -23,7 +23,7 @@ impl FromStr for UserRole {
     type Err = AuthDomainError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "admin" => Ok(UserRole::Admin),
             "moderator" => Ok(UserRole::Moderator),
             "user" => Ok(UserRole::User),
