@@ -17,6 +17,7 @@ use crate::domain::user::repository::UserRepository;
 ///   - Transaction boundaries (future: with UnitOfWork)
 ///   - Logging
 ///
+///  TODO: Separation of user and privacy tables
 /// No business logic — that lives in domain entities and domain services.
 pub struct UserApplicationService<UR>
 where

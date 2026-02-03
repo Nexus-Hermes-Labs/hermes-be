@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
+use validator::Validate;
 use crate::domain::user::entity::User;
 use crate::domain::user::error::UserDomainError;
 use crate::domain::user::valueobject::{CustomStatus, DmPrivacy, FriendRequestPrivacy, UserPrivacySettings, UserStatus};
@@ -129,7 +129,7 @@ impl From<&UserPrivacySettings> for PrivacySettingsDto {
 // =====================================================
 
 /// Update profile request — all fields optional
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct UpdateProfileRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
@@ -155,7 +155,7 @@ impl UpdateProfileRequest {
 }
 
 /// Update privacy settings request
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct UpdatePrivacySettingsRequest {
     pub allow_dms_from: String,             // "everyone" | "friends" | "server_members" | "none"
     pub allow_friend_requests_from: String, // "everyone" | "friends_of_friends" | "none"
@@ -176,7 +176,7 @@ impl UpdatePrivacySettingsRequest {
 }
 
 /// Set custom status request
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct SetCustomStatusRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,

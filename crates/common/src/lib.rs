@@ -12,6 +12,7 @@ pub mod observability;
 pub mod pagination;
 pub mod persistance;
 pub mod utils;
+pub mod dto;
 
 // Re-export commonly used types
 pub use error::{AppError, Result};

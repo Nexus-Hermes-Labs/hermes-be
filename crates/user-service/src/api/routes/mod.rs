@@ -15,11 +15,11 @@ pub fn create_router(
         tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
     >,
 ) -> Router {
-    // Public routes
-    let public_routes = Router::new().nest("/auth", user::public_routes());
+    // Protected routes
+    let protected_routes = Router::new().nest("/user", user::protected_routes());
 
     // Combine and add state
-    let api_routes = Router::new().merge(public_routes).with_state(app_state);
+    let api_routes = Router::new().merge(protected_routes).with_state(app_state);
 
     // Complete router
     Router::new()
