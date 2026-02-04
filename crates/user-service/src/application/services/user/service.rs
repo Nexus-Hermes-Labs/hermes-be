@@ -1,13 +1,16 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use common::pagination::{Paginated, PaginationParams};
-use tracing::{error, info, warn};
-use common::persistance::error::RepositoryError;
 use super::error::ApplicationError;
-use crate::api::dto::user::{CustomStatusDto, MyProfileResponse, PrivacySettingsDto, SetCustomStatusRequest, UpdatePrivacySettingsRequest, UpdateProfileRequest, UserProfileResponse, UserSearchResult};
+use crate::api::dto::user::{
+    CustomStatusDto, MyProfileResponse, PrivacySettingsDto, SetCustomStatusRequest,
+    UpdatePrivacySettingsRequest, UpdateProfileRequest, UserProfileResponse, UserSearchResult,
+};
 use crate::domain::user::entity::User;
 use crate::domain::user::repository::UserRepository;
+use common::pagination::{Paginated, PaginationParams};
+use common::persistance::error::RepositoryError;
+use tracing::{error, info, warn};
 
 /// User Service application orchestrator
 ///
