@@ -83,7 +83,7 @@ CREATE INDEX idx_relationships_pending_outgoing
     WHERE type = 'pending_outgoing';
 
 -- =====================================================
--- ✅ BIDIRECTIONAL SYNC TRIGGER
+-- BIDIRECTIONAL SYNC TRIGGER
 -- Ensures consistency between user perspectives
 -- =====================================================
 CREATE OR REPLACE FUNCTION sync_bidirectional_relationship()
@@ -148,7 +148,7 @@ CREATE TRIGGER trg_sync_bidirectional_relationship
     EXECUTE FUNCTION sync_bidirectional_relationship();
 
 -- =====================================================
--- ✅ PREVENT CONFLICTING RELATIONSHIPS
+-- PREVENT CONFLICTING RELATIONSHIPS
 -- Can't have both friend and pending at the same time
 -- =====================================================
 CREATE OR REPLACE FUNCTION prevent_conflicting_relationships()

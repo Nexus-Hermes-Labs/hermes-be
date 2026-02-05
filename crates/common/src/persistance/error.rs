@@ -13,7 +13,7 @@ pub enum RepositoryError {
 
     /// DB row → domain model conversion failed (e.g. unknown enum value)
     #[error("Mapping error: {0}")]
-    MappingError(String),
+    Mapping(String),
 }
 
 impl RepositoryError {

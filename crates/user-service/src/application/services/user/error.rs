@@ -5,7 +5,7 @@ use crate::domain::user::error::UserDomainError;
 
 /// Application-level errors for User Service
 #[derive(Debug, Error)]
-pub enum ApplicationError {
+pub enum UserApplicationError {
     #[error("User not found")]
     UserNotFound,
 
@@ -31,22 +31,22 @@ pub enum ApplicationError {
 // ─── Conversion to common::AppError (for HTTP layer) ────────────────────────
 // This will be implemented when we add the presentation layer
 
-impl From<ApplicationError> for common::AppError {
-    fn from(err: ApplicationError) -> Self {
+impl From<UserApplicationError> for common::AppError {
+    fn from(err: UserApplicationError) -> Self {
         match err {
-            ApplicationError::UserNotFound => AppError::NotFound {
+            UserApplicationError::UserNotFound => AppError::NotFound {
                 entity_type: "User".to_string(),
             },
-            ApplicationError::UsernameNotFound(username) => AppError::NotFound {
+            UserApplicationError::UsernameNotFound(username) => AppError::NotFound {
                 entity_type: format!("User with username '{}'", username),
             },
-            ApplicationError::InvalidInput(msg) => AppError::Validation(msg),
-            ApplicationError::Unauthorized(msg) => AppError::Unauthorized(msg),
-            ApplicationError::Domain(e) => AppError::Validation(e.to_string()),
-            ApplicationError::Repository(e) => {
+            UserApplicationError::InvalidInput(msg) => AppError::Validation(msg),
+            UserApplicationError::Unauthorized(msg) => AppError::Unauthorized(msg),
+            UserApplicationError::Domain(e) => AppError::Validation(e.to_string()),
+            UserApplicationError::Repository(e) => {
                 AppError::InternalServerError(e.to_string())
             }
-            ApplicationError::InternalServerError(msg) => {
+            UserApplicationError::InternalServerError(msg) => {
                 AppError::InternalServerError(msg)
             }
         }

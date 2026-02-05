@@ -1,15 +1,16 @@
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
+use crate::domain::user::User;
 use crate::domain::user_relationship::erorr::UserRelationshipDomainError;
 use crate::domain::user_relationship::valueobject::RelationshipType;
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 /// UserRelationship aggregate root
 /// Represents a directed edge in the user relationship graph
 #[derive(Debug, Clone, PartialEq)]
 pub struct UserRelationship {
     id: Uuid,
-    user_id: Uuid,           // Owner of this edge (perspective)
-    target_user_id: Uuid,    // Target user
+    user_id: Uuid,        // Owner of this edge (perspective)
+    target_user_id: Uuid, // Target user
     relationship_type: RelationshipType,
     message: Option<String>, // Only for pending requests
     created_at: DateTime<Utc>,
@@ -38,7 +39,7 @@ impl UserRelationship {
             updated_at: Utc::now(),
         }
     }
-    
+
     /// Reconstruct from persistence (used by repository)
     pub fn reconstruct(
         id: Uuid,
@@ -103,8 +104,8 @@ impl UserRelationship {
     /// - Message must be ≤ 200 characters
     /// - Message cannot be empty string if provided
     pub fn create_friend_request(
-        sender_id: Uuid,
-        receiver_id: Uuid,
+        sender_id: &Uuid,
+        receiver_id: &Uuid,
         message: Option<String>,
     ) -> Result<Self, UserRelationshipDomainError> {
         // Rule: Cannot befriend yourself
@@ -123,12 +124,31 @@ impl UserRelationship {
         }
 
         Ok(Self::new(
-            sender_id,
-            receiver_id,
+            *sender_id,
+            *receiver_id,
             RelationshipType::PendingOutgoing,
             message,
         ))
     }
+
+    /// Validate friend request can be sent
+    pub fn validate_friend_request(
+        sender_id: &Uuid,
+        receiver_id: &Uuid,
+    ) -> Result<(), UserRelationshipDomainError> {
+        // Already checked in entity, but double-check
+        if sender_id == receiver_id {
+            return Err(UserRelationshipDomainError::CannotBefriendSelf);
+        }
+
+        // Future validations:
+        // - Check if sender is blocked by receiver
+        // - Check max friends limit
+        // - Check if receiver accepts friend requests
+
+        Ok(())
+    }
+
 
     /// Create a block relationship (unidirectional)
     ///
@@ -140,9 +160,7 @@ impl UserRelationship {
         blocked_id: Uuid,
     ) -> Result<Self, UserRelationshipDomainError> {
         // Rule: Cannot block yourself
-        if blocker_id == blocked_id {
-            return Err(UserRelationshipDomainError::CannotBlockSelf);
-        }
+        Self::validate_block(&blocker_id, &blocked_id)?;
 
         Ok(Self::new(
             blocker_id,
@@ -150,6 +168,18 @@ impl UserRelationship {
             RelationshipType::Blocked,
             None, // Blocks never have messages
         ))
+    }
+
+    /// Validate block can be created
+    pub fn validate_block(
+        blocker_id: &Uuid,
+        blocked_id: &Uuid,
+    ) -> Result<(), UserRelationshipDomainError> {
+        if blocker_id == blocked_id {
+            return Err(UserRelationshipDomainError::CannotBlockSelf);
+        }
+
+        Ok(())
     }
 }
 
@@ -173,15 +203,11 @@ impl UserRelationship {
                 self.updated_at = Utc::now();
                 Ok(())
             }
-            RelationshipType::Friend => {
-                Err(UserRelationshipDomainError::AlreadyFriends)
-            }
+            RelationshipType::Friend => Err(UserRelationshipDomainError::AlreadyFriends),
             RelationshipType::PendingOutgoing => {
                 Err(UserRelationshipDomainError::CannotAcceptNonPendingRequest)
             }
-            RelationshipType::Blocked => {
-                Err(UserRelationshipDomainError::UserIsBlocked)
-            }
+            RelationshipType::Blocked => Err(UserRelationshipDomainError::UserIsBlocked),
         }
     }
 
@@ -197,15 +223,11 @@ impl UserRelationship {
                 self.updated_at = Utc::now();
                 Ok(())
             }
-            RelationshipType::Friend => {
-                Err(UserRelationshipDomainError::AlreadyFriends)
-            }
+            RelationshipType::Friend => Err(UserRelationshipDomainError::AlreadyFriends),
             RelationshipType::PendingOutgoing => {
                 Err(UserRelationshipDomainError::CannotDeclineNonPendingRequest)
             }
-            RelationshipType::Blocked => {
-                Err(UserRelationshipDomainError::UserIsBlocked)
-            }
+            RelationshipType::Blocked => Err(UserRelationshipDomainError::UserIsBlocked),
         }
     }
 
@@ -220,15 +242,9 @@ impl UserRelationship {
                 self.updated_at = Utc::now();
                 Ok(())
             }
-            RelationshipType::Friend => {
-                Err(UserRelationshipDomainError::AlreadyFriends)
-            }
-            RelationshipType::PendingIncoming => {
-                Err(UserRelationshipDomainError::NotAuthorized)
-            }
-            RelationshipType::Blocked => {
-                Err(UserRelationshipDomainError::UserIsBlocked)
-            }
+            RelationshipType::Friend => Err(UserRelationshipDomainError::AlreadyFriends),
+            RelationshipType::PendingIncoming => Err(UserRelationshipDomainError::NotAuthorized),
+            RelationshipType::Blocked => Err(UserRelationshipDomainError::UserIsBlocked),
         }
     }
 }
@@ -335,7 +351,10 @@ impl UserRelationship {
 
 impl UserRelationship {
     /// Update message (only for pending relationships)
-    fn update_message(&mut self, message: Option<String>) -> Result<(), UserRelationshipDomainError> {
+    fn update_message(
+        &mut self,
+        message: Option<String>,
+    ) -> Result<(), UserRelationshipDomainError> {
         match self.relationship_type {
             RelationshipType::Friend | RelationshipType::Blocked => {
                 // Friends and blocked users cannot have messages
@@ -368,8 +387,8 @@ impl UserRelationship {
 
 #[cfg(test)]
 mod tests {
-	use crate::domain::user_relationship::erorr::UserRelationshipDomainError;
-	use super::*;
+    use super::*;
+    use crate::domain::user_relationship::erorr::UserRelationshipDomainError;
 
     #[test]
     fn test_create_friend_request_success() {
@@ -377,19 +396,22 @@ mod tests {
         let receiver = Uuid::new_v4();
         let message = Some("Hey! Let's be friends! 👋".to_string());
 
-        let request = UserRelationship::create_friend_request(sender, receiver, message.clone())
+        let request = UserRelationship::create_friend_request(&sender, &receiver, message.clone())
             .expect("Should create friend request");
 
         assert_eq!(*request.user_id(), sender);
         assert_eq!(*request.target_user_id(), receiver);
-        assert_eq!(*request.relationship_type(), RelationshipType::PendingOutgoing);
+        assert_eq!(
+            *request.relationship_type(),
+            RelationshipType::PendingOutgoing
+        );
         assert_eq!(request.message(), Some("Hey! Let's be friends! 👋"));
     }
 
     #[test]
     fn test_create_friend_request_to_self_fails() {
         let user = Uuid::new_v4();
-        let result = UserRelationship::create_friend_request(user, user, None);
+        let result = UserRelationship::create_friend_request(&user, &user, None);
 
         assert!(result.is_err());
         assert!(matches!(
@@ -404,11 +426,7 @@ mod tests {
         let receiver = Uuid::new_v4();
         let long_message = "a".repeat(201);
 
-        let result = UserRelationship::create_friend_request(
-            sender,
-            receiver,
-            Some(long_message),
-        );
+        let result = UserRelationship::create_friend_request(&sender, &receiver, Some(long_message));
 
         assert!(result.is_err());
         assert!(matches!(
@@ -422,11 +440,8 @@ mod tests {
         let sender = Uuid::new_v4();
         let receiver = Uuid::new_v4();
 
-        let result = UserRelationship::create_friend_request(
-            sender,
-            receiver,
-            Some("   ".to_string()),
-        );
+        let result =
+            UserRelationship::create_friend_request(&sender, &receiver, Some("   ".to_string()));
 
         assert!(result.is_err());
         assert!(matches!(
@@ -491,8 +506,7 @@ mod tests {
         let blocker = Uuid::new_v4();
         let blocked = Uuid::new_v4();
 
-        let block = UserRelationship::create_block(blocker, blocked)
-            .expect("Should create block");
+        let block = UserRelationship::create_block(blocker, blocked).expect("Should create block");
 
         assert_eq!(*block.user_id(), blocker);
         assert_eq!(*block.target_user_id(), blocked);
@@ -553,12 +567,7 @@ mod tests {
         let user1 = Uuid::new_v4();
         let user2 = Uuid::new_v4();
 
-        let rel = UserRelationship::new(
-            user1,
-            user2,
-            RelationshipType::Friend,
-            None,
-        );
+        let rel = UserRelationship::new(user1, user2, RelationshipType::Friend, None);
 
         assert_eq!(rel.get_other_user_id(&user1), Some(user2));
         assert_eq!(rel.get_other_user_id(&user2), Some(user1));
@@ -568,8 +577,8 @@ mod tests {
     #[test]
     fn test_validate_success() {
         let valid = UserRelationship::create_friend_request(
-            Uuid::new_v4(),
-            Uuid::new_v4(),
+            &Uuid::new_v4(),
+            &Uuid::new_v4(),
             Some("Valid message".to_string()),
         )
         .unwrap();

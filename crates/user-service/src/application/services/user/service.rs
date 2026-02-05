@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use super::error::ApplicationError;
+use super::error::UserApplicationError;
 use crate::api::dto::user::{
     CustomStatusDto, MyProfileResponse, PrivacySettingsDto, SetCustomStatusRequest,
     UpdatePrivacySettingsRequest, UpdateProfileRequest, UserProfileResponse, UserSearchResult,
@@ -43,7 +43,7 @@ where
     pub async fn get_my_profile(
         &self,
         user_id: Uuid,
-    ) -> Result<MyProfileResponse, ApplicationError> {
+    ) -> Result<MyProfileResponse, UserApplicationError> {
         let user = self.get_user_by_id(user_id).await?;
 
         info!(user_id = %user_id, "Retrieved own profile");
@@ -56,7 +56,7 @@ where
         &self,
         user_id: Uuid,
         _viewer_id: Uuid, // TODO: check friendship / server membership for status visibility
-    ) -> Result<UserProfileResponse, ApplicationError> {
+    ) -> Result<UserProfileResponse, UserApplicationError> {
         let user = self.get_user_by_id(user_id).await?;
 
         // TODO: determine viewer_can_see_status based on:
@@ -79,14 +79,14 @@ where
         &self,
         username: &str,
         _viewer_id: Uuid,
-    ) -> Result<UserProfileResponse, ApplicationError> {
+    ) -> Result<UserProfileResponse, UserApplicationError> {
         let user = self
             .user_repository
             .find_by_username(username)
             .await?
             .ok_or_else(|| {
                 warn!(username = %username, "User not found by username");
-                ApplicationError::UsernameNotFound(username.to_string())
+                UserApplicationError::UsernameNotFound(username.to_string())
             })?;
 
         // TODO: privacy-aware status
@@ -108,9 +108,9 @@ where
         &self,
         user_id: Uuid,
         request: UpdateProfileRequest,
-    ) -> Result<UserProfileResponse, ApplicationError> {
+    ) -> Result<UserProfileResponse, UserApplicationError> {
         if request.is_empty() {
-            return Err(ApplicationError::InvalidInput(
+            return Err(UserApplicationError::InvalidInput(
                 "At least one field must be provided".to_string(),
             ));
         }
@@ -143,7 +143,7 @@ where
         &self,
         user_id: Uuid,
         request: UpdatePrivacySettingsRequest,
-    ) -> Result<PrivacySettingsDto, ApplicationError> {
+    ) -> Result<PrivacySettingsDto, UserApplicationError> {
         let mut user = self.get_user_by_id(user_id).await?;
 
         // Convert DTO → domain value object (validates enum values)
@@ -170,7 +170,7 @@ where
         &self,
         user_id: Uuid,
         request: SetCustomStatusRequest,
-    ) -> Result<CustomStatusDto, ApplicationError> {
+    ) -> Result<CustomStatusDto, UserApplicationError> {
         let mut user = self.get_user_by_id(user_id).await?;
 
         // Domain entity validates and sets status
@@ -189,7 +189,7 @@ where
     }
 
     /// Clear custom status
-    pub async fn clear_custom_status(&self, user_id: Uuid) -> Result<(), ApplicationError> {
+    pub async fn clear_custom_status(&self, user_id: Uuid) -> Result<(), UserApplicationError> {
         let mut user = self.get_user_by_id(user_id).await?;
 
         user.clear_custom_status();
@@ -203,7 +203,7 @@ where
 
     /// Cleanup expired custom statuses (background job)
     #[allow(dead_code)]
-    pub async fn cleanup_expired_statuses(&self) -> Result<(), ApplicationError> {
+    pub async fn cleanup_expired_statuses(&self) -> Result<(), UserApplicationError> {
         // TODO: batch query users with expired custom_status_expires_at
         // For each: user.clear_expired_custom_status() and update if changed
         warn!("cleanup_expired_statuses not yet implemented");
@@ -217,9 +217,9 @@ where
         &self,
         query: &str,
         params: PaginationParams,
-    ) -> Result<Paginated<UserSearchResult>, ApplicationError> {
+    ) -> Result<Paginated<UserSearchResult>, UserApplicationError> {
         if query.trim().is_empty() {
-            return Err(ApplicationError::InvalidInput(
+            return Err(UserApplicationError::InvalidInput(
                 "Search query cannot be empty".to_string(),
             ));
         }
@@ -244,13 +244,13 @@ where
 
     // ─── Internal Helpers ────────────────────────────────────────────────────
 
-    async fn get_user_by_id(&self, user_id: Uuid) -> Result<User, ApplicationError> {
+    async fn get_user_by_id(&self, user_id: Uuid) -> Result<User, UserApplicationError> {
         self.user_repository
             .find_by_id(user_id)
             .await?
             .ok_or_else(|| {
                 warn!(user_id = %user_id, "User not found");
-                ApplicationError::UserNotFound
+                UserApplicationError::UserNotFound
             })
     }
 }
