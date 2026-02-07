@@ -1,7 +1,7 @@
-use thiserror::Error;
-use common::AppError;
-use common::persistance::error::RepositoryError;
 use crate::domain::user::error::UserDomainError;
+use common::persistance::error::RepositoryError;
+use common::AppError;
+use thiserror::Error;
 
 /// Application-level errors for User Service
 #[derive(Debug, Error)]
@@ -26,6 +26,9 @@ pub enum UserApplicationError {
 
     #[error("Internal server error: {0}")]
     InternalServerError(String),
+
+    #[error("No available discriminators for username: {0}")]
+    NoAvailableDiscriminators(String),
 }
 
 // ─── Conversion to common::AppError (for HTTP layer) ────────────────────────
@@ -43,12 +46,11 @@ impl From<UserApplicationError> for common::AppError {
             UserApplicationError::InvalidInput(msg) => AppError::Validation(msg),
             UserApplicationError::Unauthorized(msg) => AppError::Unauthorized(msg),
             UserApplicationError::Domain(e) => AppError::Validation(e.to_string()),
-            UserApplicationError::Repository(e) => {
-                AppError::InternalServerError(e.to_string())
-            }
-            UserApplicationError::InternalServerError(msg) => {
-                AppError::InternalServerError(msg)
-            }
+            UserApplicationError::NoAvailableDiscriminators(username) => AppError::Validation(
+                format!("No available discriminators for username '{}'", username),
+            ),
+            UserApplicationError::Repository(e) => AppError::InternalServerError(e.to_string()),
+            UserApplicationError::InternalServerError(msg) => AppError::InternalServerError(msg),
         }
     }
 }

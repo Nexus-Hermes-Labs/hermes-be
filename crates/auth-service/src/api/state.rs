@@ -1,7 +1,7 @@
 use common::jwt::JwtManager;
 use sqlx::PgPool;
 use std::sync::Arc;
-use crate::application::services::auth::service::AuthService;
+use crate::application::services::authentication::service::AuthService;
 use crate::infrastructure::persistence::postgres::user_repository::PostgresAuthUserRepository;
 use crate::infrastructure::security::argon2_password_service::Argon2PasswordService;
 

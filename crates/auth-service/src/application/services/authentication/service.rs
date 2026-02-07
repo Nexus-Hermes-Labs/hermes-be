@@ -1,12 +1,11 @@
 use crate::domain::user::service::PasswordService;
 use crate::domain::user::{AuthUserRepository, User};
 use common::jwt::JwtManager;
-use common::AppError;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
-use crate::infrastructure::persistence::postgres::user_repository::models::UserRow;
+use crate::application::services::authentication::error::AuthApplicationError;
 
 /// AuthService
 ///
@@ -38,13 +37,13 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     // REGISTRATION
     // ============================================
 
-    pub async fn register(&self, request: RegisterRequest) -> Result<AuthResponse, AppError> {
+    pub async fn register(&self, request: RegisterRequest) -> Result<AuthResponse, AuthApplicationError> {
         if !self.is_email_available(&request.email).await? {
-            return Err(AppError::Conflict("Email already in use".to_string()));
+            return Err(AuthApplicationError::EmailAlreadyExists(request.email.clone()));
         }
 
         if !self.is_username_available(&request.username).await? {
-            return Err(AppError::Conflict("Username already taken".to_string()));
+            return Err(AuthApplicationError::UsernameAlreadyExists(request.username.clone()));
         }
 
         let password_hash = self
@@ -52,7 +51,7 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
             .hash_password(&request.password)
             .map_err(|e| {
                 error!(error = %e, "Password hashing failed");
-                AppError::InternalServerError("Failed to process password".to_string())
+                AuthApplicationError::PasswordHashingFailed
             })?;
 
         let user = User::new(request.username, request.email, password_hash);
@@ -72,18 +71,18 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     // LOGIN
     // ============================================
 
-    pub async fn login(&self, request: LoginRequest) -> Result<AuthResponse, AppError> {
+    pub async fn login(&self, request: LoginRequest) -> Result<AuthResponse, AuthApplicationError> {
         let user = self
             .get_user_by_email(&request.email)
             .await?
             .ok_or_else(|| {
                 warn!(email = %request.email, "Login attempt with non-existent email");
-                AppError::Unauthorized("Invalid credentials".to_string())
+                AuthApplicationError::InvalidCredentials
             })?;
 
         user.ensure_active().map_err(|_| {
             warn!(user_id = %user.id(), "Login attempt on deactivated account");
-            AppError::Forbidden("Account is deactivated".to_string())
+            AuthApplicationError::AccountDeactivated
         })?;
 
         let is_valid = self
@@ -91,12 +90,12 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
             .verify_password(&request.password, user.password_hash())
             .map_err(|e| {
                 error!(error = %e, user_id = %user.id(), "Password verification failed");
-                AppError::InternalServerError("Authentication error".to_string())
+                AuthApplicationError::Internal("Password verification failed".to_string())
             })?;
 
         if !is_valid {
             warn!(user_id = %user.id(), "Login attempt with invalid password");
-            return Err(AppError::Unauthorized("Invalid credentials".to_string()));
+            return Err(AuthApplicationError::InvalidCredentials);
         }
 
         info!(
@@ -109,13 +108,13 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     }
 
     /// Logout user by revoking refresh token
-    pub async fn logout(&self, refresh_token: &str) -> Result<(), AppError> {
+    pub async fn logout(&self, refresh_token: &str) -> Result<(), AuthApplicationError> {
         let claims = self
             .jwt_manager
             .verify_refresh_token(refresh_token)
             .map_err(|e| {
                 warn!(error = %e, "Invalid refresh token provided during logout");
-                AppError::Unauthorized("Invalid or expired refresh token".to_string())
+                AuthApplicationError::InvalidToken
             })?;
 
         info!(
@@ -132,25 +131,25 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
 
     /// Logout from all devices (future feature)
     #[allow(dead_code)]
-    pub async fn logout_all_devices(&self, user_id: Uuid) -> Result<(), AppError> {
+    pub async fn logout_all_devices(&self, user_id: Uuid) -> Result<(), AuthApplicationError> {
         info!(user_id = %user_id, "Logout from all devices requested");
         todo!("Logout from all devices not yet implemented")
     }
 
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthResponse, AppError> {
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthResponse, AuthApplicationError> {
         let claims = self
             .jwt_manager
             .verify_refresh_token(refresh_token)
             .map_err(|e| {
                 warn!(error = %e, "Invalid refresh token during token refresh");
-                AppError::Unauthorized("Invalid refresh token".to_string())
+                AuthApplicationError::InvalidToken
             })?;
 
         let user = self.get_user_by_id(claims.sub).await?;
 
         user.ensure_active().map_err(|_| {
             warn!(user_id = %user.id(), "Token refresh attempt on inactive account");
-            AppError::Unauthorized("Account is not active".to_string())
+            AuthApplicationError::AccountDeactivated
         })?;
 
         info!(user_id = %user.id(), "Token refreshed successfully");
@@ -164,46 +163,44 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     // USER OPERATIONS
     // ============================================
 
-    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, AppError> {
+    async fn get_user_by_email(&self, email: &str) -> Result<Option<User>, AuthApplicationError> {
         self.user_repository
             .find_by_email(email)
             .await
             .map(|entity| entity.map(Into::into))
             .map_err(|e| {
                 error!(error = ?e, email = %email, "Database error while fetching user by email");
-                AppError::InternalServerError("Failed to fetch user".to_string())
+                AuthApplicationError::Internal(format!("Database error: {}", e))
             })
     }
 
-    async fn get_user_by_id(&self, id: Uuid) -> Result<User, AppError> {
+    async fn get_user_by_id(&self, id: Uuid) -> Result<User, AuthApplicationError> {
         self.user_repository
             .find_by_id(id)
             .await
             .map_err(|e| {
                 error!(error = ?e, user_id = %id, "Database error while fetching user by id");
-                AppError::InternalServerError("Failed to fetch user".to_string())
+                AuthApplicationError::Internal(format!("Database error: {}", e))
             })?
             .map(Into::into)
             .ok_or_else(|| {
                 warn!(user_id = %id, "User not found");
-                AppError::NotFound {
-                    entity_type: "User".to_string(),
-                }
+                AuthApplicationError::UserNotFound(id)
             })
     }
 
-    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>, AppError> {
+    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>, AuthApplicationError> {
         self.user_repository
             .find_by_username(username)
             .await
             .map(|entity| entity.map(Into::into))
             .map_err(|e| {
                 error!(error = ?e, username = %username, "Database error while fetching user by username");
-                AppError::InternalServerError("Failed to fetch user".to_string())
+                AuthApplicationError::Internal(format!("Database error: {}", e))
             })
     }
 
-    async fn save_user(&self, user: &User) -> Result<(), AppError> {
+    async fn save_user(&self, user: &User) -> Result<(), AuthApplicationError> {
         self.user_repository.save(&user).await.map_err(|e| {
             error!(
                 error = ?e,
@@ -211,7 +208,7 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
                 email = %user.email(),
                 "Database error while saving user"
             );
-            AppError::InternalServerError("Failed to save user".to_string())
+            AuthApplicationError::Internal(format!("Failed to save user: {}", e))
         })
     }
 
@@ -219,7 +216,7 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     // HELPER METHODS
     // ============================================
 
-    fn build_auth_response(&self, user: &User) -> Result<AuthResponse, AppError> {
+    fn build_auth_response(&self, user: &User) -> Result<AuthResponse, AuthApplicationError> {
         let role_str = user.role().as_str().to_string();
 
         let access_token = self
@@ -227,7 +224,7 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
             .create_user_token(user.id(), user.email().to_string(), role_str.clone(), 6)
             .map_err(|e| {
                 error!(error = %e, user_id = %user.id(), "Failed to create access token");
-                AppError::InternalServerError("Token generation failed".to_string())
+                AuthApplicationError::TokenGenerationFailed(e)
             })?;
 
         let refresh_token = self
@@ -235,7 +232,7 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
             .create_refresh_token(user.id(), user.email().to_string(), role_str.clone(), 30)
             .map_err(|e| {
                 error!(error = %e, user_id = %user.id(), "Failed to create refresh token");
-                AppError::InternalServerError("Token generation failed".to_string())
+                AuthApplicationError::TokenGenerationFailed(e)
             })?;
 
         Ok(AuthResponse {
@@ -252,11 +249,11 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
         })
     }
 
-    async fn is_email_available(&self, email: &str) -> Result<bool, AppError> {
+    async fn is_email_available(&self, email: &str) -> Result<bool, AuthApplicationError> {
         Ok(self.get_user_by_email(email).await?.is_none())
     }
 
-    async fn is_username_available(&self, username: &str) -> Result<bool, AppError> {
+    async fn is_username_available(&self, username: &str) -> Result<bool, AuthApplicationError> {
         Ok(self.get_user_by_username(username).await?.is_none())
     }
 }

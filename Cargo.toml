@@ -172,3 +172,5 @@ opt-level = 1
 # - NATS for event streaming between services
 # - Redis for caching and presence tracking
 # - PostgreSQL for persistent storage
+# - GRPC for communication services each other
+

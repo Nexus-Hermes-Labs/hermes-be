@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use common::Repository;
 use uuid::Uuid;
+use common::persistance::error::RepositoryError;
 use crate::domain::user::User;
 
 /// User-specific repository trait extending generic Repository

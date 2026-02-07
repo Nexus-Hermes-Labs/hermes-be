@@ -12,7 +12,7 @@ use tower_http::{
     LatencyUnit,
 };
 use tracing::info;
-use crate::application::services::auth::service::AuthService;
+use crate::application::services::authentication::service::AuthService;
 
 pub struct Server {
     config: &'static Config,

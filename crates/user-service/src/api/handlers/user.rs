@@ -27,7 +27,6 @@ pub async fn get_my_profile_handler(
     AuthenticatedUser(claims): AuthenticatedUser,
     State(state): State<AppState>,
 ) -> Result<Response, AppError> {
-    println!("INFOLOG GET MY PROFILE");
     let response = state.user_service.get_my_profile(claims.sub).await?;
 
     Ok((StatusCode::OK, Json(response)).into_response())

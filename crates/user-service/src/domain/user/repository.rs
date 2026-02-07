@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use common::pagination::{Paginated, PaginationParams};
 use common::Repository;
 use uuid::Uuid;
+use common::persistance::error::RepositoryError;
 
 /// User-specific repository trait for User Service domain
 #[async_trait]
@@ -31,4 +32,28 @@ pub trait UserRepository: Repository<User, Uuid> + Send + Sync {
         query: &str,
         params: &PaginationParams,
     ) -> Result<Paginated<User>, Self::Error>;
+}
+
+
+
+#[async_trait]
+pub trait DiscriminatorRepository: Send + Sync {
+    /// Get the highest discriminator for a username
+    async fn find_max_discriminator(
+        &self,
+        username: &str,
+    ) -> Result<Option<String>, RepositoryError>;
+
+    /// Check if username#discriminator combination exists
+    async fn exists(
+        &self,
+        username: &str,
+        discriminator: &str,
+    ) -> Result<bool, RepositoryError>;
+
+    /// Count total users with same username
+    async fn count_by_username(
+        &self,
+        username: &str,
+    ) -> Result<i64, RepositoryError>;
 }
