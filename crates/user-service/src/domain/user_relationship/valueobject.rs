@@ -109,6 +109,6 @@ impl UserRelationshipWithTarget {
     /// Returns the optional relationship message if present.
     #[inline]
     pub fn message(&self) -> Option<&str> {
-        self.relationship.message().as_deref()
+        self.relationship.message()
     }
 }

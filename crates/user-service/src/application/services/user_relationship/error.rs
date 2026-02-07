@@ -39,8 +39,9 @@ pub enum UserRelationshipApplicationError {
     #[error("Domain error: {0}")]
     Domain(#[from] UserRelationshipDomainError),
 
+    // NOT: #[from] kaldırıldı - manuel From impl kullanacağız
     #[error("Repository error: {0}")]
-    Repository(#[from] RepositoryError),
+    Repository(RepositoryError),
 
     // =====================================================
     // INTERNAL ERRORS
@@ -48,6 +49,41 @@ pub enum UserRelationshipApplicationError {
 
     #[error("Internal error: {0}")]
     Internal(String),
+}
+
+// =====================================================
+// REPOSITORY ERROR CONVERSION - Manuel Implementation
+// =====================================================
+
+impl From<RepositoryError> for UserRelationshipApplicationError {
+    fn from(err: RepositoryError) -> Self {
+        match err {
+            RepositoryError::NotFound(msg) => {
+                if msg.to_lowercase().contains("relationship") {
+                    Self::RelationshipNotFound
+                }
+                else if msg.to_lowercase().contains("user") {
+                    Self::Internal(format!("User not found: {}", msg))
+                }
+                else {
+                    Self::Internal(format!("Not found: {}", msg))
+                }
+            }
+
+            RepositoryError::DuplicateEntry(msg) => {
+                // Relationship duplicate ise AlreadyFriends
+                if msg.to_lowercase().contains("relationship") {
+                    Self::Domain(UserRelationshipDomainError::AlreadyFriends)
+                } else {
+                    Self::Internal(format!("Duplicate entry: {}", msg))
+                }
+            }
+
+            RepositoryError::Mapping(_) | RepositoryError::Database(_) => {
+                Self::Repository(err)
+            }
+        }
+    }
 }
 
 // =====================================================
@@ -154,5 +190,26 @@ mod tests {
         let app_err = UserRelationshipApplicationError::Domain(domain_err);
 
         assert_eq!(app_err.error_code(), "message_too_long");
+    }
+
+    #[test]
+    fn test_repository_not_found_conversion() {
+        let repo_err = RepositoryError::NotFound("Relationship with id '123' not found".to_string());
+        let app_err: UserRelationshipApplicationError = repo_err.into();
+
+        assert!(matches!(app_err, UserRelationshipApplicationError::RelationshipNotFound));
+        assert_eq!(app_err.status_code(), 404);
+    }
+
+    #[test]
+    fn test_repository_duplicate_conversion() {
+        let repo_err = RepositoryError::DuplicateEntry("Relationship already exists".to_string());
+        let app_err: UserRelationshipApplicationError = repo_err.into();
+
+        assert!(matches!(
+            app_err,
+            UserRelationshipApplicationError::Domain(UserRelationshipDomainError::AlreadyFriends)
+        ));
+        assert_eq!(app_err.status_code(), 409);
     }
 }

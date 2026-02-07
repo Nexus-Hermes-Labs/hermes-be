@@ -11,11 +11,12 @@ use common::pagination::{Paginated, PaginationParams};
 use std::sync::Arc;
 use tracing::{info, instrument, warn};
 use uuid::Uuid;
+use common::persistance::error::RepositoryError;
 
 pub struct UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     relationship_repo: Arc<RR>,
     user_repo: Arc<UR>,
@@ -23,8 +24,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     pub fn new(relationship_repo: Arc<RR>, user_repo: Arc<UR>) -> Self {
         Self {
@@ -40,8 +41,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     /// Send a friend request
     ///
@@ -108,12 +109,11 @@ where
         //     .await?;
 
         // 5. Domain validation (privacy, business rules)
-        UserRelationship::validate_friend_request(&sender.id, &receiver.id)
-            .await?;
+        UserRelationship::validate_friend_request(&sender.id, &receiver.id)?;
 
         // 6. Create friend request (domain logic)
         let friend_request =
-            UserRelationship::create_friend_request(&sender_id, *receiver.id, message)?;
+            UserRelationship::create_friend_request(&sender_id, &receiver.id, message)?;
 
         // 7. Save (trigger creates reverse)
         self.relationship_repo.save(&friend_request).await?;
@@ -226,8 +226,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     /// Get friends with user details (enriched)
     #[instrument(skip(self), fields(user_id = %user_id))]
@@ -307,8 +307,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     /// Get pending incoming requests with sender details
     #[instrument(skip(self), fields(user_id = %user_id))]
@@ -393,8 +393,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     /// Block a user
     #[instrument(
@@ -425,7 +425,7 @@ where
             })?;
 
         // 3. Domain validation
-        UserRelationship::validate_block(&blocker.id, &blocked.id).await?;
+        UserRelationship::validate_block(&blocker.id, &blocked.id)?;
 
         // 4. Remove any existing relationship first
         let _ = self
@@ -434,7 +434,7 @@ where
             .await;
 
         // 5. Create block
-        let block = UserRelationship::create_block(blocker_id, *blocked.id)?;
+        let block = UserRelationship::create_block(blocker_id, blocked.id)?;
 
         // 6. Save (no reverse relationship for blocks)
         self.relationship_repo.save(&block).await?;
@@ -516,8 +516,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     /// Check if two users are friends
     #[instrument(skip(self), fields(user_id = %user_id, other_user_id = %other_user_id))]
@@ -601,8 +601,8 @@ where
 
 impl<RR, UR> UserRelationshipApplicationService<RR, UR>
 where
-    RR: UserRelationshipRepository,
-    UR: UserRepository,
+    RR: UserRelationshipRepository<Error = RepositoryError>,
+    UR: UserRepository<Error = RepositoryError>,
 {
     /// Classify existing relationship to appropriate domain error
     fn classify_existing_relationship(

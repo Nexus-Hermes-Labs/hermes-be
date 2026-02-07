@@ -51,7 +51,7 @@ impl PostgresUserRepository {
 
 /// UserRow → User, turning a DomainError into RepositoryError::MappingError
 fn to_domain(row: UserRow) -> Result<User, RepositoryError> {
-    User::try_from(row).map_err(|e| RepositoryError::MappingError(e.to_string()))
+    User::try_from(row).map_err(|e| RepositoryError::Mapping(e.to_string()))
 }
 
 //
