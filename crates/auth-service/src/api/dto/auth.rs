@@ -87,6 +87,9 @@ pub struct RefreshTokenResponse {
     /// New refresh token (long-lived, ~30 days)
     /// Note: Implements refresh token rotation for security
     pub refresh_token: String,
+
+    /// Expiration time of JWT tokens (in seconds)
+    pub expires_in: usize,
 }
 
 // ============================================

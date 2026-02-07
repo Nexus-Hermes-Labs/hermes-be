@@ -260,6 +260,7 @@ Content-Type: application/json
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
+  
   "username": "alice",
   "discriminator": "0042",
   "display_name": "Alice in Wonderland",

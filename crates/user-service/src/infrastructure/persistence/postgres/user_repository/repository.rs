@@ -14,6 +14,7 @@ use uuid::Uuid;
 // ─────────────────────────────────────────────────────────────────────────────
 const USER_COLUMNS: &str = r#"
     id,
+    email,
     username,
     discriminator,
     display_name,
@@ -98,22 +99,7 @@ impl Repository<User, Uuid> for PostgresUserRepository {
     /// after receiving a UserCreated event.  ON CONFLICT DO NOTHING keeps it
     /// idempotent — a second call is a no-op.
     async fn save(&self, entity: &User) -> Result<(), Self::Error> {
-        sqlx::query(
-            r#"
-            INSERT INTO users (id, username, discriminator, display_name)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (id) DO NOTHING
-            "#,
-        )
-        .bind(entity.id)
-        .bind(&entity.username)
-        .bind(&entity.discriminator)
-        .bind(&entity.display_name)
-        .execute(&self.pool)
-        .await
-        .map_err(RepositoryError::Database)?;
-
-        Ok(())
+        unimplemented!("This repository does not support save()");
     }
 
     /// Updates only columns owned by User Service + Presence Service.

@@ -102,3 +102,6 @@ tokio-test = "0.4"
 [features]
 default = []
 # Future features if needed
+
+[build-dependencies]
+tonic-prost-build = "0.14.3"

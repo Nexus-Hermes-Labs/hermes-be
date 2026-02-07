@@ -47,7 +47,7 @@ pub async fn login_handler(
 pub async fn refresh_token_handler(
     State(state): State<AppState>,
     Json(request): Json<RefreshTokenRequest>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<Response, AppError> {
     request
         .validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
@@ -57,7 +57,7 @@ pub async fn refresh_token_handler(
         .refresh_token(&request.refresh_token)
         .await?;
 
-    Ok((StatusCode::OK, Json(response)))
+    Ok((StatusCode::OK, Json(response)).into_response())
 }
 
 /// Logout user by revoking refresh token
@@ -82,7 +82,10 @@ pub async fn logout_handler(
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
     // Revoke token
-    state.auth_service.logout(request.refresh_token.as_str()).await?;
+    state
+        .auth_service
+        .logout(request.refresh_token.as_str())
+        .await?;
 
     Ok((
         StatusCode::OK,

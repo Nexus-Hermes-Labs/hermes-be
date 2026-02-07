@@ -14,6 +14,7 @@ use crate::domain::user::valueobject::{CustomStatus, DmPrivacy, FriendRequestPri
 pub struct UserRow {
     // Identity
     pub id: Uuid,
+    pub email: String,
     pub username: String,
     pub discriminator: String,
     pub display_name: Option<String>,
@@ -65,6 +66,7 @@ impl TryFrom<UserRow> for User {
 
         Ok(User {
             id: row.id,
+            email: row.email,
             username: row.username,
             discriminator: row.discriminator,
             display_name: row.display_name.unwrap_or_default(),

@@ -17,6 +17,7 @@ pub struct User {
     pub id: Uuid,
 
     // ─── Identity ────────────────────────────────────
+    pub email: String,
     pub username: String,
     pub discriminator: String,
     pub display_name: String,
@@ -208,6 +209,7 @@ mod tests {
     fn stub_user() -> User {
         User {
             id: Uuid::new_v4(),
+            email: "example@mail.com".to_string(),
             username: "alice".to_string(),
             discriminator: "0000".to_string(),
             display_name: "Alice".to_string(),

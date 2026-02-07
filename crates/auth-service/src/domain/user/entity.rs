@@ -3,6 +3,8 @@ use crate::domain::user::{AuthDomainError, UserRole};
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+// TODO: will seperate this into two entities: User and AuthUser (two different tables)
+// will get other details with grpc calls to user-service.
 /// Auth domain view of User - only auth-related fields
 #[derive(Debug, Clone)]
 pub struct User {
@@ -87,7 +89,7 @@ impl User {
     pub fn email(&self) -> &str {
         &self.email
     }
-    
+
     pub fn display_name(&self) -> &str {
         &self.display_name
     }

@@ -5,6 +5,7 @@ use super::error::UserApplicationError;
 use crate::api::dto::user::{
     CustomStatusDto, MyProfileResponse, PrivacySettingsDto, SetCustomStatusRequest,
     UpdatePrivacySettingsRequest, UpdateProfileRequest, UserProfileResponse, UserSearchResult,
+    UserUpdateResponse,
 };
 use crate::domain::user::entity::User;
 use crate::domain::user::repository::UserRepository;
@@ -48,7 +49,7 @@ where
 
         info!(user_id = %user_id, "Retrieved own profile");
 
-        Ok(MyProfileResponse::from_user(&user))
+        Ok(MyProfileResponse::from(&user))
     }
 
     /// Get another user's public profile (privacy-aware status visibility)
@@ -71,7 +72,7 @@ where
             "Retrieved user profile"
         );
 
-        Ok(UserProfileResponse::from_user(&user, viewer_can_see_status))
+        Ok(UserProfileResponse::public(&user, viewer_can_see_status))
     }
 
     /// Get user by username (for friend requests, mentions, etc.)
@@ -98,7 +99,7 @@ where
             "Retrieved user by username"
         );
 
-        Ok(UserProfileResponse::from_user(&user, viewer_can_see_status))
+        Ok(UserProfileResponse::public(&user, viewer_can_see_status))
     }
 
     // ─── Profile Management ──────────────────────────────────────────────────
@@ -108,7 +109,7 @@ where
         &self,
         user_id: Uuid,
         request: UpdateProfileRequest,
-    ) -> Result<UserProfileResponse, UserApplicationError> {
+    ) -> Result<UserUpdateResponse, UserApplicationError> {
         if request.is_empty() {
             return Err(UserApplicationError::InvalidInput(
                 "At least one field must be provided".to_string(),
@@ -133,7 +134,7 @@ where
             "Profile updated successfully"
         );
 
-        Ok(UserProfileResponse::from_user(&user, true))
+        Ok(UserUpdateResponse::from(&user))
     }
 
     // ─── Privacy Settings ────────────────────────────────────────────────────

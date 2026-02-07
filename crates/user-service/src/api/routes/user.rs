@@ -17,7 +17,7 @@ pub fn protected_routes() -> Router<AppState> {
             get(handlers::user::get_user_by_username_handler),
         )
         // ─── Profile Management ──────────────────────────────────
-        .route("/me/profile", patch(handlers::user::update_profile_handler))
+        .route("/me", patch(handlers::user::update_profile_handler))
         // ─── Privacy Settings ────────────────────────────────────
         .route(
             "/me/privacy",
@@ -25,7 +25,7 @@ pub fn protected_routes() -> Router<AppState> {
         )
         // ─── Custom Status ───────────────────────────────────────
         .route(
-            "/me/custom-status",
+            "/me/status",
             put(handlers::user::set_custom_status_handler)
                 .delete(handlers::user::clear_custom_status_handler),
         )
