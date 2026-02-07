@@ -1,11 +1,11 @@
+use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
+use crate::application::services::authentication::error::AuthApplicationError;
 use crate::domain::user::service::PasswordService;
 use crate::domain::user::{AuthUserRepository, User};
 use common::jwt::JwtManager;
 use std::sync::Arc;
 use tracing::{error, info, warn};
 use uuid::Uuid;
-use crate::api::dto::auth::{AuthResponse, LoginRequest, RegisterRequest, UserResponse};
-use crate::application::services::authentication::error::AuthApplicationError;
 
 /// AuthService
 ///
@@ -37,13 +37,14 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
     // REGISTRATION
     // ============================================
 
-    pub async fn register(&self, request: RegisterRequest) -> Result<AuthResponse, AuthApplicationError> {
+    pub async fn register(
+        &self,
+        request: RegisterRequest,
+    ) -> Result<AuthResponse, AuthApplicationError> {
         if !self.is_email_available(&request.email).await? {
-            return Err(AuthApplicationError::EmailAlreadyExists(request.email.clone()));
-        }
-
-        if !self.is_username_available(&request.username).await? {
-            return Err(AuthApplicationError::UsernameAlreadyExists(request.username.clone()));
+            return Err(AuthApplicationError::EmailAlreadyExists(
+                request.email.clone(),
+            ));
         }
 
         let password_hash = self
@@ -54,7 +55,12 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
                 AuthApplicationError::PasswordHashingFailed
             })?;
 
-        let user = User::new(request.username, request.email, password_hash);
+        let user = User::new(
+            request.username,
+            request.email,
+            request.display_name,
+            password_hash,
+        );
 
         self.save_user(&user).await?;
 
@@ -136,7 +142,10 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
         todo!("Logout from all devices not yet implemented")
     }
 
-    pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthResponse, AuthApplicationError> {
+    pub async fn refresh_token(
+        &self,
+        refresh_token: &str,
+    ) -> Result<AuthResponse, AuthApplicationError> {
         let claims = self
             .jwt_manager
             .verify_refresh_token(refresh_token)
@@ -189,7 +198,10 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
             })
     }
 
-    async fn get_user_by_username(&self, username: &str) -> Result<Option<User>, AuthApplicationError> {
+    async fn get_user_by_username(
+        &self,
+        username: &str,
+    ) -> Result<Option<User>, AuthApplicationError> {
         self.user_repository
             .find_by_username(username)
             .await
@@ -238,9 +250,11 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
         Ok(AuthResponse {
             access_token,
             refresh_token,
+            expires_in: 6 * 60 * 60,
             user: UserResponse {
                 id: user.id().to_string(),
                 email: user.email().to_string(),
+                display_name: user.display_name().to_string(),
                 username: user.username().to_string(),
                 role: role_str,
                 is_active: user.is_active(),
@@ -251,9 +265,5 @@ impl<AR: AuthUserRepository, PS: PasswordService> AuthService<AR, PS> {
 
     async fn is_email_available(&self, email: &str) -> Result<bool, AuthApplicationError> {
         Ok(self.get_user_by_email(email).await?.is_none())
-    }
-
-    async fn is_username_available(&self, username: &str) -> Result<bool, AuthApplicationError> {
-        Ok(self.get_user_by_username(username).await?.is_none())
     }
 }

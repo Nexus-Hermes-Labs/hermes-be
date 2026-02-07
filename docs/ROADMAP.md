@@ -1,678 +1,629 @@
-# Hermes - Development Roadmap
+# Discord Clone - Development Roadmap
 
-**Timeline:** 12 weeks (3 months)  
-**Effort:** 6 hours per week  
-**Total:** 72 hours
+**Project Start:** Week 1  
+**Current Week:** Week 3, Day 2  
+**MVP Target:** Week 12  
+**Last Updated:** February 7, 2026
+
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Current Status](#current-status)
+- [Week-by-Week Plan](#week-by-week-plan)
+- [Implementation Status](#implementation-status)
+- [Technical Debt](#technical-debt)
+- [Risk Register](#risk-register)
 
 ---
 
-## 📊 Overview
+## Project Overview
 
-| Phase       | Weeks | Focus                          | Status |
-| ----------- | ----- | ------------------------------ | ------ |
-| **Phase 1** | 1-4   | Infrastructure & Core Services | ☐      |
-| **Phase 2** | 5-8   | Messaging & Real-time          | ☐      |
-| **Phase 3** | 9-12  | Voice, Presence & Polish       | ☐      |
+### MVP Scope (12 Weeks)
+
+Building core Discord functionality:
+- ✅ User authentication & authorization
+- ✅ User profiles with discriminators
+- ✅ Friend system (requests, accept/decline)
+- ✅ Block system
+- ⏳ Direct messaging
+- ⏳ Servers & channels
+- ⏳ Real-time messaging
+- ⏳ Voice channels (stretch)
+
+### Architecture Decision
+
+**Communication Strategy:**
+- **gRPC**: Service-to-service sync operations (MVP)
+- **HTTP REST**: Client-to-service APIs
+- **NATS**: Async events (Post-MVP)
 
 ---
 
-## Phase 1: Infrastructure & Core Services
+## Current Status
 
-### Week 1: Environment Setup
+### 🎯 Week 3, Day 2 - User Service Development
 
-**Goal:** Get development environment ready
+**Current Sprint:**
+- ✅ Domain layer complete (User, UserRelationship)
+- ✅ Repository traits defined
+- ✅ Application services complete
+- ⏳ gRPC implementation (IN PROGRESS)
+- ⏳ Infrastructure repositories
+- ⏳ HTTP endpoints
+
+**Current Focus:**
+1. Complete gRPC service definitions
+2. Implement User Service gRPC server
+3. Implement Auth Service gRPC client
+4. Infrastructure repositories
+
+---
+
+## Week-by-Week Plan
+
+### ✅ Week 1: Project Setup & Auth Service (COMPLETE)
+
+**Goals:**
+- [x] Project structure
+- [x] Database setup (PostgreSQL)
+- [x] Common library (errors, pagination, repository trait)
+- [x] Auth Service domain layer
+- [x] JWT authentication
+- [x] Password hashing (Argon2)
+
+**Deliverables:**
+- [x] `POST /v1/auth/register`
+- [x] `POST /v1/auth/login`
+- [x] `POST /v1/auth/refresh`
+- [x] `POST /v1/auth/logout`
+- [x] JWT middleware
+
+**Time Spent:** 5 days  
+**Status:** ✅ Complete
+
+---
+
+### ✅ Week 2: User Service Foundation (COMPLETE)
+
+**Goals:**
+- [x] Users table migration
+- [x] User domain entity
+- [x] Privacy settings (DM, friend requests, online status)
+- [x] Custom status
+- [x] User repository trait
+- [x] Basic user endpoints
+
+**Deliverables:**
+- [x] Database schema for users
+- [x] User domain model
+- [x] Privacy enums (DmPrivacy, FriendRequestPrivacy)
+- [x] Custom status value object
+
+**Time Spent:** 5 days  
+**Status:** ✅ Complete
+
+---
+
+### ⏳ Week 3: User Relationships & gRPC (IN PROGRESS)
+
+#### Days 1-2: Domain Layer ✅ COMPLETE
+
+**Completed:**
+- [x] user_relationships table migration
+- [x] Bidirectional sync trigger
+- [x] Relationship type enum (Friend, Blocked, Pending)
+- [x] UserRelationship entity
+- [x] UserRelationshipDomainError (comprehensive)
+- [x] RelationshipType value object
+- [x] UserRelationshipDomainService
+- [x] UserRelationshipApplicationService
+- [x] UserRelationshipApplicationError
+- [x] Repository traits (UserRepository, UserRelationshipRepository)
+
+**Artifacts:**
+- Domain entities with full business logic
+- Factory methods (create_friend_request, create_block)
+- State transitions (accept, decline, cancel)
+- Privacy validation
+- Friends-of-friends checking
+
+---
+
+#### Days 3-4: gRPC Implementation ⏳ IN PROGRESS
 
 **Tasks:**
 
-- [ ] Install Docker & Docker Compose
-- [ ] Start PostgreSQL, Redis, NATS containers
-- [ ] Verify container health
-- [ ] Install Rust 1.75+ and cargo
-- [ ] Setup IDE (VS Code + rust-analyzer)
-- [ ] Build project: `cargo build --workspace`
-- [ ] Create migrations folder structure
-- [ ] Run first migration (users table)
-- [ ] Load seed data (test users)
-- [ ] Read ARCHITECTURE.md thoroughly
+**Day 3 - Morning (2 hours):**
+- [ ] Proto definitions (`proto/user_service.proto`)
+  - [ ] UserService service definition
+  - [ ] GenerateDiscriminator RPC
+  - [ ] CheckUsernameAvailability RPC
+  - [ ] GetUserById RPC
+  - [ ] GetUserByEmail RPC
+  - [ ] UpdateUsername RPC
+  - [ ] AreFriends RPC
+  - [ ] IsBlocked RPC
+  - [ ] Message definitions (Request/Response)
+  - [ ] User message (common type)
+
+**Day 3 - Afternoon (3 hours):**
+- [ ] User Service gRPC server
+  - [ ] `src/presentation/grpc/user_service.rs`
+  - [ ] Implement UserService trait
+  - [ ] Wire up discriminator service
+  - [ ] Wire up user application service
+  - [ ] Error mapping (domain → gRPC status)
+  - [ ] Start gRPC server in main.rs (port 50051)
+
+**Day 4 - Morning (2 hours):**
+- [ ] Auth Service gRPC client
+  - [ ] `src/infrastructure/grpc/user_client.rs`
+  - [ ] UserServiceGrpcClient struct
+  - [ ] Connection management
+  - [ ] Retry logic
+  - [ ] Error handling
+  
+**Day 4 - Afternoon (2 hours):**
+- [ ] Update registration flow
+  - [ ] Use gRPC client in RegistrationService
+  - [ ] Generate discriminator via gRPC
+  - [ ] Check availability via gRPC
+  - [ ] Error handling
+  - [ ] Integration testing
 
 **Deliverables:**
-
-- ✅ All infrastructure running
-- ✅ Project builds successfully
-- ✅ Database schema created
-- ✅ Test data loaded
-
-**Check:**
-
-```bash
-docker ps  # All containers healthy
-cargo build --workspace  # Success
-psql $DATABASE_URL -c "SELECT count(*) FROM users"  # Returns test users
-```
+- [ ] Working gRPC communication
+- [ ] Auth Service can call User Service
+- [ ] Discriminator generation works end-to-end
 
 ---
 
-### Week 2: Auth Service
-
-**Goal:** Complete authentication system
+#### Day 5: Infrastructure Repositories (6 hours)
 
 **Tasks:**
 
-- [ ] Implement `POST /register` endpoint
-  - Input validation (email, password strength)
-  - Argon2id password hashing
-  - Insert user to PostgreSQL
-  - Return JWT tokens
-- [ ] Implement `POST /login` endpoint
-  - Query user by email
-  - Verify password with Argon2
-  - Generate access token (1h) and refresh token (7d)
-  - Store refresh token in Redis
-- [ ] Implement `POST /refresh` endpoint
-  - Validate refresh token
-  - Generate new access token
-- [ ] Implement `POST /logout` endpoint
-  - Invalidate refresh token in Redis
-- [ ] Add JWT middleware for token validation
-- [ ] Write tests for all endpoints
+**PostgresUserRepository (3 hours):**
+- [ ] `src/infrastructure/persistence/user/repository.rs`
+- [ ] Implement base Repository trait
+  - [ ] find_by_id
+  - [ ] find_all (admin only - future)
+  - [ ] save
+  - [ ] update
+  - [ ] delete
+  - [ ] exists
+  - [ ] count
+- [ ] Implement UserRepository trait
+  - [ ] find_by_username
+  - [ ] find_by_email
+  - [ ] find_by_ids (bulk fetch)
+  - [ ] search (username search)
+- [ ] Error handling (SQLx → RepositoryError)
+- [ ] Row mapping (PostgreSQL → Domain entity)
+
+**PostgresDiscriminatorRepository (1 hour):**
+- [ ] `src/infrastructure/persistence/discriminator/repository.rs`
+- [ ] find_max_discriminator
+- [ ] exists (username + discriminator)
+- [ ] count_by_username
+
+**PostgresUserRelationshipRepository (2 hours):**
+- [ ] `src/infrastructure/persistence/user_relationship/repository.rs`
+- [ ] Implement base Repository trait (7 methods)
+- [ ] Implement UserRelationshipRepository trait
+  - [ ] find_relationship
+  - [ ] find_friends (paginated)
+  - [ ] find_pending_incoming (paginated)
+  - [ ] find_pending_outgoing (paginated)
+  - [ ] find_blocked (paginated)
+  - [ ] count_friends
+  - [ ] count_pending_incoming
+  - [ ] count_pending_outgoing
+  - [ ] count_blocked
+  - [ ] are_friends (boolean)
+  - [ ] is_blocked (boolean)
+  - [ ] relationship_exists (boolean)
+  - [ ] delete_relationship
+- [ ] Test bidirectional triggers
+
+**Testing:**
+- [ ] Integration tests with test database
+- [ ] Verify trigger behavior
+- [ ] Test all repository methods
 
 **Deliverables:**
-
-- ✅ User registration works
-- ✅ Login returns valid JWT
-- ✅ Token refresh works
-- ✅ Protected endpoints validate JWT
-
-**Check:**
-
-```bash
-curl -X POST localhost:8081/register -d '{"username":"test","email":"test@test.com","password":"Test123!"}'
-curl -X POST localhost:8081/login -d '{"email":"test@test.com","password":"Test123!"}'
-```
+- [ ] Complete repository implementations
+- [ ] All 20+ repository methods working
+- [ ] Trigger validation
 
 ---
 
-### Week 3: User Service
+### 📅 Week 4: HTTP Endpoints & Integration
 
-**Goal:** User profiles and friend system
+#### Days 1-2: User Profile Endpoints
 
-**Tasks:**
+**User Endpoints (Day 1 - 4 hours):**
+- [ ] GET /v1/users/me
+- [ ] PATCH /v1/users/me
+- [ ] PUT /v1/users/me/status
+- [ ] DELETE /v1/users/me/status
+- [ ] PATCH /v1/users/me/privacy
+- [ ] GET /v1/users/search
 
-- [ ] Implement `GET /users/@me` - Current user profile
-- [ ] Implement `PATCH /users/@me` - Update profile
-  - display_name, avatar_url, bio
-- [ ] Implement `GET /users/:id` - Get user by ID
-- [ ] Implement `GET /users/search?q=username` - Search users
-- [ ] Implement friend system:
-  - `POST /users/@me/friends` - Send friend request
-  - `GET /users/@me/friends` - List friends
-  - `DELETE /users/@me/friends/:id` - Remove friend
-  - `POST /users/@me/friends/:id/accept` - Accept request
-- [ ] Add Redis caching for user profiles
-- [ ] Publish NATS events (user.profile.updated, user.friend.added)
+**Profile DTOs:**
+- [ ] UserProfileResponse
+- [ ] UpdateProfileRequest
+- [ ] SetCustomStatusRequest
+- [ ] UpdatePrivacyRequest
+- [ ] UserSearchResponse
 
-**Deliverables:**
-
-- ✅ Profile CRUD works
-- ✅ Friend system functional
-- ✅ User search works
-- ✅ Redis caching active
-
-**Check:**
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" localhost:8082/users/@me
-curl -H "Authorization: Bearer $TOKEN" localhost:8082/users/search?q=alice
-```
+**Testing (Day 2 - 2 hours):**
+- [ ] Unit tests for handlers
+- [ ] Integration tests
+- [ ] OpenAPI documentation
 
 ---
 
-### Week 4: Channel Service Part 1
+#### Days 3-4: Friend Relationship Endpoints
 
-**Goal:** Server and channel management
+**Friend Request Endpoints (Day 3 - 4 hours):**
+- [ ] POST /v1/friends/requests
+- [ ] GET /v1/friends/requests/incoming
+- [ ] GET /v1/friends/requests/outgoing
+- [ ] POST /v1/friends/requests/{user_id}/accept
+- [ ] POST /v1/friends/requests/{user_id}/decline
+- [ ] DELETE /v1/friends/requests/{user_id} (cancel)
 
-**Tasks:**
+**Friend Management (Day 4 - 2 hours):**
+- [ ] GET /v1/friends
+- [ ] DELETE /v1/friends/{user_id} (unfriend)
+- [ ] GET /v1/friends/count
 
-- [ ] Create migrations for servers, channels, roles, members
-- [ ] Implement server endpoints:
-  - `POST /servers` - Create server
-  - `GET /servers` - List user's servers
-  - `GET /servers/:id` - Server details
-  - `PATCH /servers/:id` - Update server
-  - `DELETE /servers/:id` - Delete server
-- [ ] Implement channel endpoints:
-  - `POST /servers/:id/channels` - Create channel
-  - `GET /channels/:id` - Channel details
-  - `PATCH /channels/:id` - Update channel
-  - `DELETE /channels/:id` - Delete channel
-- [ ] Implement member management:
-  - `POST /servers/:id/join` - Join server
-  - `GET /servers/:id/members` - List members
-  - `DELETE /servers/:id/members/:id` - Kick member
-- [ ] Publish NATS events (server.created, channel.created)
+**DTOs:**
+- [ ] SendFriendRequestRequest
+- [ ] FriendRequestResponse
+- [ ] FriendListResponse
+- [ ] Pagination support
 
-**Deliverables:**
-
-- ✅ Server CRUD works
-- ✅ Channel CRUD works
-- ✅ Member management works
-- ✅ NATS events published
-
-**Check:**
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" localhost:8083/servers \
-  -d '{"name":"Test Server"}'
-```
+**Testing (Day 4 - 2 hours):**
+- [ ] E2E friend request flow
+- [ ] Privacy validation tests
+- [ ] Error case testing
 
 ---
 
-## Phase 2: Messaging & Real-time
+#### Day 5: Block System Endpoints
 
-### Week 5: Chat Service Part 1
+**Block Endpoints (3 hours):**
+- [ ] POST /v1/blocked
+- [ ] GET /v1/blocked
+- [ ] DELETE /v1/blocked/{user_id}
 
-**Goal:** Basic messaging
+**DTOs:**
+- [ ] BlockUserRequest
+- [ ] BlockedUserResponse
 
-**Tasks:**
+**Testing (2 hours):**
+- [ ] Block flow tests
+- [ ] Side effect validation (unfriend on block)
 
-- [ ] Create migrations for messages, reactions, attachments
-- [ ] Implement `POST /channels/:id/messages` - Send message
-  - Validate content (not empty, max 2000 chars)
-  - Insert to PostgreSQL
-  - Cache in Redis (last 50 messages)
-  - Publish NATS event (message.created)
-- [ ] Implement `GET /channels/:id/messages` - Message history
-  - Pagination with before/after message_id
-  - Limit parameter (default 50, max 100)
-  - Order by created_at DESC
-- [ ] Implement `PATCH /messages/:id` - Edit message
-  - Permission check (author or admin)
-  - Update edited_at timestamp
-- [ ] Implement `DELETE /messages/:id` - Delete message
-  - Permission check
-  - Soft delete or hard delete
-- [ ] Add message validation and sanitization
-
-**Deliverables:**
-
-- ✅ Send message works
-- ✅ Message history with pagination
-- ✅ Edit/delete messages
-- ✅ NATS events for real-time
-
-**Check:**
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  localhost:8084/channels/$CHANNEL_ID/messages \
-  -d '{"content":"Hello, world!"}'
-```
+**Documentation (1 hour):**
+- [ ] Complete OpenAPI spec
+- [ ] Update API_REFERENCE.md
+- [ ] Postman collection
 
 ---
 
-### Week 6: Chat Service Part 2
+### 📅 Week 5: Testing, Observability & Polish
 
-**Goal:** Reactions and mentions
+#### Days 1-2: Comprehensive Testing
 
-**Tasks:**
+**Unit Tests:**
+- [ ] Domain layer coverage (>90%)
+- [ ] Application service coverage (>80%)
+- [ ] Repository tests
 
-- [ ] Implement reactions:
-  - `POST /messages/:id/reactions/:emoji` - Add reaction
-  - `DELETE /messages/:id/reactions/:emoji` - Remove reaction
-  - Get messages with reaction counts
-- [ ] Implement mentions:
-  - Parse @username in message content
-  - Store mentioned user IDs
-  - Query users who were mentioned
-- [ ] Implement direct messages:
-  - Create DM channel between two users
-  - Send DM endpoint
-  - List DM conversations
-- [ ] Add message search (basic)
-- [ ] Optimize queries with indexes
+**Integration Tests:**
+- [ ] Database integration
+- [ ] gRPC integration
+- [ ] HTTP endpoint tests
 
-**Deliverables:**
-
-- ✅ Reactions work
-- ✅ Mentions parsed and stored
-- ✅ DMs functional
-- ✅ Message search works
-
-**Check:**
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  localhost:8084/messages/$MSG_ID/reactions/👍
-```
+**E2E Tests:**
+- [ ] Complete user flows
+  - [ ] Registration → Login
+  - [ ] Friend request → Accept → Unfriend
+  - [ ] Block → Unblock
+  - [ ] Privacy settings enforcement
 
 ---
 
-### Week 7: Gateway Service Part 1
+#### Days 3-4: Observability
 
-**Goal:** WebSocket connection and event handling
+**Logging:**
+- [ ] Structured logging with tracing
+- [ ] Request ID tracking
+- [ ] Log levels properly set
+- [ ] JSON output for production
 
-**Tasks:**
+**Metrics:**
+- [ ] Prometheus metrics
+  - [ ] HTTP request duration
+  - [ ] gRPC request duration
+  - [ ] Database query duration
+  - [ ] Error rates
+  - [ ] Business metrics (registrations, friend requests)
+- [ ] Grafana dashboards
 
-- [ ] Implement WebSocket upgrade handler
-- [ ] Add JWT authentication for WebSocket
-  - Validate token from query param or header
-  - Reject invalid connections
-- [ ] Implement heartbeat system
-  - Client sends heartbeat every 30s
-  - Server responds with ACK
-  - Disconnect if no heartbeat for 60s
-- [ ] Implement event handling:
-  - Parse client op codes
-  - IDENTIFY event (connection start)
-  - READY event (send user info)
-  - MESSAGE_CREATE (send message)
-- [ ] Subscribe to NATS events:
-  - message.created, message.updated, message.deleted
-  - Forward to connected clients
-- [ ] Implement connection state management
-  - Track active connections
-  - User → Connection mapping
-
-**Deliverables:**
-
-- ✅ WebSocket server running
-- ✅ Authentication works
-- ✅ Heartbeat system active
-- ✅ Events forwarded from NATS
-
-**Check:**
-
-```javascript
-// Browser console
-const ws = new WebSocket("ws://localhost:8080/ws?token=JWT_TOKEN");
-ws.onmessage = (e) => console.log(JSON.parse(e.data));
-```
+**Health Checks:**
+- [ ] /health/live endpoint
+- [ ] /health/ready endpoint
+- [ ] Database connectivity check
+- [ ] gRPC service check
 
 ---
 
-### Week 8: Gateway Service Part 2
+#### Day 5: Production Readiness
 
-**Goal:** API routing and rate limiting
+**Performance:**
+- [ ] Query optimization
+- [ ] Index validation
+- [ ] Connection pool tuning
+- [ ] Load testing (k6)
 
-**Tasks:**
+**Security:**
+- [ ] Security audit
+- [ ] Rate limiting implementation
+- [ ] Input validation review
+- [ ] Secrets management
 
-- [ ] Implement API proxy routing:
-  - `/api/auth/*` → Auth Service (8081)
-  - `/api/users/*` → User Service (8082)
-  - `/api/servers/*` → Channel Service (8083)
-  - `/api/channels/*` → Chat Service (8084)
-  - `/api/messages/*` → Chat Service (8084)
-- [ ] Add HTTP client (reqwest) for service calls
-- [ ] Forward auth headers to services
-- [ ] Implement rate limiting:
-  - Message rate: 10 per 10 seconds per user
-  - API rate: 60 per minute per user
-  - WebSocket frames: 120 per minute
-  - Use Redis for rate limit counters
-- [ ] Add connection manager:
-  - Track all active connections
-  - Broadcast events to specific users
-  - Handle disconnections gracefully
-- [ ] Error handling and logging
-
-**Deliverables:**
-
-- ✅ API proxy works
-- ✅ Rate limiting active
-- ✅ Connection management complete
-- ✅ Error handling robust
-
-**Check:**
-
-```bash
-# All API calls work through gateway
-curl localhost:8080/api/users/@me -H "Authorization: Bearer $TOKEN"
-curl localhost:8080/api/servers -H "Authorization: Bearer $TOKEN"
-```
+**Documentation:**
+- [ ] API documentation complete
+- [ ] Architecture documentation
+- [ ] Deployment guide
+- [ ] Troubleshooting guide
 
 ---
 
-## Phase 3: Voice, Presence & Polish
+### 📅 Weeks 6-8: Server Service (TBD)
 
-### Week 9: Presence Service
+**Scope:**
+- Server creation & management
+- Channels (text, voice)
+- Roles & permissions
+- Member management
 
-**Goal:** Online status and typing indicators
-
-**Tasks:**
-
-- [ ] Implement status management:
-  - `POST /presence/status` - Update status
-  - online, idle, dnd, offline
-  - Custom status messages
-  - Store in Redis with 5min TTL
-- [ ] Implement heartbeat system:
-  - Gateway → Presence heartbeat every 30s
-  - Update presence TTL
-  - Auto-offline if heartbeat stops
-- [ ] Implement typing indicators:
-  - `POST /presence/typing` - Start typing
-  - Store in Redis sorted set (10s TTL)
-  - Broadcast typing event via NATS
-  - Auto-cleanup expired indicators
-- [ ] Implement bulk presence queries:
-  - `POST /presence/bulk` - Get multiple presences
-  - Use Redis pipeline for efficiency
-- [ ] Publish NATS events (presence.status.changed)
-
-**Deliverables:**
-
-- ✅ Presence tracking works
-- ✅ Heartbeat system active
-- ✅ Typing indicators functional
-- ✅ Bulk queries optimized
-
-**Check:**
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  localhost:8087/presence/status \
-  -d '{"status":"online","custom_status":"Coding 🦀"}'
-```
+**APIs:**
+- Server CRUD
+- Channel CRUD
+- Member management
+- Role management
 
 ---
 
-### Week 10: Voice Service Part 1
+### 📅 Weeks 9-10: Messaging Service (TBD)
 
-**Goal:** WebRTC signaling foundation
+**Scope:**
+- Direct messages (1-to-1)
+- Group DMs
+- Channel messages
+- Message history
+- Attachments
 
-**Tasks:**
-
-- [ ] Create voice_sessions migration
-- [ ] Implement `POST /voice/join` endpoint:
-  - Create voice session in PostgreSQL
-  - Return ICE servers (public STUN)
-  - Check 2-user limit per channel
-  - Return peer_id if another user in channel
-- [ ] Implement `POST /voice/signal` endpoint:
-  - Accept SDP offer/answer
-  - Accept ICE candidates
-  - Forward to other peer in channel
-  - Store signaling state in Redis
-- [ ] Implement `POST /voice/leave` endpoint:
-  - Update session with left_at
-  - Notify other user
-  - Cleanup Redis state
-- [ ] Implement voice state updates:
-  - `PATCH /voice/state` - Mute/unmute
-  - Update session in database
-  - Broadcast state change via NATS
-
-**Deliverables:**
-
-- ✅ Voice session management
-- ✅ WebRTC signaling works
-- ✅ Join/leave functional
-- ✅ State updates work
-
-**Check:**
-
-```bash
-curl -X POST -H "Authorization: Bearer $TOKEN" \
-  localhost:8085/voice/join \
-  -d '{"channel_id":"$CHANNEL_ID"}'
-```
+**Real-time:**
+- WebSocket connections
+- Message delivery
+- Typing indicators
+- Read receipts
 
 ---
 
-### Week 11: Voice Service Part 2 + Client
+### 📅 Weeks 11-12: Integration & Polish (TBD)
 
-**Goal:** Complete P2P voice calling
-
-**Tasks:**
-
-- [ ] Implement session management:
-  - List active sessions in channel
-  - Get session by ID
-  - Session timeout handling (if user disconnects without leaving)
-  - Cleanup stale sessions
-- [ ] Create simple HTML/JS voice client:
-  - WebSocket connection to gateway
-  - Join voice channel
-  - Create WebRTC PeerConnection
-  - getUserMedia() for audio
-  - Handle ICE candidates
-  - Send/receive SDP via signaling
-  - Display connection status
-  - Mute/unmute button
-- [ ] Test voice calling:
-  - Two browser tabs
-  - Join same voice channel
-  - Establish P2P connection
-  - Verify audio works
-- [ ] Handle edge cases:
-  - Network interruptions
-  - ICE failure fallback
-  - Connection timeout
-
-**Deliverables:**
-
-- ✅ Session management complete
-- ✅ Simple voice client works
-- ✅ P2P audio connection established
-- ✅ 2-user voice call functional
-
-**Check:** Open two browser tabs, join same voice channel, hear each other!
+**Scope:**
+- End-to-end testing
+- Performance optimization
+- Bug fixes
+- Documentation
+- Demo preparation
 
 ---
 
-### Week 12: Testing & Polish
+## Implementation Status
 
-**Goal:** Production-ready MVP
+### Service Completion Matrix
 
-**Tasks:**
-
-- [ ] Write integration tests:
-  - Auth flow (register → login → refresh)
-  - Message flow (send → receive → edit → delete)
-  - Friend flow (request → accept → list)
-  - Voice flow (join → signal → leave)
-- [ ] Write unit tests for core logic:
-  - Password hashing
-  - JWT generation/validation
-  - Permission calculations
-  - Rate limiting
-- [ ] Bug fixes:
-  - Fix any remaining bugs
-  - Handle edge cases
-  - Improve error messages
-- [ ] Performance optimization:
-  - Add missing indexes
-  - Optimize slow queries
-  - Reduce Redis cache misses
-  - Profile and fix bottlenecks
-- [ ] Documentation:
-  - Update API documentation
-  - Write deployment guide
-  - Create troubleshooting guide
-  - Record demo video
-- [ ] Demo preparation:
-  - Test full user flow
-  - Prepare screenshots
-  - Create portfolio write-up
-
-**Deliverables:**
-
-- ✅ Tests passing
-- ✅ Known bugs fixed
-- ✅ Performance acceptable
-- ✅ Documentation complete
-- ✅ Demo ready
-
-**Check:**
-
-```bash
-cargo test --workspace  # All tests pass
-cargo clippy  # No warnings
-make test-flow  # End-to-end tests pass
-```
+| Service | Domain | Application | Infrastructure | Presentation | Tests | Status |
+|---------|--------|-------------|----------------|--------------|-------|--------|
+| **Auth Service** | ✅ | ✅ | ✅ | ✅ | ✅ | **Complete** |
+| **User Service** | ✅ | ✅ | ⏳ | ⏳ | ❌ | **60%** |
+| **Server Service** | ❌ | ❌ | ❌ | ❌ | ❌ | **0%** |
+| **Message Service** | ❌ | ❌ | ❌ | ❌ | ❌ | **0%** |
 
 ---
 
-## 🎯 Milestones
+### Endpoint Implementation Status
 
-### Milestone 1: Infrastructure Ready (Week 1)
+#### Auth Service ✅ COMPLETE
 
-- [ ] Docker containers running
-- [ ] Database migrated
-- [ ] Project builds
-- [ ] Dev environment complete
+| Method | Endpoint | Status | Tests |
+|--------|----------|--------|-------|
+| POST | /v1/auth/register | ✅ | ✅ |
+| POST | /v1/auth/login | ✅ | ✅ |
+| POST | /v1/auth/refresh | ✅ | ✅ |
+| POST | /v1/auth/logout | ✅ | ✅ |
 
-### Milestone 2: Core Services (Week 4)
+---
 
-- [ ] Auth works
-- [ ] Users and friends
-- [ ] Servers and channels
-- [ ] Basic functionality
+#### User Service ⏳ IN PROGRESS
 
-### Milestone 3: Real-time Messaging (Week 8)
+**Profile Endpoints:**
 
-- [ ] Chat functional
-- [ ] WebSocket gateway
-- [ ] Real-time updates
-- [ ] Rate limiting
+| Method | Endpoint | Domain | Application | Handler | Tests | Status |
+|--------|----------|--------|-------------|---------|-------|--------|
+| GET | /v1/users/me | ✅ | ✅ | ❌ | ❌ | 50% |
+| PATCH | /v1/users/me | ✅ | ✅ | ❌ | ❌ | 50% |
+| PUT | /v1/users/me/status | ✅ | ✅ | ❌ | ❌ | 50% |
+| DELETE | /v1/users/me/status | ✅ | ✅ | ❌ | ❌ | 50% |
+| PATCH | /v1/users/me/privacy | ✅ | ✅ | ❌ | ❌ | 50% |
+| GET | /v1/users/search | ✅ | ✅ | ❌ | ❌ | 50% |
 
-### Milestone 4: MVP Complete (Week 12)
+**Friend Request Endpoints:**
 
-- [ ] Presence tracking
-- [ ] P2P voice calls
-- [ ] Tests passing
+| Method | Endpoint | Domain | Application | Handler | Tests | Status |
+|--------|----------|--------|-------------|---------|-------|--------|
+| POST | /v1/friends/requests | ✅ | ✅ | ❌ | ❌ | 50% |
+| GET | /v1/friends/requests/incoming | ✅ | ✅ | ❌ | ❌ | 50% |
+| GET | /v1/friends/requests/outgoing | ✅ | ✅ | ❌ | ❌ | 50% |
+| POST | /v1/friends/requests/:id/accept | ✅ | ✅ | ❌ | ❌ | 50% |
+| POST | /v1/friends/requests/:id/decline | ✅ | ✅ | ❌ | ❌ | 50% |
+| DELETE | /v1/friends/requests/:id | ✅ | ✅ | ❌ | ❌ | 50% |
+
+**Friend Management:**
+
+| Method | Endpoint | Domain | Application | Handler | Tests | Status |
+|--------|----------|--------|-------------|---------|-------|--------|
+| GET | /v1/friends | ✅ | ✅ | ❌ | ❌ | 50% |
+| DELETE | /v1/friends/:id | ✅ | ✅ | ❌ | ❌ | 50% |
+| GET | /v1/friends/count | ✅ | ✅ | ❌ | ❌ | 50% |
+
+**Block System:**
+
+| Method | Endpoint | Domain | Application | Handler | Tests | Status |
+|--------|----------|--------|-------------|---------|-------|--------|
+| POST | /v1/blocked | ✅ | ✅ | ❌ | ❌ | 50% |
+| GET | /v1/blocked | ✅ | ✅ | ❌ | ❌ | 50% |
+| DELETE | /v1/blocked/:id | ✅ | ✅ | ❌ | ❌ | 50% |
+
+**Total:** 18 endpoints - 0 complete, 18 in progress
+
+---
+
+### gRPC Service Status
+
+**User Service gRPC:**
+
+| RPC | Request | Response | Server | Client | Tests | Status |
+|-----|---------|----------|--------|--------|-------|--------|
+| GenerateDiscriminator | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+| CheckUsernameAvailability | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+| GetUserById | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+| GetUserByEmail | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+| UpdateUsername | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+| AreFriends | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+| IsBlocked | ⏳ | ⏳ | ⏳ | ⏳ | ❌ | 0% |
+
+**Priority:** HIGH - Blocking Auth Service integration
+
+---
+
+## Technical Debt
+
+### Current Debt Items
+
+| Item | Severity | Impact | Effort | Target Week |
+|------|----------|--------|--------|-------------|
+| Missing HTTP endpoints | High | Blocks MVP | 1 week | Week 4 |
+| No integration tests | Medium | Quality risk | 2 days | Week 5 |
+| No observability | Medium | Ops risk | 2 days | Week 5 |
+| Shared database | Low | Scale risk | 2 weeks | Post-MVP |
+| No caching | Low | Perf risk | 1 week | Post-MVP |
+
+### Planned Improvements
+
+**Week 5:**
+- Implement comprehensive testing
+- Add observability (metrics, tracing)
+- Performance benchmarking
+
+**Post-MVP:**
+- Split databases (service per database)
+- Add Redis caching
+- Add NATS for events
+- Implement rate limiting
+- Add API Gateway
+
+---
+
+## Risk Register
+
+### Active Risks
+
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|------------|
+| gRPC integration complexity | Medium | High | Start early, comprehensive testing |
+| Database trigger bugs | Medium | High | Extensive testing, manual verification |
+| Performance issues at scale | Low | High | Load testing in Week 5 |
+| Missing features for MVP | Low | Medium | Strict scope control |
+
+### Resolved Risks
+
+| Risk | Resolution | Date |
+|------|-----------|------|
+| Auth complexity | JWT + Argon2 working well | Week 1 |
+| Domain modeling complexity | DDD approach successful | Week 2 |
+| Bidirectional relationship sync | Database triggers solved it | Week 3 |
+
+---
+
+## Success Metrics
+
+### Week 3 Goals
+
+**Must Have:**
+- [x] Domain layer complete
+- [x] Application services complete
+- [ ] gRPC working end-to-end
+- [ ] Repositories implemented
+
+**Nice to Have:**
+- [ ] Some HTTP endpoints
+- [ ] Basic tests
+
+### Week 4 Goals
+
+**Must Have:**
+- [ ] All HTTP endpoints implemented
+- [ ] End-to-end friend request flow
+- [ ] Basic testing
+
+**Nice to Have:**
+- [ ] Comprehensive tests
+- [ ] Performance benchmarks
+
+### Week 5 Goals
+
+**Must Have:**
+- [ ] >80% test coverage
+- [ ] Observability implemented
 - [ ] Production-ready
 
----
-
-## 📊 Weekly Effort Breakdown
-
-| Activity      | Hours/Week |
-| ------------- | ---------- |
-| Coding        | 4-5h       |
-| Testing       | 0.5-1h     |
-| Documentation | 0.5h       |
-| Learning      | Ongoing    |
-
-**Total:** 6 hours/week
+**Nice to Have:**
+- [ ] Load testing complete
+- [ ] Documentation polished
 
 ---
 
-## 🚀 Success Criteria
+## Next Actions (This Week)
 
-By week 12, you should have:
+### Immediate (Today)
 
-✅ **7 microservices** running  
-✅ **PostgreSQL** with complete schema  
-✅ **Redis** caching and pub/sub  
-✅ **NATS** event streaming  
-✅ **WebSocket** real-time messaging  
-✅ **P2P Voice** (2-user calls)  
-✅ **Tests** for core functionality  
-✅ **Documentation** complete  
-✅ **Deployable** to production
+1. ✅ Create documentation (API Reference, Architecture, Roadmap)
+2. ⏳ Define proto files (user_service.proto)
+3. ⏳ Implement gRPC server (User Service)
+4. ⏳ Implement gRPC client (Auth Service)
 
----
+### Tomorrow
 
-## 🎓 Learning Outcomes
+5. ⏳ Test gRPC integration
+6. ⏳ Start repository implementations
+7. ⏳ PostgresUserRepository
 
-You will have learned:
+### This Week
 
-- Microservice architecture design
-- Event-driven systems with NATS
-- Real-time WebSocket communication
-- PostgreSQL schema design
-- Redis caching strategies
-- JWT authentication
-- WebRTC P2P basics
-- Rust web development with Axum
-- SQLx compile-time queries
-- Docker deployment
-- API design and documentation
+8. ⏳ Complete all repositories
+9. ⏳ Integration testing
+10. ⏳ Document gRPC usage
 
 ---
 
-## 💡 Tips for Success
-
-### Stay on Track
-
-- Set aside dedicated time each week
-- Use a timer (Pomodoro technique)
-- Complete week's tasks before moving on
-- Don't skip testing
-
-### When Stuck
-
-- Read documentation (Axum, SQLx, WebRTC)
-- Check examples in repos
-- Ask for help
-- Take a break and come back fresh
-
-### Best Practices
-
-- Commit code regularly (daily)
-- Write tests as you go
-- Keep notes of decisions
-- Document tricky parts
-
-### Avoid
-
-- Skipping weeks (momentum is important)
-- Overengineering (stick to MVP)
-- Ignoring errors (fix as you go)
-- Working without tests
-
----
-
-## 🔄 Flexibility
-
-This roadmap is a guide, not a strict rule. Feel free to:
-
-- Adjust pace based on your speed
-- Swap week order if needed
-- Spend extra time on difficult parts
-- Skip features that aren't critical
-- Add features that excite you
-
-**Remember:** Done is better than perfect!
-
----
-
-## 📈 Progress Tracking
-
-Mark your progress:
-
-**Week 1:** ☐  
-**Week 2:** ☐  
-**Week 3:** ☐  
-**Week 4:** ☐  
-**Week 5:** ☐  
-**Week 6:** ☐  
-**Week 7:** ☐  
-**Week 8:** ☐  
-**Week 9:** ☐  
-**Week 10:** ☐  
-**Week 11:** ☐  
-**Week 12:** ☐
-
-**Started:** ****\_\_\_****  
-**Completed:** ****\_\_\_****
-
----
-
-## 🎉 Celebration
-
-When you complete week 12:
-
-1. Deploy your app!
-2. Share on Twitter/LinkedIn
-3. Add to portfolio
-4. Update resume
-5. Start job applications
-6. Plan next project
-
-**You built a Discord clone in Rust! 🦀🚀**
-
----
-
-_Ready to start? Go to Week 1 and let's build! 💪_
+**Last Updated:** February 7, 2026, Week 3 Day 2  
+**Next Review:** February 14, 2026, Week 4 Day 2

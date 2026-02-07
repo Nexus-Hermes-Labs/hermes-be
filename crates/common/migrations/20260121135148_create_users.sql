@@ -43,8 +43,7 @@ CREATE TABLE users (
     -- ================= USER PROFILE =================
     discriminator VARCHAR(4) NOT NULL DEFAULT '0000',
 
-    display_name VARCHAR(100)
-        CHECK (display_name IS NULL OR LENGTH(TRIM(display_name)) >= 1),
+    display_name VARCHAR(100) NOT NULL,
 
     -- URL regex gevşetildi
     avatar_url VARCHAR(512)
@@ -78,7 +77,11 @@ CREATE TABLE users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    UNIQUE(username, discriminator)
+		CONSTRAINT display_name_length_check
+        CHECK (CHAR_LENGTH(display_name) BETWEEN 3 AND 100),
+
+    CONSTRAINT unique_username_discriminator
+        UNIQUE (username, discriminator)
 );
 
 -- =====================================================

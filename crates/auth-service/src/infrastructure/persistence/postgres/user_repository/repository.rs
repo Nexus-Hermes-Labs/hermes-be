@@ -88,12 +88,13 @@ impl Repository<User, Uuid> for PostgresAuthUserRepository {
     async fn save(&self, entity: &User) -> Result<(), Self::Error> {
         sqlx::query(
             r#"
-            INSERT INTO users (id, username, email, password_hash, role)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO users (id, username, display_name, email, password_hash, role)
+            VALUES ($1, $2, $3, $4, $5, $6)
             "#,
         )
         .bind(entity.id())
         .bind(entity.username())
+        .bind(entity.display_name())
         .bind(entity.email())
         .bind(entity.password_hash().get_hash())
         .bind(entity.role().as_str())
@@ -114,83 +115,20 @@ impl Repository<User, Uuid> for PostgresAuthUserRepository {
     }
 
     async fn update(&self, entity: &User) -> Result<(), Self::Error> {
-        let result = sqlx::query(
-            r#"
-            UPDATE users SET
-                username                    = $2,
-                email                       = $3,
-                password_hash               = $4,
-                email_verified              = $5,
-                email_verification_token    = $6,
-                role                        = $7,
-                is_active                   = $8,
-                updated_at                  = $9
-            WHERE id = $1 AND deleted_at IS NULL
-            "#,
-        )
-        .bind(entity.id()) // $1
-        .bind(entity.username()) // $2
-        .bind(entity.email()) // $3
-        .bind(entity.password_hash().get_hash()) // $4
-        .bind(entity.is_email_verified()) // $5
-        .bind(entity.email_verification_token()) // $6
-        .bind(entity.role().as_str()) // $7
-        .bind(entity.is_active()) // $8
-        .bind(entity.updated_at()) // $9
-        .execute(&self.pool)
-        .await
-        .map_err(RepositoryError::Database)?;
-
-        if result.rows_affected() == 0 {
-            return Err(RepositoryError::not_found("User", entity.id()));
-        }
-
-        Ok(())
+        unimplemented!("This repository does not support update()");
     }
 
     /// Soft delete — writes deleted_at, never physically removes a row
     async fn delete(&self, id: Uuid) -> Result<(), Self::Error> {
-        let result = sqlx::query(
-            r#"
-            UPDATE users SET deleted_at = NOW()
-            WHERE id = $1 AND deleted_at IS NULL
-            "#,
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await
-        .map_err(RepositoryError::Database)?;
-
-        if result.rows_affected() == 0 {
-            return Err(RepositoryError::not_found("User", id));
-        }
-
-        Ok(())
+        unimplemented!("This repository does not support delete()");
     }
 
     async fn exists(&self, id: Uuid) -> Result<bool, Self::Error> {
-        let exists: bool = sqlx::query_scalar(&format!(
-            r#"SELECT EXISTS(SELECT 1 FROM users WHERE id = $1 AND {})"#,
-            BASE_FILTER
-        ))
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(RepositoryError::Database)?;
-
-        Ok(exists)
+        unimplemented!("This repository does not support exists()");
     }
 
     async fn count(&self) -> Result<i64, Self::Error> {
-        let count: i64 = sqlx::query_scalar(&format!(
-            r#"SELECT COUNT(*) FROM users WHERE {}"#,
-            BASE_FILTER
-        ))
-        .fetch_one(&self.pool)
-        .await
-        .map_err(RepositoryError::Database)?;
-
-        Ok(count)
+        unimplemented!("This repository does not support count()");
     }
 }
 

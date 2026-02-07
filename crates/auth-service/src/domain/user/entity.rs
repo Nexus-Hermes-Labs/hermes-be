@@ -9,6 +9,7 @@ pub struct User {
     id: Uuid,
     username: String,
     email: String,
+    display_name: String,
     password: PasswordHashVO,
     email_verified: bool,
     email_verification_token: Option<String>,
@@ -23,7 +24,12 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(username: String, email: String, password_hash: PasswordHashVO) -> Self {
+    pub fn new(
+        username: String,
+        email: String,
+        display_name: String,
+        password_hash: PasswordHashVO,
+    ) -> Self {
         let now = Utc::now();
 
         Self {
@@ -31,6 +37,7 @@ impl User {
             email,
             username,
             password: password_hash,
+            display_name,
             role: UserRole::User,
             is_active: true,
             email_verified: false,
@@ -45,6 +52,7 @@ impl User {
         id: Uuid,
         username: String,
         email: String,
+        display_name: String,
         password_hash: PasswordHashVO,
         role: UserRole,
         is_active: bool,
@@ -57,6 +65,7 @@ impl User {
             id,
             username,
             email,
+            display_name,
             password: password_hash,
             role,
             is_active,
@@ -77,6 +86,10 @@ impl User {
 
     pub fn email(&self) -> &str {
         &self.email
+    }
+    
+    pub fn display_name(&self) -> &str {
+        &self.display_name
     }
 
     pub fn password_hash(&self) -> &PasswordHashVO {

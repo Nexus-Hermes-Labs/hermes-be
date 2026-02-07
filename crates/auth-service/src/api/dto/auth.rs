@@ -26,6 +26,9 @@ pub struct RegisterRequest {
     ))]
     pub username: String,
 
+    /// User's display name (3-100 characters)
+    pub display_name: String,
+
     /// Password (minimum 8 characters)
     #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
     pub password: String,
@@ -123,6 +126,9 @@ pub struct AuthResponse {
     /// JWT refresh token for obtaining new access tokens (expires in ~30 days)
     pub refresh_token: String,
 
+    /// Expiration time of JWT tokens (in seconds)
+    pub expires_in: usize,
+
     /// Authenticated user information
     pub user: UserResponse,
 }
@@ -135,6 +141,9 @@ pub struct UserResponse {
 
     /// User's email address
     pub email: String,
+
+    /// User's display name (e.g., "")
+    pub display_name: String,
 
     /// User's username
     pub username: String,

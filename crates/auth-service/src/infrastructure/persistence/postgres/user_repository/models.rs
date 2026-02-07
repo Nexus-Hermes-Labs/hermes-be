@@ -1,16 +1,16 @@
-use std::str::FromStr;
+use crate::domain::user::valueobject::PasswordHashVO;
+use crate::domain::user::{AuthDomainError, User, UserRole};
 use chrono::{DateTime, Utc};
 use sqlx;
+use std::str::FromStr;
 use uuid::Uuid;
-use crate::domain::user::{AuthDomainError, User, UserRole};
-use crate::domain::user::valueobject::PasswordHashVO;
-
 
 #[derive(Debug, sqlx::FromRow)]
 pub struct UserRow {
     pub id: Uuid,
     pub username: String,
     pub email: String,
+    pub display_name: String,
     pub password_hash: String,
     pub role: String,
     pub is_active: bool,
@@ -33,6 +33,7 @@ impl TryFrom<UserRow> for User {
             row.id,
             row.username,
             row.email,
+            row.display_name,
             hash,
             role,
             row.is_active,
