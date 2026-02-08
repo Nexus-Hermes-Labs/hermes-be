@@ -1,11 +1,15 @@
+use std::path::PathBuf;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-       tonic_prost_build::configure()
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
+
+    let proto_dir = manifest_dir.join("../../proto");
+    let proto_file = proto_dir.join("user_service.proto");
+
+    tonic_build::configure()
         .build_server(true)
         .build_client(true)
-        .out_dir("src/proto")
-        .compile_protos(
-            &["../proto/user_service.proto"],
-            &["../proto"],
-        )?;
+        .compile(&[proto_file], &[proto_dir])?;
+
     Ok(())
 }

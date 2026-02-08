@@ -3,6 +3,7 @@
 
 pub mod config;
 pub mod db;
+pub mod dto;
 pub mod error;
 pub mod events;
 pub mod jwt;
@@ -11,8 +12,8 @@ pub mod middleware;
 pub mod observability;
 pub mod pagination;
 pub mod persistance;
+pub mod proto;
 pub mod utils;
-pub mod dto;
 
 // Re-export commonly used types
 pub use error::{AppError, Result};

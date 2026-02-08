@@ -93,6 +93,18 @@ health: ## Check health status of all services
 	@echo -e "$(BLUE)🏥 Checking service health...$(NC)"
 	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
+##@ Protobuf / gRPC
+
+proto-generate: ## Generate protobuf (gRPC) code for common crate
+	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code (common)...$(NC)"
+	@cargo build -p common
+	@echo -e "$(GREEN)✅ Protobuf code generated successfully$(NC)"
+
+proto-clean: ## Clean generated protobuf code (OUT_DIR)
+	@echo -e "$(YELLOW)🧹 Cleaning generated protobuf artifacts...$(NC)"
+	@cargo clean -p common
+	@echo -e "$(GREEN)✅ Protobuf artifacts cleaned$(NC)"
+
 ##@ Database
 
 db-migrate: ## Run database migrations

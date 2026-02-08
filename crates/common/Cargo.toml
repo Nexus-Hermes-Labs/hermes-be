@@ -22,6 +22,12 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 
 # ============================================================================
+# GRPC
+# ============================================================================
+tonic = { workspace = true }
+prost = { workspace = true }
+
+# ============================================================================
 # AUTHENTICATION & SECURITY (Auth-specific)
 # ============================================================================
 argon2 = { workspace = true }       # Password hashing
@@ -104,4 +110,4 @@ default = []
 # Future features if needed
 
 [build-dependencies]
-tonic-prost-build = "0.14.3"
+tonic-build = { workspace = true }
