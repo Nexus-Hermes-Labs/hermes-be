@@ -12,8 +12,8 @@ use common::pagination::PaginationParams;
 use common::AppError;
 use common::dto::common::SearchQuery;
 use common::middleware::authentication::AuthenticatedUser;
-use crate::api::dto::user::{SetCustomStatusRequest, UpdatePrivacySettingsRequest, UpdateProfileRequest};
-use crate::api::state::AppState;
+use crate::presentation::http::dto::user::{SetCustomStatusRequest, UpdatePrivacySettingsRequest, UpdateProfileRequest};
+use crate::presentation::http::state::AppState;
 
 // =====================================================
 // PROFILE QUERIES

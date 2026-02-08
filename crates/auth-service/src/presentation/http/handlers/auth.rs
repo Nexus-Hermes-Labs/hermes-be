@@ -1,7 +1,7 @@
-use crate::api::dto::auth::{
+use crate::presentation::http::dto::auth::{
     LoginRequest, LogoutRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
 };
-use crate::api::state::AppState;
+use crate::presentation::http::state::AppState;
 use axum::{
     extract::State,
     http::StatusCode,

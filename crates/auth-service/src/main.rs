@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 use tracing::info;
 
-use crate::api::server::Server;
+use crate::presentation::http::server::Server;
 use common::config::{config, Config};
 use common::observability;
 
-pub mod api;
+pub mod presentation;
 pub mod application;
 pub mod domain;
 pub mod infrastructure;

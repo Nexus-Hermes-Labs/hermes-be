@@ -1,4 +1,4 @@
-use crate::api::state::AppState;
+use crate::presentation::http::state::AppState;
 use crate::infrastructure::persistence::postgres::user_repository::PostgresAuthUserRepository;
 use axum::http::{header, HeaderValue, Method};
 use common::config::Config;

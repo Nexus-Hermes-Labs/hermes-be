@@ -2,7 +2,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use super::error::UserApplicationError;
-use crate::api::dto::user::{
+use crate::presentation::http::dto::user::{
     CustomStatusDto, MyProfileResponse, PrivacySettingsDto, SetCustomStatusRequest,
     UpdatePrivacySettingsRequest, UpdateProfileRequest, UserProfileResponse, UserSearchResult,
     UserUpdateResponse,

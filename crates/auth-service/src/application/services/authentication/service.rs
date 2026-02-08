@@ -1,4 +1,4 @@
-use crate::api::dto::auth::{
+use crate::presentation::http::dto::auth::{
     AuthResponse, LoginRequest, RefreshTokenResponse, RegisterRequest, UserResponse,
 };
 use crate::application::services::authentication::error::AuthApplicationError;

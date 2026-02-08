@@ -1,4 +1,4 @@
-use crate::api::handlers;
+use crate::presentation::http::handlers;
 use axum::{routing::get, Router};
 use common::observability::HealthCheck;
 use std::sync::Arc;
