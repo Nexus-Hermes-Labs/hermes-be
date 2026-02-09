@@ -1,4 +1,4 @@
-BEGIN;
+`BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -339,4 +339,4 @@ CREATE TRIGGER update_auth_sessions_last_used
     WHEN (OLD.* IS DISTINCT FROM NEW.*)
     EXECUTE FUNCTION update_session_last_used();
 
-COMMIT;
+COMMIT;`

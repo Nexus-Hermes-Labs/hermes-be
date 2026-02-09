@@ -1,12 +1,11 @@
-use crate::domain::user::service::PasswordService;
-use crate::domain::user::valueobject::PasswordHashVO;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use argon2::password_hash::SaltString;
 use crate::infrastructure::security::error::InfraSecurityError;
-use argon2::{
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2,
-};
+
 use common::config::config;
 use rand_core::OsRng;
+use tower::ServiceExt;
+use crate::domain::{PasswordHash as PasswordHashVO, PasswordService};
 
 pub struct Argon2PasswordService {
     pepper: String,
@@ -43,7 +42,7 @@ impl PasswordService for Argon2PasswordService {
     fn verify_password(&self, plain: &str, hash: &PasswordHashVO) -> Result<bool, Self::Error> {
         let peppered = format!("{}{}", plain, self.pepper);
 
-        let parsed = PasswordHash::new(hash.get_hash())
+        let parsed = PasswordHash::new(hash.as_str())
             .map_err(|_| InfraSecurityError::InvalidHashFormat)?;
 
         match Self::argon2().verify_password(peppered.as_bytes(), &parsed) {
@@ -73,8 +72,8 @@ mod tests {
 
         assert!(result.is_ok());
         let hash_vo = result.unwrap();
-        println!("Hash: {}", hash_vo.get_hash());
-        assert!(hash_vo.get_hash().starts_with("$argon2"));
+        println!("Hash: {}", hash_vo.as_str());
+        assert!(hash_vo.as_str().starts_with("$argon2"));
     }
 
     #[test]

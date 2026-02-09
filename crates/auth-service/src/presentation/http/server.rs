@@ -1,5 +1,5 @@
 use crate::presentation::http::state::AppState;
-use crate::infrastructure::persistence::postgres::user_repository::PostgresAuthUserRepository;
+use crate::infrastructure::persistence::postgres::auth_credential_repository::PostgresAuthUserRepository;
 use axum::http::{header, HeaderValue, Method};
 use common::config::Config;
 use common::jwt::JwtManager;
