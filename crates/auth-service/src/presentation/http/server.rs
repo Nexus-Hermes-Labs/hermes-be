@@ -50,7 +50,7 @@ impl Server {
 
         // Create password service
         let argon2_password_service = Arc::new(
-            crate::infrastructure::security::argon2_password_service::Argon2PasswordService::new(),
+            crate::infrastructure::security::password::argon2_service::Argon2PasswordService::new(),
         );
 
         // Create AuthService with UserService and JwtManager

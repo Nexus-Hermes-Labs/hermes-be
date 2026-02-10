@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum InfraSecurityError {
+pub enum PasswordManagerError {
     #[error("Password hashing failed")]
     HashingFailed,
 

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use thiserror::Error;
 use uuid::Uuid;
 use common::AppError;
@@ -61,17 +62,33 @@ pub enum AuthApplicationError {
     // =====================================================
 
     #[error("Token generation failed: {0}")]
-    TokenGenerationFailed(#[from] jsonwebtoken::errors::Error),
+    TokenGenerationFailed(String),
 
     // =====================================================
     // INTERNAL ERRORS
     // =====================================================
 
-    #[error("Password hashing failed")]
-    PasswordHashingFailed,
+    #[error("Hashing failed")]
+    HashingFailed,
 
     #[error("Internal error: {0}")]
     Internal(String),
+
+    // =====================================================
+    // ACCOUNT ERRORS
+    // =====================================================
+
+    #[error("Account is locked until {locked_until}")]
+    AccountLocked {
+        locked_until: DateTime<Utc>,
+    },
+
+    #[error("Account is suspended")]
+    AccountSuspended,
+
+    #[error("Account is deleted")]
+    AccountDeleted,
+
 }
 
 // =====================================================
@@ -91,7 +108,12 @@ impl AuthApplicationError {
 
             // 403 Forbidden
             Self::AccountDeactivated
-            | Self::EmailNotVerified => 403,
+            | Self::EmailNotVerified
+            | Self::AccountSuspended
+            | Self::AccountDeleted => 403,
+
+            // 423 Locked
+            Self::AccountLocked { .. } => 423,
 
             // 404 Not Found
             Self::UserNotFound(_)
@@ -102,7 +124,7 @@ impl AuthApplicationError {
             | Self::UsernameAlreadyExists(_) => 409,
 
             // 500 Internal Server Error
-            Self::PasswordHashingFailed
+            Self::HashingFailed
             | Self::TokenGenerationFailed(_)
             | Self::UserProfileCreationFailed(_)
             | Self::UserServiceError(_)
@@ -112,18 +134,46 @@ impl AuthApplicationError {
 
     pub fn user_message(&self) -> String {
         match self {
-            Self::InvalidCredentials => "Invalid email or password".to_string(),
-            Self::AccountDeactivated => "Your account has been deactivated".to_string(),
-            Self::EmailNotVerified => "Please verify your email before logging in".to_string(),
-            Self::InvalidToken => "Invalid or expired token".to_string(),
-            Self::EmailAlreadyExists(_) => "This email is already registered".to_string(),
-            Self::UsernameAlreadyExists(_) => "This username is already taken".to_string(),
-            Self::InvalidEmail(email) => format!("Invalid email format: {}", email),
-            Self::WeakPassword => "Password must be at least 8 characters with uppercase, lowercase, and numbers".to_string(),
-            Self::UserNotFound(_) | Self::UserNotFoundByEmail(_) => "User not found".to_string(),
+            Self::InvalidCredentials =>
+                "Invalid email or password".to_string(),
 
-            // Hide internal errors
-            _ => "An error occurred. Please try again later.".to_string(),
+            Self::AccountDeactivated =>
+                "Your account has been deactivated".to_string(),
+
+            Self::EmailNotVerified =>
+                "Please verify your email before logging in".to_string(),
+
+            Self::InvalidToken =>
+                "Invalid or expired token".to_string(),
+
+            Self::AccountLocked { locked_until } =>
+                format!("Your account is locked until {}", locked_until),
+
+            Self::AccountSuspended =>
+                "Your account has been suspended".to_string(),
+
+            Self::AccountDeleted =>
+                "Your account has been deleted".to_string(),
+
+            Self::EmailAlreadyExists(_) =>
+                "This email is already registered".to_string(),
+
+            Self::UsernameAlreadyExists(_) =>
+                "This username is already taken".to_string(),
+
+            Self::InvalidEmail(email) =>
+                format!("Invalid email format: {}", email),
+
+            Self::WeakPassword =>
+                "Password must be at least 8 characters with uppercase, lowercase, and numbers".to_string(),
+
+            Self::UserNotFound(_)
+            | Self::UserNotFoundByEmail(_) =>
+                "User not found".to_string(),
+
+            // Internal / hidden
+            _ =>
+                "An error occurred. Please try again later.".to_string(),
         }
     }
 
@@ -133,12 +183,20 @@ impl AuthApplicationError {
             Self::AccountDeactivated => "ACCOUNT_DEACTIVATED",
             Self::EmailNotVerified => "EMAIL_NOT_VERIFIED",
             Self::InvalidToken => "INVALID_TOKEN",
+
+            Self::AccountLocked { .. } => "ACCOUNT_LOCKED",
+            Self::AccountSuspended => "ACCOUNT_SUSPENDED",
+            Self::AccountDeleted => "ACCOUNT_DELETED",
+
             Self::EmailAlreadyExists(_) => "EMAIL_ALREADY_EXISTS",
             Self::UsernameAlreadyExists(_) => "USERNAME_ALREADY_EXISTS",
             Self::InvalidEmail(_) => "INVALID_EMAIL",
             Self::WeakPassword => "WEAK_PASSWORD",
-            Self::UserNotFound(_) | Self::UserNotFoundByEmail(_) => "USER_NOT_FOUND",
-            Self::PasswordHashingFailed => "PASSWORD_HASHING_FAILED",
+
+            Self::UserNotFound(_)
+            | Self::UserNotFoundByEmail(_) => "USER_NOT_FOUND",
+
+            Self::HashingFailed => "PASSWORD_HASHING_FAILED",
             Self::TokenGenerationFailed(_) => "TOKEN_GENERATION_FAILED",
             Self::UserProfileCreationFailed(_) => "USER_PROFILE_CREATION_FAILED",
             Self::UserServiceError(_) => "USER_SERVICE_ERROR",
@@ -148,13 +206,13 @@ impl AuthApplicationError {
 
     pub fn should_log(&self) -> bool {
         matches!(
-            self,
-            Self::PasswordHashingFailed
+        self,
+        Self::HashingFailed
             | Self::TokenGenerationFailed(_)
             | Self::UserProfileCreationFailed(_)
             | Self::UserServiceError(_)
             | Self::Internal(_)
-        )
+    )
     }
 }
 
@@ -169,16 +227,23 @@ impl From<AuthApplicationError> for AppError {
                 AppError::Unauthorized(error.user_message())
             }
 
-            // Account State Errors -> Forbidden
+            // Account State Errors
+            AuthApplicationError::AccountLocked { .. } => {
+                AppError::Locked(error.user_message())
+            }
+
             AuthApplicationError::AccountDeactivated
+            | AuthApplicationError::AccountSuspended
+            | AuthApplicationError::AccountDeleted
             | AuthApplicationError::EmailNotVerified => {
                 AppError::Forbidden(error.user_message())
             }
 
-            // Validation Errors -> Bad Request
+            // Validation Errors
             AuthApplicationError::InvalidEmail(email) => {
                 AppError::BadRequest(format!("Invalid email format: {}", email))
             }
+
             AuthApplicationError::WeakPassword => {
                 AppError::BadRequest(error.user_message())
             }
@@ -187,6 +252,7 @@ impl From<AuthApplicationError> for AppError {
             AuthApplicationError::EmailAlreadyExists(email) => {
                 AppError::Conflict(format!("Email already in use: {}", email))
             }
+
             AuthApplicationError::UsernameAlreadyExists(username) => {
                 AppError::Conflict(format!("Username already taken: {}", username))
             }
@@ -197,6 +263,7 @@ impl From<AuthApplicationError> for AppError {
                     entity_type: format!("User with ID {}", id),
                 }
             }
+
             AuthApplicationError::UserNotFoundByEmail(email) => {
                 AppError::NotFound {
                     entity_type: format!("User with email {}", email),
@@ -208,10 +275,11 @@ impl From<AuthApplicationError> for AppError {
                 AppError::Jwt(jwt_error)
             }
 
-            // Internal Server Errors
-            AuthApplicationError::PasswordHashingFailed => {
+            // Internal Errors
+            AuthApplicationError::HashingFailed => {
                 AppError::InternalServerError("Password processing failed".to_string())
             }
+
             AuthApplicationError::UserProfileCreationFailed(msg)
             | AuthApplicationError::UserServiceError(msg)
             | AuthApplicationError::Internal(msg) => {

@@ -41,10 +41,13 @@ pub enum AppError {
     MessageQueue(String),
 
     #[error("JWT error: {0}")]
-    Jwt(#[from] jsonwebtoken::errors::Error),
+    Jwt(String),
 
     #[error("Configuration error: {0}")]
     Config(String),
+
+    #[error("Account locked: {0}")]
+    Locked(String)
 }
 
 impl AppError {
@@ -55,6 +58,7 @@ impl AppError {
             Self::Unauthorized(_) => StatusCode::UNAUTHORIZED,
             Self::Forbidden(_) => StatusCode::FORBIDDEN,
             Self::Conflict(_) => StatusCode::CONFLICT,
+            Self::Locked(_) => StatusCode::LOCKED,
             Self::Database(_)
             | Self::Cache(_)
             | Self::InternalServerError(_)
@@ -74,6 +78,7 @@ impl AppError {
             Self::Conflict(_) => "CONFLICT",
             Self::Database(_) => "DATABASE_ERROR",
             Self::Cache(_) => "CACHE_ERROR",
+            Self::Locked(_) => "ACCOUNT_LOCKED_ERROR",
             Self::InternalServerError(_) => "INTERNAL_ERROR",
             Self::Jwt(_) => "JWT_ERROR",
             Self::Config(_) => "CONFIG_ERROR",

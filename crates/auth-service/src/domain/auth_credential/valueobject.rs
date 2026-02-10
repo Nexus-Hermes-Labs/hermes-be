@@ -109,6 +109,18 @@ impl AccountStatus {
             Self::Deleted => "deleted",
         }
     }
+
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Active)
+    }
+
+    pub fn is_suspended(&self) -> bool {
+        matches!(self, Self::Suspended)
+    }
+
+    pub fn is_deleted(&self) -> bool {
+        matches!(self, Self::Deleted)
+    }
 }
 
 impl fmt::Display for AccountStatus {

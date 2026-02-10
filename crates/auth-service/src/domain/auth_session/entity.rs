@@ -172,10 +172,15 @@ impl AuthSession {
         Ok(())
     }
 
-    /// Update last_used_at timestamp (called on token refresh)
+    /// Mark session as used (update last_used_at)
+    pub fn mark_as_used(&mut self) {
+        self.last_used_at = Utc::now();
+    }
+
+    /// Update last_used_at timestamp with validation
     pub fn use_session(&mut self) -> Result<(), AuthSessionError> {
         self.ensure_valid()?;
-        self.last_used_at = Utc::now();
+        self.mark_as_used(); 
         Ok(())
     }
 

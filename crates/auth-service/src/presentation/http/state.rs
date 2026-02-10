@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use crate::application::services::authentication::service::AuthService;
 use crate::infrastructure::persistence::postgres::auth_credential_repository::PostgresAuthUserRepository;
-use crate::infrastructure::security::argon2_password_service::Argon2PasswordService;
+use crate::infrastructure::security::password::argon2_service::Argon2PasswordService;
 
 #[derive(Clone)]
 pub struct AppState {

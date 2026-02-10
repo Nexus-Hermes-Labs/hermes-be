@@ -4,3 +4,4 @@ mod middleware;
 mod routes;
 pub mod server;
 mod state;
+mod error;

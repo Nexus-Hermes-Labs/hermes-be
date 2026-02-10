@@ -4,8 +4,7 @@ use argon2::{
 };
 use thiserror::Error;
 
-use crate::domain::auth_credential::PasswordHash as DomainPasswordHash;
-use crate::domain::services::PasswordService;
+use crate::domain::auth_credential::{PasswordHash as DomainPasswordHash, PasswordService};
 
 // ============================================
 // ARGON2 PASSWORD SERVICE
