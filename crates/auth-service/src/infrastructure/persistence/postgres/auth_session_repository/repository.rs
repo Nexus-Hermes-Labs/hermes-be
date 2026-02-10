@@ -3,8 +3,8 @@ use chrono::{DateTime, Utc, Duration};
 use sqlx::PgPool;
 use tracing::{debug, error, info};
 use uuid::Uuid;
-use common::infrastructure::persistance::error::RepositoryError;
-use common::infrastructure::persistance::repository::Repository;
+use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::repository::Repository;
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository};
 
 use super::models::{AuthSessionInsert, AuthSessionRow, AuthSessionUpdate};

@@ -2,7 +2,7 @@ use crate::application::services::user::service::UserApplicationService;
 use crate::infrastructure::persistence::postgres::user_repository::repository::PostgresUserRepository;
 use sqlx::PgPool;
 use std::sync::Arc;
-use common::jwt::JwtManager;
+use common::jwt_manager::JwtManager;
 
 #[derive(Clone)]
 pub struct AppState {

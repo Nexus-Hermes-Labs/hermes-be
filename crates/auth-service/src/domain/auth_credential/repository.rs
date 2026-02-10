@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use common::infrastructure::persistance::repository::Repository;
+use common::infrastructure::persistence::repository::Repository;
 use super::{AuthCredential, Email};
 
 /// Repository for the `AuthCredential` aggregate.

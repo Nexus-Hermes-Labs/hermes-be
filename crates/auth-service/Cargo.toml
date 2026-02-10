@@ -50,6 +50,7 @@ anyhow = { workspace = true }
 # ============================================================================
 argon2 = { workspace = true }       # Password hashing
 jsonwebtoken = { workspace = true } # JWT generation
+sha2 = { workspace = true }
 rand = { workspace = true }         # Token secrets
 
 # ============================================================================

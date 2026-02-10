@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use common::pagination::{Paginated, PaginationParams};
 use common::Repository;
 use uuid::Uuid;
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 
 /// User-specific repository trait for User Service domain
 #[async_trait]

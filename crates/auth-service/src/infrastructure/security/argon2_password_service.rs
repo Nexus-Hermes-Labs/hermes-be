@@ -1,110 +1,220 @@
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use argon2::password_hash::SaltString;
-use crate::infrastructure::security::error::InfraSecurityError;
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
+    Argon2,
+};
+use thiserror::Error;
 
-use common::config::config;
-use rand_core::OsRng;
-use tower::ServiceExt;
-use crate::domain::{PasswordHash as PasswordHashVO, PasswordService};
+use crate::domain::auth_credential::PasswordHash as DomainPasswordHash;
+use crate::domain::services::PasswordService;
 
+// ============================================
+// ARGON2 PASSWORD SERVICE
+// ============================================
+
+/// Argon2 password hashing service
+///
+/// Uses Argon2id variant which provides balanced protection against
+/// side-channel and GPU attacks.
+///
+/// Security parameters (default):
+/// - Memory cost: 19 MiB
+/// - Time cost: 2 iterations
+/// - Parallelism: 1 thread
+///
+/// These are the OWASP recommended minimum values for Argon2id.
 pub struct Argon2PasswordService {
-    pepper: String,
+    hasher: Argon2<'static>,
 }
 
 impl Argon2PasswordService {
+    /// Create a new Argon2 password service with default parameters
     pub fn new() -> Self {
-        let config = config();
-        let pepper = config.secrets.password.pepper.clone();
-        Self { pepper }
+        Self {
+            hasher: Argon2::default(),
+        }
     }
 
-    fn argon2() -> Argon2<'static> {
-        let params = argon2::Params::new(64 * 1024, 3, 1, None).expect("Invalid Argon2 params");
-        Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params)
+    /// Create with custom Argon2 configuration
+    ///
+    /// Use this for fine-tuning security vs performance trade-offs.
+    /// For most use cases, `new()` with default parameters is recommended.
+    pub fn with_config(hasher: Argon2<'static>) -> Self {
+        Self { hasher }
+    }
+}
+
+impl Default for Argon2PasswordService {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl PasswordService for Argon2PasswordService {
-    type Error = InfraSecurityError;
+    type Error = PasswordServiceError;
 
-    fn hash_password(&self, plain: &str) -> Result<PasswordHashVO, Self::Error> {
+    fn hash_password(&self, password: &str) -> Result<DomainPasswordHash, Self::Error> {
+        // Validate password length
+        if password.is_empty() {
+            return Err(PasswordServiceError::EmptyPassword);
+        }
+
+        if password.len() > 72 {
+            // Argon2 has a max length of 4294967295 bytes, but 72 is a practical limit
+            return Err(PasswordServiceError::PasswordTooLong);
+        }
+
+        // Generate a random salt
         let salt = SaltString::generate(&mut OsRng);
-        let peppered = format!("{}{}", plain, self.pepper);
 
-        let hash = Self::argon2()
-            .hash_password(peppered.as_bytes(), &salt)
-            .map_err(|_| InfraSecurityError::HashingFailed)?
-            .to_string();
+        // Hash the password
+        let password_hash = self
+            .hasher
+            .hash_password(password.as_bytes(), &salt)
+            .map_err(|e| PasswordServiceError::HashingFailed(e.to_string()))?;
 
-        Ok(PasswordHashVO::from_hash(hash))
+        // Convert to PHC string format
+        // Format: $argon2id$v=19$m=19456,t=2,p=1$SALT$HASH
+        Ok(DomainPasswordHash::from_hash(password_hash.to_string()))
     }
 
-    fn verify_password(&self, plain: &str, hash: &PasswordHashVO) -> Result<bool, Self::Error> {
-        let peppered = format!("{}{}", plain, self.pepper);
+    fn verify_password(
+        &self,
+        password: &str,
+        hash: &DomainPasswordHash,
+    ) -> Result<bool, Self::Error> {
+        // Parse the stored hash
+        let parsed_hash = PasswordHash::new(hash.as_str())
+            .map_err(|e| PasswordServiceError::InvalidHashFormat(e.to_string()))?;
 
-        let parsed = PasswordHash::new(hash.as_str())
-            .map_err(|_| InfraSecurityError::InvalidHashFormat)?;
-
-        match Self::argon2().verify_password(peppered.as_bytes(), &parsed) {
-            Ok(_) => Ok(true),
+        // Verify the password
+        match self.hasher.verify_password(password.as_bytes(), &parsed_hash) {
+            Ok(()) => Ok(true),
             Err(argon2::password_hash::Error::Password) => Ok(false),
-            Err(_) => Err(InfraSecurityError::VerificationFailed),
+            Err(e) => Err(PasswordServiceError::VerificationFailed(e.to_string())),
         }
     }
 }
 
+// ============================================
+// ERRORS
+// ============================================
+
+#[derive(Debug, Error)]
+pub enum PasswordServiceError {
+    #[error("Password cannot be empty")]
+    EmptyPassword,
+
+    #[error("Password too long (max 72 characters)")]
+    PasswordTooLong,
+
+    #[error("Password hashing failed: {0}")]
+    HashingFailed(String),
+
+    #[error("Password verification failed: {0}")]
+    VerificationFailed(String),
+
+    #[error("Invalid hash format: {0}")]
+    InvalidHashFormat(String),
+}
+
+// ============================================
+// TESTS
+// ============================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn service() -> Argon2PasswordService {
-        Argon2PasswordService {
-            pepper: "randomcharacters".to_string(),
-        }
+    #[test]
+    fn test_hash_and_verify_password() {
+        let service = Argon2PasswordService::new();
+        let password = "SecurePassword123!";
+
+        // Hash password
+        let hash = service.hash_password(password).unwrap();
+
+        // Verify correct password
+        assert!(service.verify_password(password, &hash).unwrap());
+
+        // Verify incorrect password
+        assert!(!service.verify_password("WrongPassword", &hash).unwrap());
     }
 
     #[test]
-    fn hash_password_creates_valid_hash() {
-        let svc = service();
+    fn test_hash_format() {
+        let service = Argon2PasswordService::new();
+        let hash = service.hash_password("test_password").unwrap();
 
-        let result = svc.hash_password("Password123!");
-
-        assert!(result.is_ok());
-        let hash_vo = result.unwrap();
-        println!("Hash: {}", hash_vo.as_str());
-        assert!(hash_vo.as_str().starts_with("$argon2"));
+        // Check PHC format: $argon2id$v=19$...
+        assert!(hash.as_str().starts_with("$argon2id$v=19$"));
     }
 
     #[test]
-    fn verify_password_success() {
-        let svc = service();
-        let password = "my-password";
+    fn test_different_hashes_for_same_password() {
+        let service = Argon2PasswordService::new();
+        let password = "same_password";
 
-        let hash = svc.hash_password(password).unwrap();
+        let hash1 = service.hash_password(password).unwrap();
+        let hash2 = service.hash_password(password).unwrap();
 
-        let verified = svc.verify_password(password, &hash).unwrap();
-        assert!(verified);
+        // Different hashes (different salts)
+        assert_ne!(hash1.as_str(), hash2.as_str());
+
+        // Both verify correctly
+        assert!(service.verify_password(password, &hash1).unwrap());
+        assert!(service.verify_password(password, &hash2).unwrap());
     }
 
     #[test]
-    fn verify_password_wrong_password() {
-        let svc = service();
-
-        let hash = svc.hash_password("correct-pass").unwrap();
-
-        let verified = svc.verify_password("wrong-pass", &hash).unwrap();
-        assert!(!verified);
+    fn test_empty_password_rejected() {
+        let service = Argon2PasswordService::new();
+        let result = service.hash_password("");
+        assert!(matches!(result, Err(PasswordServiceError::EmptyPassword)));
     }
 
     #[test]
-    fn verify_password_invalid_hash_format() {
-        let svc = service();
+    fn test_very_long_password_rejected() {
+        let service = Argon2PasswordService::new();
+        let long_password = "a".repeat(73);
+        let result = service.hash_password(&long_password);
+        assert!(matches!(result, Err(PasswordServiceError::PasswordTooLong)));
+    }
 
-        let fake_hash = PasswordHashVO::from_hash("not-a-valid-hash".to_string());
+    #[test]
+    fn test_invalid_hash_format() {
+        let service = Argon2PasswordService::new();
+        let invalid_hash = DomainPasswordHash::from_hash("invalid_hash_format");
+        let result = service.verify_password("password", &invalid_hash);
+        assert!(result.is_err());
+    }
 
-        let result = svc.verify_password("whatever", &fake_hash);
+    #[test]
+    fn test_timing_safety() {
+        // This test ensures that verification time is roughly constant
+        // regardless of password correctness (helps prevent timing attacks)
+        let service = Argon2PasswordService::new();
+        let hash = service.hash_password("correct_password").unwrap();
 
-        assert!(matches!(result, Err(InfraSecurityError::InvalidHashFormat)));
+        use std::time::Instant;
+
+        // Time correct password
+        let start = Instant::now();
+        let _ = service.verify_password("correct_password", &hash);
+        let correct_duration = start.elapsed();
+
+        // Time incorrect password
+        let start = Instant::now();
+        let _ = service.verify_password("wrong_password", &hash);
+        let wrong_duration = start.elapsed();
+
+        // Durations should be roughly similar (within 50ms)
+        // Note: This is a basic check, not cryptographically rigorous
+        let diff = if correct_duration > wrong_duration {
+            correct_duration - wrong_duration
+        } else {
+            wrong_duration - correct_duration
+        };
+
+        assert!(diff.as_millis() < 50, "Timing difference too large: {:?}", diff);
     }
 }

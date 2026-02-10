@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use uuid::Uuid;
-use common::infrastructure::persistance::repository::Repository;
+use common::infrastructure::persistence::repository::Repository;
 use super::AuthSession;
 
 /// Repository for the `AuthSession` aggregate.

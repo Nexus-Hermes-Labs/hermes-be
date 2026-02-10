@@ -1,6 +1,6 @@
 use thiserror::Error;
 use uuid::Uuid;
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 use crate::domain::user_relationship::erorr::UserRelationshipDomainError;
 
 #[derive(Debug, Error)]

@@ -1,4 +1,4 @@
-use crate::jwt::Claims;
+use crate::jwt_manager::Claims;
 use crate::middleware::authentication::{AuthError, AuthenticatedUser};
 use axum::http::StatusCode;
 use axum::{

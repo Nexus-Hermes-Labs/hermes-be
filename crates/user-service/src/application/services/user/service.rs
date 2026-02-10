@@ -10,7 +10,7 @@ use crate::presentation::http::dto::user::{
 use crate::domain::user::entity::User;
 use crate::domain::user::repository::UserRepository;
 use common::pagination::{Paginated, PaginationParams};
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 use tracing::{error, info, warn};
 
 /// User Service application orchestrator

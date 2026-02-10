@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::PgPool;
 use tracing::{debug, instrument};
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 use crate::domain::user::repository::DiscriminatorRepository;
 
 pub struct PostgresDiscriminatorRepository {

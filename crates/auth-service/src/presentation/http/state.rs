@@ -1,4 +1,4 @@
-use common::jwt::JwtManager;
+use common::jwt_manager::JwtManager;
 use sqlx::PgPool;
 use std::sync::Arc;
 use crate::application::services::authentication::service::AuthService;

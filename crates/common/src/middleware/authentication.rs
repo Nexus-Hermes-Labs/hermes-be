@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use crate::jwt::{Claims, JwtManager};
+use crate::jwt_manager::{Claims, JwtManager};
 use async_trait::async_trait;
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;

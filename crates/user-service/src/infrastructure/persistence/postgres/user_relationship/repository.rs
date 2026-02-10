@@ -6,7 +6,7 @@ use common::{
     Repository,
     pagination::{Paginated, PaginationParams},
 };
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 use crate::domain::user_relationship::{
     entity::UserRelationship,
     repository::UserRelationshipRepository,

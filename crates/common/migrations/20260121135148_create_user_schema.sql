@@ -24,7 +24,7 @@ CREATE TYPE friend_request_privacy AS ENUM (
 -- USER_PROFILES TABLE
 -- =====================================================
 CREATE TABLE user_profiles (
-    id UUID PRIMARY KEY, -- Auth service'den gelen user_id
+    id UUID PRIMARY KEY, -- Come from Auth-table
 
     -- ================= IDENTITY =================
     username VARCHAR(32) NOT NULL

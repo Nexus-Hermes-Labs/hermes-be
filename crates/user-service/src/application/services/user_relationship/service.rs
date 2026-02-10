@@ -11,7 +11,7 @@ use common::pagination::{Paginated, PaginationParams};
 use std::sync::Arc;
 use tracing::{info, instrument, warn};
 use uuid::Uuid;
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 
 pub struct UserRelationshipApplicationService<RR, UR>
 where

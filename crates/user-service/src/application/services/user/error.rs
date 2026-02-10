@@ -1,5 +1,5 @@
 use crate::domain::user::error::UserDomainError;
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 use common::AppError;
 use thiserror::Error;
 

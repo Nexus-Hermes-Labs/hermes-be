@@ -1,7 +1,7 @@
 use crate::domain::auth_credential::{AuthCredential, AuthCredentialRepository, Email};
 use async_trait::async_trait;
-use common::infrastructure::persistance::error::RepositoryError;
-use common::infrastructure::persistance::repository::Repository;
+use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::repository::Repository;
 use sqlx::PgPool;
 use tracing::{debug, error, info};
 use uuid::Uuid;

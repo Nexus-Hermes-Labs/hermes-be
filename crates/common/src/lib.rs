@@ -8,7 +8,7 @@ pub mod dto;
 pub mod error;
 pub mod events;
 pub mod infrastructure;
-pub mod jwt;
+pub mod jwt_manager;
 pub mod message_queue;
 pub mod middleware;
 pub mod observability;

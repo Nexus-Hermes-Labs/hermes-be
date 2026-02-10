@@ -3,7 +3,7 @@ use crate::domain::user::entity::User;
 use crate::domain::user::repository::UserRepository;
 use async_trait::async_trait;
 use common::pagination::{Paginated, PaginationParams};
-use common::persistance::error::RepositoryError;
+use common::persistence::error::RepositoryError;
 use common::Repository;
 use sqlx::PgPool;
 use uuid::Uuid;

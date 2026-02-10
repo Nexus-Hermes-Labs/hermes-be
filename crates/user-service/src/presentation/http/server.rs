@@ -2,7 +2,7 @@ use crate::presentation::http::state::AppState;
 
 use axum::http::{header, HeaderValue, Method};
 use common::config::Config;
-use common::jwt::JwtManager;
+use common::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
 use sqlx::PgPool;
 use std::{net::SocketAddr, sync::Arc};
