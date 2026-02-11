@@ -9,6 +9,7 @@ use uuid::Uuid;
 use super::models::{AuthCredentialInsert, AuthCredentialRow, AuthCredentialUpdate};
 
 /// PostgreSQL implementation of AuthCredentialRepository
+#[derive(Clone)]
 pub struct PostgresAuthCredentialRepository {
     pool: PgPool,
 }

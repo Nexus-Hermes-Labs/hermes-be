@@ -10,6 +10,7 @@ use crate::domain::auth_session::{AuthSession, AuthSessionRepository};
 use super::models::{AuthSessionInsert, AuthSessionRow, AuthSessionUpdate};
 
 /// PostgreSQL implementation of AuthSessionRepository
+#[derive(Clone)]
 pub struct PostgresAuthSessionRepository {
     pool: PgPool,
 }

@@ -1,4 +1,4 @@
-`BEGIN;
+BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -136,14 +136,12 @@ CREATE INDEX idx_auth_credentials_email
     WHERE deleted_at IS NULL;
 
 CREATE INDEX idx_auth_credentials_email_verification_token
-    ON auth_credentials(email_verification_token)
-    WHERE email_verification_token IS NOT NULL
-    AND email_verification_expires_at > NOW();
+    ON auth_credentials(email_verification_token, email_verification_expires_at)
+    WHERE email_verification_token IS NOT NULL;
 
 CREATE INDEX idx_auth_credentials_password_reset_token
-    ON auth_credentials(password_reset_token)
-    WHERE password_reset_token IS NOT NULL
-    AND password_reset_expires_at > NOW();
+    ON auth_credentials(password_reset_token, password_reset_expires_at)
+    WHERE password_reset_token IS NOT NULL;
 
 CREATE INDEX idx_auth_credentials_account_status
     ON auth_credentials(account_status)
@@ -151,7 +149,7 @@ CREATE INDEX idx_auth_credentials_account_status
 
 CREATE INDEX idx_auth_credentials_locked
     ON auth_credentials(locked_until)
-    WHERE locked_until IS NOT NULL AND locked_until > NOW();
+    WHERE locked_until IS NOT NULL;
 
 CREATE INDEX idx_auth_credentials_deleted
     ON auth_credentials(deleted_at)
@@ -161,20 +159,19 @@ CREATE INDEX idx_auth_credentials_deleted
 -- INDEXES - AUTH_SESSIONS
 -- =====================================================
 CREATE INDEX idx_auth_sessions_user_id
-    ON auth_sessions(user_id)
-    WHERE is_revoked = FALSE AND expires_at > NOW();
+    ON auth_sessions(user_id, expires_at)
+    WHERE is_revoked = FALSE;
 
 CREATE INDEX idx_auth_sessions_refresh_token_hash
-    ON auth_sessions(refresh_token_hash)
-    WHERE is_revoked = FALSE AND expires_at > NOW();
+    ON auth_sessions(refresh_token_hash, expires_at)
+    WHERE is_revoked = FALSE;
 
 CREATE INDEX idx_auth_sessions_expires_at
     ON auth_sessions(expires_at)
     WHERE is_revoked = FALSE;
 
 CREATE INDEX idx_auth_sessions_cleanup
-    ON auth_sessions(expires_at, is_revoked)
-    WHERE expires_at < NOW() OR is_revoked = TRUE;
+    ON auth_sessions(expires_at, is_revoked);
 
 -- =====================================================
 -- INDEXES - AUTH_AUDIT_LOG
@@ -339,4 +336,4 @@ CREATE TRIGGER update_auth_sessions_last_used
     WHEN (OLD.* IS DISTINCT FROM NEW.*)
     EXECUTE FUNCTION update_session_last_used();
 
-COMMIT;`
+COMMIT;

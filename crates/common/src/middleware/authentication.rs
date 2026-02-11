@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use crate::jwt_manager::{Claims, JwtManager};
 use async_trait::async_trait;
 use axum::extract::{FromRef, FromRequestParts};
 use axum::http::request::Parts;
@@ -10,6 +9,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
+use crate::infrastructure::security::jwt_manager::{Claims, JwtManager};
 
 pub async fn auth_middleware<S>(
     State(jwt_manager): State<Arc<JwtManager>>,
@@ -31,7 +31,7 @@ where
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
     let claims = jwt_manager
-        .verify_token(token)
+        .verify_access_token(token)
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     req.extensions_mut().insert(claims);

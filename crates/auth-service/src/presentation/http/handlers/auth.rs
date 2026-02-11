@@ -1,5 +1,10 @@
 use std::sync::Arc;
 
+use crate::presentation::http::dto::{
+    ClientInfo, LoginRequest, LogoutRequest, RefreshTokenRequest, RegisterRequest,
+};
+use crate::presentation::http::error::ApiError;
+use crate::state::app_state::AppState;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -7,10 +12,6 @@ use axum::{
     Json,
 };
 use validator::Validate;
-use common::AppError;
-use crate::presentation::http::dto::RegisterRequest;
-use crate::presentation::http::error::ApiError;
-use crate::presentation::http::state::AppState;
 // ============================================
 // AUTH HANDLERS
 // ============================================
@@ -43,11 +44,12 @@ pub async fn register_handler(
 
     // TODO: Extract client info from HTTP request
     // For now, use default (will be implemented with full HTTP context)
-    let client_info = ClientInfo::default();
+    let client_info = self::extract_client_info_from_request();
 
     // Call auth service
     let response = state
-        .auth_service
+        .auth
+        .service
         .register(request, client_info)
         .await
         .map_err(ApiError::from)?;
@@ -83,15 +85,12 @@ pub async fn login_handler(
     request.validate()?;
 
     // TODO: Extract client info from HTTP request
-    let client_info = ClientInfo::new(
-        None, // IP address
-        None, // User agent
-        request.device_name.clone(),
-    );
+    let client_info = self::extract_client_info_from_request();
 
     // Call auth service
     let response = state
-        .auth_service
+        .auth
+        .service
         .login(request, client_info)
         .await
         .map_err(ApiError::from)?;
@@ -129,7 +128,8 @@ pub async fn refresh_token_handler(
 
     // Call auth service
     let response = state
-        .auth_service
+        .auth
+        .service
         .refresh_token(request)
         .await
         .map_err(ApiError::from)?;
@@ -162,27 +162,13 @@ pub async fn logout_handler(
     State(state): State<AppState>,
     Json(request): Json<LogoutRequest>,
 ) -> Result<Response, ApiError> {
+    unimplemented!("Extract user_id and session_id from refresh token");
     // Validate request
     request.validate()?;
 
     // Extract user_id and session_id from refresh token
     // For MVP, we'll just use the token to find the session
     // TODO: Parse JWT to get user_id and session_id
-
-    // Call auth service
-    let response = state
-        .auth_service
-        .logout(
-            // user_id: extracted from token (TODO)
-            // session_id: extracted from token (TODO)
-            request.refresh_token,
-            request.all_devices,
-        )
-        .await
-        .map_err(ApiError::from)?;
-
-    // Return 200 OK with logout confirmation
-    Ok((StatusCode::OK, Json(response)).into_response())
 }
 
 // ============================================

@@ -1,2 +1,2 @@
-mod sha256_service;
-mod error;
+pub mod sha256_service;
+pub mod error;

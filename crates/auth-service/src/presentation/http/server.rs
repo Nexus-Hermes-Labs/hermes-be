@@ -1,70 +1,65 @@
-use crate::presentation::http::state::AppState;
-use crate::infrastructure::persistence::postgres::auth_credential_repository::PostgresAuthUserRepository;
+use crate::application::services::authentication::service::AuthService;
+use crate::state::app_state::AppState;
 use axum::http::{header, HeaderValue, Method};
-use common::config::Config;
-use common::jwt_manager::JwtManager;
+use common::config::{config, Config};
+use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
 use sqlx::PgPool;
+use std::os::linux::raw::stat;
 use std::{net::SocketAddr, sync::Arc};
+use tower::service_fn;
 use tower_http::{
     cors::CorsLayer,
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
     LatencyUnit,
 };
 use tracing::info;
-use crate::application::services::authentication::service::AuthService;
 
+#[derive(Clone)]
 pub struct Server {
-    config: &'static Config,
-    pool: PgPool,
-    redis: redis::aio::ConnectionManager,
-    metrics: Metrics,
+    app_state: AppState,
+    health_check: Arc<HealthCheck>,
 }
 
 impl Server {
     pub async fn new(
-        config: &'static Config,
-        pool: PgPool,
-        redis: redis::aio::ConnectionManager,
-        metrics: Metrics,
+        app_state: AppState,
+        health_check: Arc<HealthCheck>,
     ) -> Result<Self, anyhow::Error> {
         Ok(Self {
-            config,
-            pool,
-            redis,
-            metrics,
+            app_state,
+            health_check,
         })
     }
 
     pub async fn run(self) -> Result<(), anyhow::Error> {
-        let health_check = Arc::new(HealthCheck::new(self.pool.clone(), self.redis.clone()));
+        let app = self.build_router();
+        let addr = self.server_address();
 
-        // Create a JWT manager
-        let jwt_manager = JwtManager::new(
-            &self.config.secrets.jwt.access_secret,
-            &self.config.secrets.jwt.refresh_secret,
-        );
+        info!("🎧 Server listening on {}", addr);
 
-        // Create repositories and services
-        let user_repository = Arc::new(PostgresAuthUserRepository::new(self.pool.clone()));
+        let listener = tokio::net::TcpListener::bind(addr).await?;
+        axum::serve(listener, app)
+            .with_graceful_shutdown(shutdown_signal())
+            .await?;
 
-        // Create password service
-        let argon2_password_service = Arc::new(
-            crate::infrastructure::security::password::argon2_service::Argon2PasswordService::new(),
-        );
+        Ok(())
+    }
 
-        // Create AuthService with UserService and JwtManager
-        let auth_service = AuthService::new(
-            Arc::clone(&user_repository),
-            argon2_password_service,
-            jwt_manager.clone(),
-        );
+    fn build_router(&self) -> axum::Router {
+        let cors = self.cors_layer();
+        let trace = self.trace_layer();
 
-        // Create unified AppState
-        let app_state = AppState::new(self.pool.clone(), auth_service, jwt_manager);
+        super::routes::create_router(
+            self.app_state.clone(),
+            self.health_check.clone(),
+            cors,
+            trace,
+        )
+    }
 
-        // Build CORS layer
-        let cors = CorsLayer::new()
+    fn cors_layer(&self) -> CorsLayer {
+        CorsLayer::new()
             .allow_methods([
                 Method::GET,
                 Method::POST,
@@ -74,41 +69,31 @@ impl Server {
             ])
             .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
             .allow_origin(
-                self.config
+                config()
                     .service
                     .allowed_origins
                     .iter()
                     .map(|origin| origin.parse::<HeaderValue>().unwrap())
                     .collect::<Vec<_>>(),
-            );
+            )
+    }
 
-        // Build trace layer
-        let trace_layer = TraceLayer::new_for_http()
+    fn trace_layer(
+        &self,
+    ) -> TraceLayer<
+        tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
+    > {
+        TraceLayer::new_for_http()
             .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
             .on_response(
                 DefaultOnResponse::new()
                     .level(tracing::Level::INFO)
                     .latency_unit(LatencyUnit::Millis),
-            );
+            )
+    }
 
-        let version = env!("CARGO_PKG_VERSION");
-        info!("Running version {}", version);
-
-        // Create the application router
-        let app = super::routes::create_router(app_state, health_check, cors, trace_layer);
-
-        // Create a server address
-        let addr = SocketAddr::from(([0, 0, 0, 0], self.config.service.port));
-
-        info!("Server listening on {}", addr);
-
-        // Start server
-        let listener = tokio::net::TcpListener::bind(addr).await?;
-        axum::serve(listener, app)
-            .with_graceful_shutdown(shutdown_signal())
-            .await?;
-
-        Ok(())
+    fn server_address(&self) -> SocketAddr {
+        SocketAddr::from(([0, 0, 0, 0], config().service.port))
     }
 }
 
@@ -135,5 +120,5 @@ async fn shutdown_signal() {
         _ = terminate => {},
     }
 
-    info!("Shutdown signal received, starting graceful shutdown");
+    info!("⏹️  Shutdown signal received, starting graceful shutdown");
 }

@@ -1,7 +1,8 @@
-use async_trait::async_trait;
-use uuid::Uuid;
-use common::infrastructure::persistence::repository::Repository;
 use super::AuthSession;
+use async_trait::async_trait;
+use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::repository::Repository;
+use uuid::Uuid;
 
 /// Repository for the `AuthSession` aggregate.
 ///
@@ -30,9 +31,7 @@ use super::AuthSession;
 /// 🎯 DOMAIN-SPECIFIC METHODS
 /// --------------------------------------------------
 #[async_trait]
-pub trait AuthSessionRepository:
-    Repository<AuthSession, Uuid> + Send + Sync
-{
+pub trait AuthSessionRepository: Repository<AuthSession, Uuid, Error = RepositoryError> {
     // ============================================
     // SESSION LOOKUPS
     // ============================================
@@ -48,35 +47,21 @@ pub trait AuthSessionRepository:
     // ============================================
 
     /// Find all active (non-revoked, non-expired) sessions for a user
-    async fn find_active_by_user_id(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<AuthSession>, Self::Error>;
+    async fn find_active_by_user_id(&self, user_id: Uuid) -> Result<Vec<AuthSession>, Self::Error>;
 
     /// Find all sessions (including revoked/expired) for a user
-    async fn find_all_by_user_id(
-        &self,
-        user_id: Uuid,
-    ) -> Result<Vec<AuthSession>, Self::Error>;
+    async fn find_all_by_user_id(&self, user_id: Uuid) -> Result<Vec<AuthSession>, Self::Error>;
 
     // ============================================
     // BULK OPERATIONS
     // ============================================
 
     /// Revoke all sessions for a user (logout from all devices)
-    async fn revoke_all_by_user_id(
-        &self,
-        user_id: Uuid,
-    ) -> Result<usize, Self::Error>;
+    async fn revoke_all_by_user_id(&self, user_id: Uuid) -> Result<usize, Self::Error>;
 
     /// Delete expired sessions (cleanup job)
-    async fn delete_expired_sessions(
-        &self,
-    ) -> Result<usize, Self::Error>;
+    async fn delete_expired_sessions(&self) -> Result<usize, Self::Error>;
 
     /// Delete revoked sessions older than N days (cleanup job)
-    async fn delete_old_revoked_sessions(
-        &self,
-        days: i64,
-    ) -> Result<usize, Self::Error>;
+    async fn delete_old_revoked_sessions(&self, days: i64) -> Result<usize, Self::Error>;
 }

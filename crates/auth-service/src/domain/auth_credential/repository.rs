@@ -1,7 +1,8 @@
-use async_trait::async_trait;
-use uuid::Uuid;
-use common::infrastructure::persistence::repository::Repository;
 use super::{AuthCredential, Email};
+use async_trait::async_trait;
+use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::repository::Repository;
+use uuid::Uuid;
 
 /// Repository for the `AuthCredential` aggregate.
 ///
@@ -31,17 +32,14 @@ use super::{AuthCredential, Email};
 /// --------------------------------------------------
 #[async_trait]
 pub trait AuthCredentialRepository:
-    Repository<AuthCredential, Uuid> + Send + Sync
+    Repository<AuthCredential, Uuid, Error = RepositoryError>
 {
     // ============================================
     // DOMAIN QUERIES
     // ============================================
 
     /// Find credential by email
-    async fn find_by_email(
-        &self,
-        email: &Email,
-    ) -> Result<Option<AuthCredential>, Self::Error>;
+    async fn find_by_email(&self, email: &Email) -> Result<Option<AuthCredential>, Self::Error>;
 
     // ============================================
     // TOKEN-BASED QUERIES
@@ -61,10 +59,7 @@ pub trait AuthCredentialRepository:
     // EXISTENCE CHECKS
     // ============================================
 
-    async fn exists_by_email(
-        &self,
-        email: &Email,
-    ) -> Result<bool, Self::Error>;
+    async fn exists_by_email(&self, email: &Email) -> Result<bool, Self::Error>;
 
     // ============================================
     // ADMIN

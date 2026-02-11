@@ -1,43 +1,7 @@
-use crate::jwt_manager::Claims;
-use crate::middleware::authentication::{AuthError, AuthenticatedUser};
-use axum::http::StatusCode;
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::{IntoResponse, Response},
-};
-
 const REQUIRED_ADMIN: &str = "admin";
 
-/// Middleware to require admin role
-pub async fn require_admin(req: Request, next: Next) -> Result<Response, StatusCode> {
-    let claims = req
-        .extensions()
-        .get::<Claims>()
-        .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    if claims.role != REQUIRED_ADMIN {
-        return Err(StatusCode::FORBIDDEN);
-    }
-
-    Ok(next.run(req).await)
-}
-
-/// Generic role checker - can be used for different roles
-pub async fn require_role(
-    authenticated_user: AuthenticatedUser,
-    required_role: &str,
-    request: Request,
-    next: Next,
-) -> Result<Response, AuthError> {
-    let role = authenticated_user.0.role;
-
-    if role != required_role {
-        return Err(AuthError::InsufficientPermissions);
-    }
-
-    Ok(next.run(request).await)
-}
+// TODO: will impl
 
 /// Check if a user has one of the allowed roles
 pub fn has_role(user_role: &str, allowed_roles: &[&str]) -> bool {

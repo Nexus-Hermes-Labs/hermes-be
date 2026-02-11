@@ -1,6 +1,7 @@
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use crate::domain::auth_session::{RefreshTokenHash, TokenHasher};
+use crate::infrastructure::security::token::error::TokenHasherError;
 // ============================================
 // SHA256 TOKEN HASHER
 // ============================================
@@ -14,6 +15,7 @@ use crate::domain::auth_session::{RefreshTokenHash, TokenHasher};
 /// Notes:
 /// - Fast by design (used on every refresh)
 /// - Not intended for password hashing
+#[derive(Clone)]
 pub struct Sha256TokenHasher;
 
 impl Sha256TokenHasher {

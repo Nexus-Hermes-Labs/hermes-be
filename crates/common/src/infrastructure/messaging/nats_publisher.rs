@@ -1,12 +1,13 @@
+use super::error::MessagingError;
+use super::event_publisher::EventPublisher;
+use crate::domain::event::EventEnvelope;
 use async_nats::Client;
 use async_trait::async_trait;
 use serde::Serialize;
 use tracing::{debug, error, info};
-use crate::domain::event::EventEnvelope;
-use super::error::MessagingError;
-use super::event_publisher::EventPublisher;
 
 /// NATS event publisher
+#[derive(Clone)]
 pub struct NatsEventPublisher {
     client: Client,
     service_name: String,
@@ -14,18 +15,13 @@ pub struct NatsEventPublisher {
 
 impl NatsEventPublisher {
     /// Create new NATS publisher
-    pub async fn new(
-        nats_url: &str,
-        service_name: impl Into<String>,
-    ) -> Result<Self, MessagingError> {
+    pub async fn new(service_name: &'static str, nats_url: &str) -> Result<Self, MessagingError> {
         info!(nats_url = %nats_url, "Connecting to NATS");
 
-        let client = async_nats::connect(nats_url)
-            .await
-            .map_err(|e| {
-                error!(error = %e, "Failed to connect to NATS");
-                MessagingError::ConnectionFailed(e.to_string())
-            })?;
+        let client = async_nats::connect(nats_url).await.map_err(|e| {
+            error!(error = %e, "Failed to connect to NATS");
+            MessagingError::ConnectionFailed(e.to_string())
+        })?;
 
         info!("Successfully connected to NATS");
 
@@ -36,7 +32,7 @@ impl NatsEventPublisher {
     }
 
     /// Create with existing client
-    pub fn with_client(client: Client, service_name: impl Into<String>) -> Self {
+    pub fn with_client(service_name: impl Into<String>, client: Client) -> Self {
         Self {
             client,
             service_name: service_name.into(),
@@ -94,7 +90,7 @@ impl EventPublisher for NatsEventPublisher {
 
     async fn health_check(&self) -> Result<(), MessagingError> {
         let subject = format!("_healthcheck.{}", self.service_name);
-        
+
         self.client
             .publish(subject, "ping".into())
             .await

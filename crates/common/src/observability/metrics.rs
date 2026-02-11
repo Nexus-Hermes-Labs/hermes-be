@@ -1,5 +1,6 @@
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 
+#[derive(Clone)]
 pub struct Metrics {
     handle: PrometheusHandle,
 }

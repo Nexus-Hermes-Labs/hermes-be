@@ -32,7 +32,6 @@ install: ## Install development dependencies
 setup: docker-up ## Initial project setup
 	@echo -e "$(BLUE)⚙️  Setting up project...$(NC)"
 	@cp -n .env.example .env || true
-	@sleep 3
 	@make db-migrate
 	@make db-seed
 	@echo ""
@@ -44,9 +43,9 @@ setup: docker-up ## Initial project setup
 
 up: ## Start all Docker services
 	@echo -e "$(BLUE)🚀 Starting all services...$(NC)"
-	@$(COMPOSE) up -d
+	@$(COMPOSE) up -d --wait
 	@echo -e "$(YELLOW)⏳ Waiting for services to be healthy...$(NC)"
-	@sleep 5
+	@sleep 10
 	@$(COMPOSE) ps
 	@echo -e "$(GREEN)✅ Services started successfully$(NC)"
 
@@ -112,9 +111,13 @@ db-migrate: ## Run database migrations
 	@sqlx migrate run --source $(MIGRATION_PATH)
 	@echo -e "$(GREEN)✅ Migrations completed$(NC)"
 
-db-seed: ## Seed database with test data
+db-seed:
 	@echo -e "$(BLUE)🌱 Seeding database...$(NC)"
-	@psql $(DB_URL) -f $(SEED_PATH)/01_users.sql
+	@set -e; \
+	for file in $$(ls $(SEED_PATH)/*.sql | sort); do \
+		echo "Running $$file"; \
+		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
+	done
 	@echo -e "$(GREEN)✅ Database seeded$(NC)"
 
 db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database

@@ -1,3 +1,4 @@
+use std::sync::LazyLock;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -21,7 +22,7 @@ pub struct RegisterRequest {
         message = "Username must be between 3 and 32 characters"
     ))]
     #[validate(regex(
-        path = "USERNAME_REGEX",
+        path = *USERNAME_REGEX,
         message = "Username can only contain lowercase letters, numbers, and underscores"
     ))]
     pub username: String,
@@ -73,7 +74,7 @@ pub use super::shared::AuthResponseWithUser as RegisterResponse;
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-static USERNAME_REGEX: Lazy<Regex> = Lazy::new(|| {
+static USERNAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^[a-z0-9_]+$").expect("Failed to compile username regex")
 });
 

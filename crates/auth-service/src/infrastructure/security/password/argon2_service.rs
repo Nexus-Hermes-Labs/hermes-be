@@ -21,6 +21,7 @@ use crate::domain::auth_credential::{PasswordHash as DomainPasswordHash, Passwor
 /// - Parallelism: 1 thread
 ///
 /// These are the OWASP recommended minimum values for Argon2id.
+#[derive(Clone)]
 pub struct Argon2PasswordService {
     hasher: Argon2<'static>,
 }

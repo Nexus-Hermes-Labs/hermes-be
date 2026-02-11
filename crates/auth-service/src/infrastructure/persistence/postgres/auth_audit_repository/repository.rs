@@ -1,12 +1,12 @@
+use super::models::{AuthAuditLog, AuthAuditLogRow};
+use crate::infrastructure::persistence::postgres::auth_audit_repository::AuditLogFilters;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tracing::debug;
 use uuid::Uuid;
-use crate::infrastructure::persistence::postgres::auth_audit_repository::AuditLogFilters;
-use super::models::{AuthAuditLog, AuthAuditLogRow};
 
 /// PostgreSQL implementation of AuthAuditRepository
-/// 
+///
 /// Note: This is a query-only repository. Audit logs are created
 /// automatically via database triggers, not through application code.
 pub struct PostgresAuthAuditRepository {
@@ -99,7 +99,7 @@ impl PostgresAuthAuditRepository {
             param_count += 1;
         }
 
-        if let Some(ref event_type) = filters.event_type {
+        if let Some(event_type) = filters.event_type.as_ref() {
             query.push_str(&format!(" AND event_type = ${}", param_count));
             bindings.push(Box::new(event_type));
             param_count += 1;
@@ -128,19 +128,13 @@ impl PostgresAuthAuditRepository {
 
         // This is a simplified version - in production you'd want proper dynamic query building
         if filters.user_id.is_some() && filters.event_type.is_none() {
-            return self.find_by_user_id(
-                filters.user_id.unwrap(),
-                limit,
-                offset
-            ).await;
+            return self
+                .find_by_user_id(filters.user_id.unwrap(), limit, offset)
+                .await;
         }
 
-        if filters.event_type.is_some() && filters.user_id.is_none() {
-            return self.find_by_event_type(
-                &filters.event_type.unwrap(),
-                limit,
-                offset
-            ).await;
+        if let (None, Some(event_type)) = (&filters.user_id, &filters.event_type) {
+            return self.find_by_event_type(event_type, limit, offset).await;
         }
 
         // Fallback to user_id if both are present
@@ -177,27 +171,21 @@ impl PostgresAuthAuditRepository {
 
     /// Count audit logs by user
     pub async fn count_by_user_id(&self, user_id: Uuid) -> Result<i64, sqlx::Error> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM auth_audit_log WHERE user_id = $1",
-        )
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
+        let count: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM auth_audit_log WHERE user_id = $1")
+                .bind(user_id)
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(count)
     }
 
     /// Delete old audit logs (cleanup job)
-    pub async fn delete_older_than(
-        &self,
-        before: DateTime<Utc>,
-    ) -> Result<usize, sqlx::Error> {
-        let result = sqlx::query(
-            "DELETE FROM auth_audit_log WHERE created_at < $1",
-        )
-        .bind(before)
-        .execute(&self.pool)
-        .await?;
+    pub async fn delete_older_than(&self, before: DateTime<Utc>) -> Result<usize, sqlx::Error> {
+        let result = sqlx::query("DELETE FROM auth_audit_log WHERE created_at < $1")
+            .bind(before)
+            .execute(&self.pool)
+            .await?;
 
         Ok(result.rows_affected() as usize)
     }

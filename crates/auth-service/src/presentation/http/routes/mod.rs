@@ -1,7 +1,7 @@
 mod auth;
 mod health;
 
-use crate::presentation::http::state::AppState;
+use crate::state::app_state::AppState;
 use axum::Router;
 use common::observability::HealthCheck;
 use std::sync::Arc;

@@ -58,22 +58,22 @@ where
     EP: EventPublisher,
 {
     pub fn new(
+        service_name: impl Into<String>,
         credential_repo: Arc<CR>,
         session_repo: Arc<SR>,
         password_service: Arc<PS>,
         token_hasher: Arc<TH>,
         event_publisher: Arc<EP>,
         jwt_manager: Arc<JwtManager>,
-        service_name: impl Into<String>,
     ) -> Self {
         Self {
+            service_name: service_name.into(),
             credential_repo,
             session_repo,
             password_service,
             token_hasher,
             event_publisher,
             jwt_manager,
-            service_name: service_name.into(),
         }
     }
 

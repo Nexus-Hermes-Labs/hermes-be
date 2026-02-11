@@ -138,11 +138,7 @@ impl JwtManager {
     /// - Secrets should be cryptographically random
     /// - Secrets should be at least 32 bytes (256 bits)
     /// - Store secrets in environment variables or secret manager
-    pub fn new(
-        issuer: impl Into<String>,
-        access_secret: &str,
-        refresh_secret: &str,
-    ) -> Result<Self, JwtError> {
+    pub fn new(issuer: &str, access_secret: &str, refresh_secret: &str) -> Result<Self, JwtError> {
         // Validate secret lengths
         if access_secret.len() < 32 {
             return Err(JwtError::ConfigurationError(
@@ -337,7 +333,7 @@ mod tests {
             "test_access_secret_minimum_32_chars_long",
             "test_refresh_secret_minimum_32_chars_long",
         )
-            .unwrap()
+        .unwrap()
     }
 
     #[test]
@@ -346,7 +342,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let token = manager
-            .create_access_token(user_id, "test@example.com",  1)
+            .create_access_token(user_id, "test@example.com", 1)
             .unwrap();
 
         let claims = manager.verify_access_token(&token).unwrap();
@@ -364,7 +360,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let token = manager
-            .create_refresh_token(user_id, "test@example.com",  7)
+            .create_refresh_token(user_id, "test@example.com", 7)
             .unwrap();
 
         let claims = manager.verify_refresh_token(&token).unwrap();
@@ -393,7 +389,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let access_token = manager
-            .create_access_token(user_id, "test@example.com",  1)
+            .create_access_token(user_id, "test@example.com", 1)
             .unwrap();
 
         let result = manager.verify_refresh_token(&access_token);
@@ -406,7 +402,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let token = manager
-            .create_access_token(user_id, "test@example.com",  1)
+            .create_access_token(user_id, "test@example.com", 1)
             .unwrap();
 
         let claims = manager.verify_access_token(&token).unwrap();
@@ -420,7 +416,11 @@ mod tests {
 
     #[test]
     fn test_weak_secret_rejected() {
-        let result = JwtManager::new("test", "short_secret", "test_refresh_secret_minimum_32_chars_long");
+        let result = JwtManager::new(
+            "test",
+            "short_secret",
+            "test_refresh_secret_minimum_32_chars_long",
+        );
         assert!(result.is_err());
     }
 }

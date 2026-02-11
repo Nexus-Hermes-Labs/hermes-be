@@ -5,80 +5,41 @@ use crate::presentation::http::server::Server;
 use common::config::{config, Config};
 use common::observability;
 
-pub mod presentation;
 pub mod application;
+pub mod bootstrap;
 pub mod domain;
 pub mod infrastructure;
+pub mod presentation;
+pub mod state;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // ============================================
-    // 1. Load Configuration
-    // ============================================
     let service_name = env!("CARGO_PKG_NAME");
-    common::config::init_config(service_name);
 
-    // ============================================
-    // 2. Initialize Observability
-    // ============================================
-    observability::tracing::init_tracing(
-        &config().logging,
-        &config().service.name,
-        &config().service.environment.to_string(),
+    // Initialize configuration
+    common::config::init_config(service_name).expect("Failed to load config");
+
+    // Initialize observability
+    common::observability::tracing::init_tracing(
+        &common::config::config().logging,
+        &common::config::config().service.name,
+        &common::config::config().service.environment.to_string(),
     )
     .context("Failed to initialize tracing")?;
 
     info!(
         "🚀 Starting {} v{}",
-        config().service.name,
-        config().service.version
+        common::config::config().service.name,
+        common::config::config().service.version
     );
-    info!("📍 Environment: {}", config().service.environment);
-    info!(
-        "🌐 Host: {}:{}",
-        config().service.host,
-        config().service.port
-    );
+    info!("📍 Environment: {}", common::config::config().service.environment);
 
-    let metrics =
-        observability::metrics::Metrics::init().context("Failed to initialize metrics")?;
+    // Bootstrap and run application
+    let result = bootstrap::run(service_name).await;
 
-    // ============================================
-    // 3. Initialize Database
-    // ============================================
-    info!("📦 Connecting to PostgreSQL...");
-    let db_pool = infrastructure::persistence::postgres::connection::create_pool(&config().database)
-        .await
-        .context("Failed to connect to database")?;
-    info!("✅ Database connected");
+    // Cleanup
+    info!("👋 {} stopped", service_name);
+    common::observability::tracing::shutdown_tracing();
 
-    // ============================================
-    // 4. Initialize Redis
-    // ============================================
-    info!("🔴 Connecting to Redis...");
-    let redis_client =
-        redis::Client::open(config().redis.url.clone()).context("Failed to create Redis client")?;
-    let redis_manager = redis::aio::ConnectionManager::new(redis_client)
-        .await
-        .context("Failed to connect to Redis")?;
-    info!("✅ Redis connected");
-
-    // ============================================
-    // 5. Start Server
-    // ============================================
-    info!("🎯 Auth Service ready!");
-
-    let server = Server::new(&config(), db_pool, redis_manager, metrics)
-        .await
-        .context("Failed to initialize server")?;
-
-    server.run().await.context("Server error")?;
-
-    // ============================================
-    // 6. Cleanup
-    // ============================================
-    info!("👋 Auth Service stopped");
-    observability::tracing::shutdown_tracing();
-
-    Ok(())
+    result
 }
