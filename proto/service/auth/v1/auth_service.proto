@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package auth.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "common/v1/types.proto";
+
+// ============================================
+// AUTH SERVICE
+// ============================================
+
+/// Authentication and authorization service
+///
+/// Note: This is for service-to-service communication only.
+/// User-facing auth is via HTTP REST API.
+service AuthService {
+  // ============================================
+  // TOKEN VALIDATION (for other services)
+  // ============================================
+  
+  /// Validate access token and return user claims
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  
+  /// Introspect token (OAuth 2.0 style)
+  rpc IntrospectToken(IntrospectTokenRequest) returns (IntrospectTokenResponse);
+  
+  // ============================================
+  // SESSION MANAGEMENT
+  // ============================================
+  
+  /// Get active sessions for user
+  rpc GetUserSessions(GetUserSessionsRequest) returns (GetUserSessionsResponse);
+  
+  /// Revoke specific session
+  rpc RevokeSession(RevokeSessionRequest) returns (google.protobuf.Empty);
+  
+  /// Revoke all user sessions (force logout)
+  rpc RevokeAllUserSessions(RevokeAllUserSessionsRequest) returns (RevokeAllUserSessionsResponse);
+  
+  // ============================================
+  // PERMISSION CHECKS (for authorization)
+  // ============================================
+  
+  /// Check if user has specific permission
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+  
+  /// Get all user permissions
+  rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+}
+
+// ============================================
+// MESSAGES
+// ============================================
+
+// ──────────────────────────────────────────
+// Token Validation
+// ──────────────────────────────────────────
+
+message ValidateTokenRequest {
+  string access_token = 1;
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;
+  TokenClaims claims = 2;       // Only present if valid
+  string error = 3;             // Only present if invalid
+}
+
+message TokenClaims {
+  string user_id = 1;
+  string email = 2;
+  string role = 3;
+  google.protobuf.Timestamp expires_at = 4;
+  google.protobuf.Timestamp issued_at = 5;
+}
+
+// ──────────────────────────────────────────
+// Token Introspection (OAuth 2.0 RFC 7662)
+// ──────────────────────────────────────────
+
+message IntrospectTokenRequest {
+  string token = 1;
+  string token_type_hint = 2;   // "access_token" or "refresh_token"
+}
+
+message IntrospectTokenResponse {
+  bool active = 1;
+  string scope = 2;
+  string client_id = 3;
+  string username = 4;
+  int64 exp = 5;
+  int64 iat = 6;
+}
+
+// ──────────────────────────────────────────
+// Session Management
+// ──────────────────────────────────────────
+
+message GetUserSessionsRequest {
+  string user_id = 1;
+}
+
+message GetUserSessionsResponse {
+  repeated SessionInfo sessions = 1;
+}
+
+message SessionInfo {
+  string session_id = 1;
+  string device_name = 2;
+  string ip_address = 3;
+  string user_agent = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp last_used_at = 6;
+  google.protobuf.Timestamp expires_at = 7;
+  bool is_current = 8;          // Is this the current session?
+}
+
+message RevokeSessionRequest {
+  string session_id = 1;
+  string user_id = 2;           // For validation
+}
+
+message RevokeAllUserSessionsRequest {
+  string user_id = 1;
+  optional string except_session_id = 2;  // Keep this session active
+}
+
+message RevokeAllUserSessionsResponse {
+  int32 sessions_revoked = 1;
+}
+
+// ──────────────────────────────────────────
+// Permission Checks
+// ──────────────────────────────────────────
+
+message CheckPermissionRequest {
+  string user_id = 1;
+  string permission = 2;        // e.g., "posts.create", "users.delete"
+  string resource_id = 3;       // Optional resource ID
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+  string reason = 2;            // Denial reason if not allowed
+}
+
+message GetUserPermissionsRequest {
+  string user_id = 1;
+}
+
+message GetUserPermissionsResponse {
+  repeated string permissions = 1;
+  string role = 2;
+}

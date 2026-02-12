@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package common.v1;
+
+// ============================================
+// COMMON TYPES (Used across all services)
+// ============================================
+
+/// Timestamp wrapper (using well-known types)
+import "google/protobuf/timestamp.proto";
+
+/// Empty response (for operations with no return value)
+import "google/protobuf/empty.proto";
+
+// ============================================
+// PAGINATION
+// ============================================
+
+/// Pagination request parameters
+message PaginationRequest {
+  int32 page = 1;        // Page number (1-indexed)
+  int32 page_size = 2;   // Items per page (max 100)
+}
+
+/// Pagination response metadata
+message PaginationResponse {
+  int32 total_items = 1;   // Total number of items
+  int32 total_pages = 2;   // Total number of pages
+  int32 current_page = 3;  // Current page number
+  int32 page_size = 4;     // Items per page
+}
+
+// ============================================
+// ERROR HANDLING
+// ============================================
+
+/// Standard error response
+message Error {
+  ErrorCode code = 1;
+  string message = 2;
+  map<string, string> details = 3;  // Additional context
+}
+
+/// Standard error codes across services
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  
+  // Client errors (4xx)
+  ERROR_CODE_INVALID_ARGUMENT = 1;
+  ERROR_CODE_NOT_FOUND = 2;
+  ERROR_CODE_ALREADY_EXISTS = 3;
+  ERROR_CODE_PERMISSION_DENIED = 4;
+  ERROR_CODE_UNAUTHENTICATED = 5;
+  
+  // Server errors (5xx)
+  ERROR_CODE_INTERNAL = 6;
+  ERROR_CODE_UNAVAILABLE = 7;
+  ERROR_CODE_DEADLINE_EXCEEDED = 8;
+}
+
+// ============================================
+// AUDIT METADATA
+// ============================================
+
+/// Metadata for audit logging
+message AuditMetadata {
+  string correlation_id = 1;        // Request correlation ID
+  string user_id = 2;               // User performing action
+  string ip_address = 3;            // Client IP address
+  string user_agent = 4;            // Client user agent
+  google.protobuf.Timestamp timestamp = 5;
+}

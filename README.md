@@ -86,7 +86,7 @@ cp .env.example .env
 docker-compose up -d
 
 # Run database migrations
-sqlx migrate run --source crates/common/migrations
+sqlx migrate run --source services/common/migrations
 
 # Build the project
 cargo build --workspace
@@ -94,7 +94,7 @@ cargo build --workspace
 # Start all services (in separate terminals or use tmux)
 cargo run -p gateway-service    # Terminal 1: http://localhost:8080
 cargo run -p auth-service       # Terminal 2: http://localhost:8081
-cargo run -p user-service       # Terminal 3: http://localhost:8082
+cargo run -p user_profile-service       # Terminal 3: http://localhost:8082
 cargo run -p channel-service    # Terminal 4: http://localhost:8083
 cargo run -p chat-service       # Terminal 5: http://localhost:8084
 cargo run -p voice-service      # Terminal 6: http://localhost:8085
@@ -121,14 +121,14 @@ cargo test --workspace
 - **[Development Roadmap](docs/ROADMAP.md)** - 12-week development plan with
   weekly tasks
 - **Service READMEs** - Each service has detailed documentation in
-  `crates/*/README.md`
+  `services/*/README.md`
 
 ## 🎯 API Examples
 
 ### Authentication
 
 ```bash
-# Register a new user
+# Register a new user_profile
 curl -X POST http://localhost:8081/register \
   -H "Content-Type: application/json" \
   -d '{
@@ -229,7 +229,7 @@ cargo clippy --workspace
 
 ```
 hermes-clone/
-├── crates/
+├── services/
 │   ├── common/              # Shared library (models, errors, utilities)
 │   │   ├── migrations/      # Database migrations
 │   │   └── seeds/           # Test data

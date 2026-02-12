@@ -842,7 +842,7 @@ Published when a new user registers.
 ```json
 {
   "event_id": "990e8400-e29b-41d4-a716-446655440000",
-  "event_type": "user.created",
+  "event_type": "user_profile.created",
   "timestamp": "2025-01-01T16:00:00Z",
   "version": "1.0",
   "data": {
@@ -904,7 +904,7 @@ Subscribed to handle user deletion across services.
 ```json
 {
   "event_id": "cc0e8400-e29b-41d4-a716-446655440000",
-  "event_type": "user.deleted",
+  "event_type": "user_profile.deleted",
   "timestamp": "2025-01-01T17:00:00Z",
   "version": "1.0",
   "data": {

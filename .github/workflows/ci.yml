@@ -59,7 +59,7 @@ jobs:
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  # Build all crates
+  # Build all services
   build:
     name: Build
     runs-on: ubuntu-latest

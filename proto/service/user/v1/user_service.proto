@@ -1,0 +1,131 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "common/v1/types.proto";
+
+// ============================================
+// USER SERVICE
+// ============================================
+
+/// User profile management service
+service UserService {
+  // ============================================
+  // PROFILE MANAGEMENT
+  // ============================================
+  
+  /// Create user profile (called by auth-service during registration)
+  rpc CreateUserProfile(CreateUserProfileRequest) returns (UserProfileResponse);
+  
+  /// Get user profile by ID
+  rpc GetUserProfile(GetUserProfileRequest) returns (UserProfileResponse);
+  
+  /// Update user profile
+  rpc UpdateUserProfile(UpdateUserProfileRequest) returns (UserProfileResponse);
+  
+  /// Delete user profile (soft delete)
+  rpc DeleteUserProfile(DeleteUserProfileRequest) returns (google.protobuf.Empty);
+  
+  // ============================================
+  // BULK OPERATIONS
+  // ============================================
+  
+  /// Get multiple user profiles (for displaying user lists)
+  rpc BatchGetUserProfiles(BatchGetUserProfilesRequest) returns (BatchGetUserProfilesResponse);
+  
+  /// Search users by username
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+}
+
+// ============================================
+// MESSAGES
+// ============================================
+
+// ──────────────────────────────────────────
+// Create User Profile
+// ──────────────────────────────────────────
+
+message CreateUserProfileRequest {
+  string user_id = 1;           // UUID from auth-service
+  string username = 2;          // Desired username
+  string display_name = 3;      // Display name
+  
+  // Optional metadata from auth-service
+  string email = 4;             // For discriminator generation
+  string source = 5;            // Registration source (web, mobile, etc.)
+}
+
+// ──────────────────────────────────────────
+// Get User Profile
+// ──────────────────────────────────────────
+
+message GetUserProfileRequest {
+  string user_id = 1;
+}
+
+// ──────────────────────────────────────────
+// Update User Profile
+// ──────────────────────────────────────────
+
+message UpdateUserProfileRequest {
+  string user_id = 1;
+  
+  // Optional fields (only provided fields are updated)
+  optional string display_name = 2;
+  optional string bio = 3;
+  optional string avatar_url = 4;
+}
+
+// ──────────────────────────────────────────
+// Delete User Profile
+// ──────────────────────────────────────────
+
+message DeleteUserProfileRequest {
+  string user_id = 1;
+}
+
+// ──────────────────────────────────────────
+// Batch Operations
+// ──────────────────────────────────────────
+
+message BatchGetUserProfilesRequest {
+  repeated string user_ids = 1;  // Max 100 IDs
+}
+
+message BatchGetUserProfilesResponse {
+  repeated UserProfileResponse profiles = 1;
+}
+
+// ──────────────────────────────────────────
+// Search Users
+// ──────────────────────────────────────────
+
+message SearchUsersRequest {
+  string query = 1;                         // Search query
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message SearchUsersResponse {
+  repeated UserProfileResponse profiles = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+// ============================================
+// SHARED RESPONSE TYPES
+// ============================================
+
+/// User profile response
+message UserProfileResponse {
+  string user_id = 1;
+  string username = 2;
+  string discriminator = 3;     // 4-digit discriminator (e.g., "0001")
+  string display_name = 4;
+  string avatar_url = 5;
+  string bio = 6;
+  
+  // Metadata
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}

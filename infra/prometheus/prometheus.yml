@@ -19,9 +19,9 @@ scrape_configs:
       - targets: ['auth-service:9091']
     metrics_path: '/metrics'
 
-  - job_name: 'user-service'
+  - job_name: 'user_profile-service'
     static_configs:
-      - targets: ['user-service:9092']
+      - targets: ['user_profile-service:9092']
     metrics_path: '/metrics'
 
   - job_name: 'channel-service'

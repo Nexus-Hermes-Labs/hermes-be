@@ -1,0 +1,42 @@
+# =====================================================
+# CLIPPY CONFIG - BACKEND / MICROSERVICE / DDD STYLE
+# =====================================================
+
+# ==============================
+# Complexity
+# ==============================
+too-many-arguments-threshold = 6
+type-complexity-threshold = 250
+cognitive-complexity-threshold = 20
+
+# ==============================
+# Struct & API Design
+# ==============================
+enum-variant-name-threshold = 3
+struct-excessive-bools-threshold = 2
+
+# ==============================
+# Functions
+# ==============================
+too-many-lines-threshold = 120
+
+# ==============================
+# Performance
+# ==============================
+large-error-threshold = 256
+trivial-copy-size-limit = 32
+
+# ==============================
+# Readability
+# ==============================
+single-char-binding-names-threshold = 1
+
+# ==============================
+# Allow common backend patterns
+# ==============================
+
+# gRPC / DTO / protobuf / sqlx
+too-large-for-stack = 4096
+
+# Result alias kullanımı
+avoid-breaking-exported-api = false

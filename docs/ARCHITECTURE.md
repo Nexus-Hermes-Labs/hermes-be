@@ -259,7 +259,7 @@ self.event_bus.publish(UserCreatedEvent {
 
 // Subscriber (Notification Service)
 let subscription = nats_client
-    .subscribe("user.created")
+    .subscribe("user_profile.created")
     .await?;
 
 while let Some(msg) = subscription.next().await {
@@ -359,7 +359,7 @@ while let Some(msg) = subscription.next().await {
 CREATE TABLE user_relationships (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,           -- Perspective owner
-    target_user_id UUID NOT NULL,    -- Target user
+    target_user_id UUID NOT NULL,    -- Target user_profile
     type relationship_type NOT NULL,  -- friend, blocked, pending_*
     message TEXT,                     -- For friend requests
     created_at TIMESTAMPTZ NOT NULL,
@@ -505,7 +505,7 @@ session:{session_id}
 
 #### 1. Resource Ownership
 ```rust
-// Only user can update their own profile
+// Only user_profile can update their own profile
 async fn update_profile(
     user_id: Uuid,           // From JWT
     profile_id: Uuid,        // From URL
@@ -671,7 +671,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     
   auth-service:
-    build: ./crates/auth-service
+    build: ./services/auth-service
     ports:
       - "8081:8081"
     depends_on:
@@ -681,7 +681,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     
   user-service:
-    build: ./crates/user-service
+    build: ./services/user_profile-service
     ports:
       - "8082:8082"
       - "50051:50051"  # gRPC
@@ -694,23 +694,23 @@ services:
 
 ### Production Deployment (Future - Kubernetes)
 ```yaml
-apiVersion: apps/v1
+apiVersion: apps/auth
 kind: Deployment
 metadata:
-  name: user-service
+  name: user_profile-service
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: user-service
+      app: user_profile-service
   template:
     metadata:
       labels:
-        app: user-service
+        app: user_profile-service
     spec:
       containers:
-      - name: user-service
-        image: discord-clone/user-service:v1.0.0
+      - name: user_profile-service
+        image: discord-clone/user_profile-service:auth.0.0
         ports:
         - containerPort: 8082
         - containerPort: 50051

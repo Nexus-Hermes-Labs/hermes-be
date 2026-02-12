@@ -9,8 +9,8 @@ NC := \033[0m # No Color
 
 # Variables
 COMPOSE := docker-compose
-MIGRATION_PATH := crates/common/migrations
-SEED_PATH := crates/common/seeds/dev
+MIGRATION_PATH := services/common/migrations
+SEED_PATH := services/common/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
 
 ##@ Help
@@ -34,7 +34,7 @@ setup: docker-up ## Initial project setup
 	@cp -n .env.example .env || true
 	@make db-migrate
 	@make db-seed
-	@echo ""
+	@echo ""¡
 	@echo -e "$(GREEN)✅ Setup complete!$(NC)"
 	@echo -e "$(YELLOW)Edit .env file if needed.$(NC)"
 	@echo -e "$(YELLOW)Run 'make build' to build all services.$(NC)"

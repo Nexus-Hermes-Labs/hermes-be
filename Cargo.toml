@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-  "crates/common",
-  "crates/auth-service",
-  "crates/user-service",
-  "crates/channel-service",
-  "crates/chat-service",
-  "crates/voice-service",
-  "crates/presence-service",
-  "crates/gateway-service",
+  "services/common",
+  "services/auth-service",
+  "services/user-service",
+  "services/channel-service",
+  "services/chat-service",
+  "services/voice-service",
+  "services/presence-service",
+  "services/gateway-service",
 ]
 
 [workspace.package]
@@ -17,6 +17,43 @@ edition = "2021"
 authors = ["Bulut Can Gocer <gocerbulutcan@gmail.com>"]
 license = "MIT"
 repository = "https://github.com/bulutcan99/hermes"
+
+# ============================================================================
+# WORKSPACE LINT POLICY (GLOBAL)
+# ============================================================================
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+cargo = "warn"
+
+# ----------------------------------------------------------------------------
+# PANIC & ERROR POLICY (PRODUCTION BACKEND)
+# ----------------------------------------------------------------------------
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+dbg_macro = "deny"
+todo = "warn"
+unimplemented = "warn"
+
+# ----------------------------------------------------------------------------
+# SQLX / MACRO HEAVY BACKEND REAL-WORLD SUPPRESSIONS
+# ----------------------------------------------------------------------------
+module_name_repetitions = "allow"
+too_many_lines = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+type_complexity = "allow"
+needless_pass_by_value = "allow"
+struct_excessive_bools = "allow"
 
 [workspace.dependencies]
 # ============================================================================
