@@ -71,7 +71,6 @@ pub use super::shared::AuthResponseWithUser as RegisterResponse;
 // VALIDATION REGEX
 // ============================================
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 
 static USERNAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {

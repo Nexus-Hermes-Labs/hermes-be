@@ -13,7 +13,7 @@ use crate::state::app_state::AppState;
 use crate::state::auth_state::AuthState;
 use crate::state::shared_state::SharedState;
 use anyhow::{Context, Result};
-use common::config::config;
+use common_config::config;
 use common::infrastructure::messaging::NatsEventPublisher;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};

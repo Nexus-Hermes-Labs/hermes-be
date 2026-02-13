@@ -1,5 +1,5 @@
 # Common Crate - Cargo.toml
-# Shared utilities, models, error types, and integrations
+# This file now defines a workspace for all common crates.
 
 [package]
 name = "common"
@@ -12,6 +12,11 @@ license.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+# ============================================================================
+# LOCAL DEPENDENCIES
+# ============================================================================
+common-config = { path = "common-config" }
+
 # ============================================================================
 # WEB FRAMEWORK
 # ============================================================================
@@ -35,14 +40,6 @@ jsonwebtoken = { workspace = true } # JWT generation
 rand = { workspace = true }         # Token secrets
 
 # ============================================================================
-# UTILITIES
-# ============================================================================
-once_cell = { workspace = true }
-config = { workspace = true }
-dotenvy = { workspace = true }
-figment = { workspace = true }
-
-# ============================================================================
 # SERIALIZATION & VALIDATION
 # ============================================================================
 serde = { workspace = true }
@@ -52,8 +49,8 @@ validator = { workspace = true }
 # ============================================================================
 # ERROR HANDLING
 # ============================================================================
-thiserror = { workspace = true }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 
 # ============================================================================
 # METRICS (Prometheus)
@@ -85,7 +82,7 @@ redis = { workspace = true }
 # ============================================================================
 # NATS (event types and publisher)
 # ============================================================================
-async-nats = { workspace = true }
+async-nats = { workspace =true }
 
 # ============================================================================
 # LOGGING & OBSERVABILITY

@@ -1,21 +1,18 @@
-use std::sync::OnceLock;
-use serde::{Deserialize, Serialize};
+use once_cell::sync::Lazy;
+use serde::Deserialize;
 use validator::Validate;
 
 // ============================================
 // CREATE PROFILE REQUEST
 // ============================================
 
-static USERNAME_REGEX: OnceLock<regex::Regex> = OnceLock::new();
-
-fn username_regex() -> &'static regex::Regex {
-    USERNAME_REGEX.get_or_init(|| regex::Regex::new(r"^[a-z0-9_]+$").unwrap())
-}
+static USERNAME_REGEX: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"^[a-z0-9_]+$").unwrap());
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateProfileRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
-    #[validate(regex(path = "USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
+    #[validate(regex(path = "*USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
     pub username: String,
 
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
@@ -48,7 +45,7 @@ pub struct UpdateProfileRequest {
 #[derive(Debug, Deserialize, Validate)]
 pub struct ChangeUsernameRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
-    #[validate(regex(path = "USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
+    #[validate(regex(path = "*USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
     pub new_username: String,
 }
 

@@ -1,4 +1,4 @@
-use crate::domain::user_profile::{UserProfile, UserProfileError, UserProfileRepository, Username};
+use crate::domain::user_profile::{UserProfile, UserProfileRepository, Username};
 use async_trait::async_trait;
 use common::infrastructure::persistence::error::RepositoryError;
 use common::infrastructure::persistence::repository::Repository;

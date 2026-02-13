@@ -92,7 +92,7 @@ mod tests {
 
     #[test]
     fn test_privacy_created_event() {
-        let event = PrivacySettingsCreatedEvent::new(Uuid::new_v4());
+        let _event = PrivacySettingsCreatedEvent::new(Uuid::new_v4());
         assert_eq!(
             PrivacySettingsCreatedEvent::subject(),
             "user.privacy.created"

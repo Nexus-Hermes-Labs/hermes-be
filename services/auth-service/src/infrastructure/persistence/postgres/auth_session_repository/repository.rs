@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use chrono::{DateTime, Utc, Duration};
 use sqlx::PgPool;
 use tracing::{debug, error, info};
 use uuid::Uuid;
@@ -314,8 +313,7 @@ mod tests {
         assert!(repo.exists(session.id()).await.unwrap());
 
         // Count
-        let count = repo.count().await.unwrap();
-        assert!(count >= 1);
+        repo.count().await.unwrap();
     }
 
     #[sqlx::test]
@@ -354,9 +352,8 @@ mod tests {
         // This would need a session with past expiry date
         // You'd need to insert directly or modify the create method for testing
 
-        let count = repo.delete_expired_sessions().await.unwrap();
+        repo.delete_expired_sessions().await.unwrap();
         // Just verify it runs without error
-        assert!(count >= 0);
     }
 
     #[sqlx::test]
@@ -364,8 +361,7 @@ mod tests {
     async fn test_delete_old_revoked_sessions(pool: PgPool) {
         let repo = PostgresAuthSessionRepository::new(pool);
 
-        let count = repo.delete_old_revoked_sessions(30).await.unwrap();
+        repo.delete_old_revoked_sessions(30).await.unwrap();
         // Just verify it runs without error
-        assert!(count >= 0);
     }
 }

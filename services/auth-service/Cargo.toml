@@ -17,6 +17,7 @@ path = "src/main.rs"
 # LOCAL DEPENDENCIES
 # ============================================================================
 common = { path = "../common" }
+common-config = { path = "../common/common-config" }
 
 # ============================================================================
 # WEB FRAMEWORK
@@ -59,12 +60,6 @@ argon2 = { workspace = true }       # Password hashing
 jsonwebtoken = { workspace = true } # JWT generation
 sha2 = { workspace = true }
 rand = { workspace = true }         # Token secrets
-
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-config = { workspace = true }
-dotenvy = { workspace = true }
 
 # ============================================================================
 # LOGGING & OBSERVABILITY

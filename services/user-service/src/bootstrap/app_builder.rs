@@ -8,7 +8,7 @@ use crate::presentation::http::server::Server;
 use crate::state::user_state::UserState;
 use crate::state::shared_state::SharedState;
 use crate::state::AppState;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use common::observability::{HealthCheck, Metrics};
 use sqlx::PgPool;
 use std::sync::Arc;

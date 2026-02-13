@@ -1,7 +1,7 @@
 mod app_builder;
 
 use anyhow::{Context, Result};
-use common::config::config;
+use common_config::config;
 use common::observability;
 use tracing::info;
 

@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use sqlx::postgres::PgSeverity::Log;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct LoggingConfig {

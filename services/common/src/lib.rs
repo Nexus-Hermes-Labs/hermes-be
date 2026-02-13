@@ -1,7 +1,6 @@
 // Common library for Hermes
 // Shared types, utilities, and infrastructure code
 
-pub mod config;
 pub mod db;
 pub mod domain;
 pub mod dto;

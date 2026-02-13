@@ -1,7 +1,6 @@
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
-use std::time::Duration;
-use common::config::DatabaseConfig;
+use common_config::DatabaseConfig;
 
 /// Create and configure a PostgreSQL connection pool
 pub async fn create_pool(config: &DatabaseConfig) -> Result<PgPool, sqlx::Error> {
@@ -26,8 +25,7 @@ pub async fn create_pool(config: &DatabaseConfig) -> Result<PgPool, sqlx::Error>
 
 #[cfg(test)]
 mod tests {
-    use common::config::DatabaseConfig;
-    use super::*;
+    use common_config::DatabaseConfig;
 
     #[test]
     fn test_database_url() {

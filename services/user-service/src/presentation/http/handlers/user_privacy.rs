@@ -1,11 +1,9 @@
 use axum::{
     extract::{Path, State},
-    response::IntoResponse,
     Json,
 };
 use uuid::Uuid;
 
-use crate::application::services::{UserPrivacyService, UserPrivacyServiceError};
 use crate::domain::user_privacy::{
     ContentFilterLevel, DmPrivacy, FriendRequestPrivacy, PrivacyPreset,
 };

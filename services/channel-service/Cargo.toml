@@ -12,11 +12,13 @@ license.workspace = true
 name = "channel-service"
 path = "src/main.rs"
 
+
 [dependencies]
 # ============================================================================
 # LOCAL DEPENDENCIES
 # ============================================================================
 common = { path = "../common" }
+common-config = { path = "../common/common-config" }
 
 # ============================================================================
 # WEB FRAMEWORK
@@ -26,6 +28,13 @@ axum-extra = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
+
+# ============================================================================
+# GRPC (Inter-service Communication)
+# ============================================================================
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
 
 # ============================================================================
 # DATABASE
@@ -46,10 +55,12 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 # ============================================================================
-# CONFIGURATION
+# AUTHENTICATION & SECURITY (Auth-specific)
 # ============================================================================
-config = { workspace = true }
-dotenvy = { workspace = true }
+argon2 = { workspace = true }       # Password hashing
+jsonwebtoken = { workspace = true } # JWT generation
+sha2 = { workspace = true }
+rand = { workspace = true }         # Token secrets
 
 # ============================================================================
 # LOGGING & OBSERVABILITY
@@ -70,7 +81,17 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 
 # ============================================================================
-# NATS (for publishing server/channel events)
+# REDIS (for refresh tokens)
+# ============================================================================
+redis = { workspace = true }
+
+# ============================================================================
+# ASYNC
+# ============================================================================
+async-trait = { workspace = true }
+
+# ============================================================================
+# NATS (for publishing user_profile.created events)
 # ============================================================================
 async-nats = { workspace = true }
 
@@ -79,6 +100,13 @@ async-nats = { workspace = true }
 # ============================================================================
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
+rand_core = "0.6.4"
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+once_cell = { workspace = true }
+regex = { workspace = true }
 
 # ============================================================================
 # TESTING
@@ -91,7 +119,14 @@ testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
 
 # ============================================================================
+# BUILD DEPENDENCIES (proto compilation)
+# ============================================================================
+[build-dependencies]
+tonic-build = { workspace = true }
+
+# ============================================================================
 # FEATURES
 # ============================================================================
 [features]
 default = []
+# Future: Add feature flags if needed (e.g., "oauth", "2fa")

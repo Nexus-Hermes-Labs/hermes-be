@@ -1,6 +1,6 @@
 use crate::state::AppState;
 use axum::http::{header, HeaderValue, Method};
-use common::config::config;
+use common_config::config;
 use common::observability::HealthCheck;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{

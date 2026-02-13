@@ -1,5 +1,5 @@
-use crate::config::logging::LogFormat;
-use crate::config::LoggingConfig;
+use common_config::logging::LogFormat;
+use common_config::LoggingConfig;
 use anyhow::Result;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
 

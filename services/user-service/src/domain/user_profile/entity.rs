@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use super::error::UserProfileError;
@@ -367,15 +367,6 @@ impl UserProfile {
             Ok(())
         } else {
             Err(())
-        }
-    }
-
-    fn last_username_change_within(&self, days: i64) -> bool {
-        if let Some(last_change) = self.last_username_changed_at {
-            let days_since = Utc::now().signed_duration_since(last_change).num_days();
-            days_since < days
-        } else {
-            false
         }
     }
 }

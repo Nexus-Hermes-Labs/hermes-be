@@ -1,4 +1,4 @@
-// config/mod.rs
+// common-config/src/lib.rs
 pub mod cache;
 pub mod database;
 pub mod grpc_endpoints;
@@ -6,7 +6,7 @@ pub mod logging;
 pub mod messaging;
 pub mod secrets;
 pub mod service;
-mod error;
+pub mod error;
 
 pub use cache::CacheConfig;
 pub use database::DatabaseConfig;
@@ -20,7 +20,7 @@ use figment::{providers::Env, Figment};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::env;
-use crate::config::error::ConfigError;
+use crate::error::ConfigError;
 
 /// Main application configuration
 #[derive(Debug, Clone, Deserialize)]

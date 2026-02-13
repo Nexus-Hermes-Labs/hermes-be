@@ -1,5 +1,4 @@
 use sha2::{Digest, Sha256};
-use thiserror::Error;
 use crate::domain::auth_session::{RefreshTokenHash, TokenHasher};
 use crate::infrastructure::security::token::error::TokenHasherError;
 // ============================================

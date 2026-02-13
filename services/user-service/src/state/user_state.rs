@@ -2,8 +2,6 @@ use crate::application::{UserPrivacyService, UserProfileService};
 use crate::infrastructure::persistence::{
     PostgresUserPrivacyRepository, PostgresUserProfileRepository,
 };
-use common::infrastructure::messaging::EventPublisher;
-use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 
 /// User domain state

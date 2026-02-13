@@ -2,7 +2,7 @@ use super::error::AuthApplicationError;
 use super::user_profile_client::UserProfileClient;
 use crate::application::events::UserCreatedEvent;
 use crate::domain::auth_credential::{
-    AuthCredential, AuthCredentialRepository, Email, PasswordHash, PasswordService,
+    AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
 use crate::presentation::http::dto::{

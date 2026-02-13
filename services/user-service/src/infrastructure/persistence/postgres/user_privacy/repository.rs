@@ -1,6 +1,5 @@
 use super::models::UserPrivacySettingsRow;
-use crate::domain::user_privacy::{UserPrivacyError, UserPrivacyRepository, UserPrivacySettings};
-use crate::domain::user_profile::UserProfile;
+use crate::domain::user_privacy::{UserPrivacyRepository, UserPrivacySettings};
 use async_trait::async_trait;
 use common::infrastructure::persistence::error::RepositoryError;
 use common::infrastructure::persistence::repository::Repository;

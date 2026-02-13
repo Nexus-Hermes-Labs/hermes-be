@@ -1,4 +1,3 @@
-use std::sync::Arc;
 
 use crate::presentation::http::dto::{
     ClientInfo, LoginRequest, LogoutRequest, RefreshTokenRequest, RegisterRequest,
@@ -159,12 +158,12 @@ pub async fn refresh_token_handler(
 /// - `401 Unauthorized` - Invalid refresh token
 /// - `500 Internal Server Error` - Server error
 pub async fn logout_handler(
-    State(state): State<AppState>,
-    Json(request): Json<LogoutRequest>,
+    State(_state): State<AppState>,
+    Json(_request): Json<LogoutRequest>,
 ) -> Result<Response, ApiError> {
     unimplemented!("Extract user_id and session_id from refresh token");
     // Validate request
-    request.validate()?;
+    // request.validate()?;
 
     // Extract user_id and session_id from refresh token
     // For MVP, we'll just use the token to find the session

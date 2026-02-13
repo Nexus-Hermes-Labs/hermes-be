@@ -1,12 +1,8 @@
-use crate::application::services::authentication::service::AuthService;
 use crate::state::app_state::AppState;
 use axum::http::{header, HeaderValue, Method};
-use common::config::{config, Config};
-use common::infrastructure::security::jwt_manager::JwtManager;
-use common::observability::{HealthCheck, Metrics};
-use sqlx::PgPool;
+use common_config::config;
+use common::observability::HealthCheck;
 use std::{net::SocketAddr, sync::Arc};
-use tower::service_fn;
 use tower_http::{
     cors::CorsLayer,
     trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},

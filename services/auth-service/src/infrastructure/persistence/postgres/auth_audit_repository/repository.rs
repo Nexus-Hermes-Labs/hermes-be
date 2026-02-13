@@ -203,8 +203,7 @@ mod tests {
         // Audit logs are created by triggers, so we need to trigger them
         // by updating auth_credentials or performing actions
 
-        let recent = repo.find_recent(10, 0).await.unwrap();
+        repo.find_recent(10, 0).await.unwrap();
         // Should return audit logs (if any exist)
-        assert!(recent.len() >= 0);
     }
 }

@@ -1,6 +1,3 @@
-const REQUIRED_ADMIN: &str = "admin";
-
-
 // TODO: will impl
 
 /// Check if a user_profile has one of the allowed roles

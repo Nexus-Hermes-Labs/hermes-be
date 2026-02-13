@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
-use super::error::UserPrivacyError;
 use super::valueobject::{ContentFilterLevel, DmPrivacy, FriendRequestPrivacy};
 
 /// User Privacy Settings Aggregate Root

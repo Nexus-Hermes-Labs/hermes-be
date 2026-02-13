@@ -1,13 +1,11 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::IntoResponse,
     Json,
 };
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::application::services::{UserProfileService, UserProfileServiceError};
 use crate::domain::user_profile::UserStatus;
 use crate::presentation::dto::*;
 use crate::state::AppState;
