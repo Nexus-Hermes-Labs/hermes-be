@@ -1,67 +1,42 @@
-// config/messaging.rs
 use serde::Deserialize;
-use std::time::Duration;
-
-/// Redis configuration
-#[derive(Debug, Clone, Deserialize)]
-pub struct RedisConfig {
-    pub url: String,
-    #[serde(default = "default_redis_pool_size")]
-    pub pool_size: u32,
-    #[serde(default = "default_redis_connection_timeout")]
-    pub connection_timeout_secs: u64,
-    #[serde(default = "default_redis_max_retries")]
-    pub max_retries: u32,
-}
-
-fn default_redis_pool_size() -> u32 {
-    10
-}
-
-fn default_redis_connection_timeout() -> u64 {
-    5
-}
-
-fn default_redis_max_retries() -> u32 {
-    3
-}
-
-impl RedisConfig {
-    pub fn connection_timeout(&self) -> Duration {
-        Duration::from_secs(self.connection_timeout_secs)
-    }
-}
 
 /// NATS configuration
 #[derive(Debug, Clone, Deserialize)]
-pub struct NatsConfig {
-    pub url: String,
-    #[serde(default = "default_nats_max_reconnects")]
-    pub max_reconnects: u32,
-    #[serde(default = "default_nats_reconnect_delay")]
-    pub reconnect_delay_ms: u64,
-    #[serde(default = "default_nats_max_reconnect_delay")]
-    pub max_reconnect_delay_secs: u64,
+pub struct MessagingConfig {
+    pub servers: String, // Separation with comma: "127.0.0.1:4222,127.0.0.1:4223"
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub token: Option<String>,
+    pub max_reconnect_attempts: usize,
 }
 
-fn default_nats_max_reconnects() -> u32 {
-    10
+impl Default for MessagingConfig {
+    fn default() -> Self {
+        Self {
+            servers: "127.0.0.1:4222".to_string(),
+            username: None,
+            password: None,
+            token: None,
+            max_reconnect_attempts: 10,
+        }
+    }
 }
 
-fn default_nats_reconnect_delay() -> u64 {
-    100
-}
-
-fn default_nats_max_reconnect_delay() -> u64 {
-    4
-}
-
-impl NatsConfig {
-    pub fn reconnect_delay(&self) -> Duration {
-        Duration::from_millis(self.reconnect_delay_ms)
+impl MessagingConfig {
+    pub fn from_env() -> Result<Self, std::env::VarError> {
+        Ok(Self {
+            servers: std::env::var("NATS_SERVERS").unwrap_or_else(|_| "127.0.0.1:4222".to_string()),
+            username: std::env::var("NATS_USER").ok(),
+            password: std::env::var("NATS_PASSWORD").ok(),
+            token: std::env::var("NATS_TOKEN").ok(),
+            max_reconnect_attempts: std::env::var("NATS_MAX_RECONNECT")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(10),
+        })
     }
 
-    pub fn max_reconnect_delay(&self) -> Duration {
-        Duration::from_secs(self.max_reconnect_delay_secs)
+    pub fn get_url(&self) -> String {
+        self.servers.clone()
     }
 }

@@ -51,12 +51,11 @@ $RECYCLE.BIN/
 .directory
 .Trash-*
 
-# Environment and Configuration
-.env
-.env.local
-.env.*.local
-*.env
-!.env.example
+# Environment and Configuration (Tüm alt klasörleri kapsayacak şekilde güncellendi)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.template
 
 # Secrets
 *.key

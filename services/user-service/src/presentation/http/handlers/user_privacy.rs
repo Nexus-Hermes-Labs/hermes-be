@@ -1,0 +1,141 @@
+use axum::{
+    extract::{Path, State},
+    response::IntoResponse,
+    Json,
+};
+use uuid::Uuid;
+
+use crate::application::services::{UserPrivacyService, UserPrivacyServiceError};
+use crate::domain::user_privacy::{
+    ContentFilterLevel, DmPrivacy, FriendRequestPrivacy, PrivacyPreset, UserPrivacyRepository,
+};
+use crate::presentation::dto::*;
+
+use super::error::ApiError;
+
+/// HTTP handlers for user privacy operations
+pub struct UserPrivacyHandler;
+
+impl UserPrivacyHandler {
+    // ============================================
+    // PRIVACY SETTINGS
+    // ============================================
+
+    /// GET /users/:user_id/privacy
+    pub async fn get_privacy_settings<R>(
+        State(service): State<UserPrivacyService<R>>,
+        Path(user_id): Path<Uuid>,
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
+    where
+        R: UserPrivacyRepository,
+    {
+        let settings = service.get_privacy_settings(user_id).await?;
+        Ok(Json(PrivacySettingsResponse::from(settings)))
+    }
+
+    /// PUT /users/:user_id/privacy/dm
+    pub async fn update_dm_privacy<R>(
+        State(service): State<UserPrivacyService<R>>,
+        Path(user_id): Path<Uuid>,
+        Json(request): Json<UpdateDmPrivacyRequest>,
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
+    where
+        R: UserPrivacyRepository,
+    {
+        let privacy = request
+            .allow_dms_from
+            .parse::<DmPrivacy>()
+            .map_err(|e| ApiError::validation(e))?;
+
+        let settings = service.update_dm_privacy(user_id, privacy).await?;
+
+        Ok(Json(PrivacySettingsResponse::from(settings)))
+    }
+
+    /// PUT /users/:user_id/privacy/friend-requests
+    pub async fn update_friend_request_privacy<R>(
+        State(service): State<UserPrivacyService<R>>,
+        Path(user_id): Path<Uuid>,
+        Json(request): Json<UpdateFriendRequestPrivacyRequest>,
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
+    where
+        R: UserPrivacyRepository,
+    {
+        let privacy = request
+            .allow_friend_requests_from
+            .parse::<FriendRequestPrivacy>()
+            .map_err(|e| ApiError::validation(e))?;
+
+        let settings = service
+            .update_friend_request_privacy(user_id, privacy)
+            .await?;
+
+        Ok(Json(PrivacySettingsResponse::from(settings)))
+    }
+
+    /// PATCH /users/:user_id/privacy/visibility
+    pub async fn update_visibility<R>(
+        State(service): State<UserPrivacyService<R>>,
+        Path(user_id): Path<Uuid>,
+        Json(request): Json<UpdateVisibilityRequest>,
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
+    where
+        R: UserPrivacyRepository,
+    {
+        let settings = service
+            .update_visibility(
+                user_id,
+                request.show_online_status,
+                request.show_current_activity,
+                request.show_profile_to_non_friends,
+            )
+            .await?;
+
+        Ok(Json(PrivacySettingsResponse::from(settings)))
+    }
+
+    /// PATCH /users/:user_id/privacy/content
+    pub async fn update_content_settings<R>(
+        State(service): State<UserPrivacyService<R>>,
+        Path(user_id): Path<Uuid>,
+        Json(request): Json<UpdateContentSettingsRequest>,
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
+    where
+        R: UserPrivacyRepository,
+    {
+        let filter_level = request
+            .content_filter_level
+            .map(|level| {
+                ContentFilterLevel::from_i16(level)
+                    .map_err(|_| ApiError::validation(format!("Invalid content filter level: {}", level)))
+            })
+            .transpose()?;
+
+        let settings = service
+            .update_content_settings(user_id, request.allow_nsfw_content, filter_level)
+            .await?;
+
+        Ok(Json(PrivacySettingsResponse::from(settings)))
+    }
+
+    /// POST /users/:user_id/privacy/preset
+    pub async fn apply_preset<R>(
+        State(service): State<UserPrivacyService<R>>,
+        Path(user_id): Path<Uuid>,
+        Json(request): Json<ApplyPresetRequest>,
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
+    where
+        R: UserPrivacyRepository,
+    {
+        let preset = match request.preset.as_str() {
+            "public" => PrivacyPreset::Public,
+            "friends_only" => PrivacyPreset::FriendsOnly,
+            "private" => PrivacyPreset::Private,
+            _ => return Err(ApiError::validation("Invalid preset")),
+        };
+
+        let settings = service.apply_preset(user_id, preset).await?;
+
+        Ok(Json(PrivacySettingsResponse::from(settings)))
+    }
+}

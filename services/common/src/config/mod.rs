@@ -1,96 +1,70 @@
 // config/mod.rs
+pub mod cache;
 pub mod database;
-pub mod gateway;
 pub mod logging;
 pub mod messaging;
 pub mod secrets;
 pub mod service;
+mod error;
 
+pub use cache::CacheConfig;
 pub use database::DatabaseConfig;
-pub use gateway::GatewayConfig;
 pub use logging::LoggingConfig;
-pub use messaging::{NatsConfig, RedisConfig};
+pub use messaging::MessagingConfig;
 pub use secrets::SecretsConfig;
 pub use service::ServiceConfig;
 
+use figment::{providers::Env, Figment};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::env;
+use crate::config::error::ConfigError;
 
 /// Main application configuration
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub service: ServiceConfig,
     #[serde(default)]
-    pub gateway: Option<GatewayConfig>,
     pub database: DatabaseConfig,
+    #[serde(default)]
     pub logging: LoggingConfig,
-    pub redis: RedisConfig,
-    pub nats: NatsConfig,
+    #[serde(default)]
+    pub redis: CacheConfig,
+    #[serde(default)]
+    pub nats: MessagingConfig,
     pub secrets: SecretsConfig,
 }
 
 impl Config {
-    /// Load configuration from files and environment variables
+    /// Load configuration strictly from environment variables.
     ///
     /// Priority order (highest to lowest):
-    /// 1. Environment variables (APP_*)
-    /// 2. Service-specific config (config/{service_name}.toml)
-    /// 3. Environment-specific config (config/{environment}.toml)
-    /// 4. Base config (config/default.toml)
+    /// 1. System Environment Variables (OS level, e.g., Docker ENV)
+    /// 2. Service-specific .env (services/{service_name}/.env)
+    /// 3. Root .env (workspace root, for shared local defaults)
     pub fn load(service_name: &str) -> Result<Self, ConfigError> {
-        // Load .env file if present
+        // 1. Load root .env file if present (useful for shared local db/redis)
         dotenvy::dotenv().ok();
 
-        let environment = env::var("APP_ENV").unwrap_or_else(|_| "development".to_string());
+        // 2. Load service-specific .env (overrides root .env)
+        let service_env_path = format!("services/{}/.env", service_name);
+        dotenvy::from_filename(&service_env_path).ok();
 
-        let config_builder = config::Config::builder()
-            // 1. Base defaults - always loaded
-            .add_source(config::File::with_name("config/default"))
-            // 2. Environment-specific overrides (development, staging, production)
-            .add_source(
-                config::File::with_name(&format!("config/environments/{}", environment))
-                    .required(false),
-            )
-            // 3. Service-specific config (e.g., config/services/gateway.toml)
-            .add_source(
-                config::File::with_name(&format!("config/services/{}", service_name))
-                    .required(false),
-            )
-            // 4. Environment variables override everything (APP_DATABASE_URL, etc.)
-            .add_source(
-                config::Environment::with_prefix("APP")
-                    .separator("_")
-                    .try_parsing(true),
-            );
+        // 3. Force set the service name in the environment to avoid hardcoding in .env files
+        env::set_var("APP_SERVICE__NAME", service_name);
 
-        // Set computed values
-        let config = config_builder
-            .set_override("service.name", service_name)?
-            .set_override("service.port", Self::get_port_for_service(service_name))?
-            .build()?;
+        // 4. Extract configuration using Figment
+        // It reads variables starting with APP_, splitting by __ for nested structs
+        // Example: APP_DATABASE__HOST maps to config.database.host
+        let config: Config = Figment::new()
+            .merge(Env::prefixed("APP_").split("__"))
+            .extract()
+            .map_err(|e| ConfigError::Extraction(e.to_string()))?;
 
-        let loaded_config: Config = config.try_deserialize()?;
+        // 5. Run nested validations
+        config.validate()?;
 
-        // Validate configuration
-        loaded_config.validate()?;
-
-        Ok(loaded_config)
-    }
-
-    /// Get default port for each service
-    fn get_port_for_service(service_name: &str) -> u16 {
-        match service_name {
-            "gateway-service" => 8080,
-            "auth-service" => 8081,
-            "user_profile-service" => 8082,
-            "channel-service" => 8083,
-            "chat-service" => 8084,
-            "voice-service" => 8085,
-            "stream-service" => 8086,
-            "presence-service" => 8087,
-            _ => 8000,
-        }
+        Ok(config)
     }
 
     /// Validate configuration values
@@ -101,66 +75,49 @@ impl Config {
         }
 
         if self.service.port == 0 {
-            return Err(ConfigError::Validation("Service port cannot be 0".into()));
+            return Err(ConfigError::Validation(
+                "Service port cannot be 0. Please define APP_SERVICE__PORT.".into(),
+            ));
         }
 
         // Validate database config
-        if self.database.url.is_empty() {
-            return Err(ConfigError::Validation("Database URL cannot be empty".into()));
+        if self.database.host.is_empty() {
+            return Err(ConfigError::Validation("Database host cannot be empty".into()));
         }
 
         // Validate Redis config
-        if self.redis.url.is_empty() {
-            return Err(ConfigError::Validation("Redis URL cannot be empty".into()));
+        if self.redis.host.is_empty() {
+            return Err(ConfigError::Validation("Redis host cannot be empty".into()));
         }
 
         // Validate NATS config
-        if self.nats.url.is_empty() {
-            return Err(ConfigError::Validation("NATS URL cannot be empty".into()));
+        if self.nats.servers.is_empty() {
+            return Err(ConfigError::Validation("NATS servers cannot be empty".into()));
         }
 
-        // Validate JWT secrets
-        if self.secrets.jwt.access_secret.is_empty() {
-            return Err(ConfigError::Validation(
-                "JWT access secret cannot be empty".into(),
-            ));
-        }
+        // Delegate nested secrets validations
+        self.secrets
+            .jwt
+            .validate()
+            .map_err(|e| ConfigError::Validation(format!("JWT config error: {}", e)))?;
 
-        if self.secrets.jwt.refresh_secret.is_empty() {
-            return Err(ConfigError::Validation(
-                "JWT refresh secret cannot be empty".into(),
-            ));
-        }
-
-        // Validate password pepper
-        if self.secrets.password.pepper.is_empty() {
-            return Err(ConfigError::Validation("Password pepper cannot be empty".into()));
-        }
+        self.secrets
+            .password
+            .validate()
+            .map_err(|e| ConfigError::Validation(format!("Password config error: {}", e)))?;
 
         Ok(())
     }
 
     /// Helper to determine if this is a gateway service
     pub fn is_gateway(&self) -> bool {
-        self.gateway.is_some()
+        self.service.name == "gateway-service"
     }
 
     /// Get service URL for internal communication
     pub fn service_url(&self) -> String {
         format!("http://{}:{}", self.service.host, self.service.port)
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ConfigError {
-    #[error("Configuration error: {0}")]
-    Config(#[from] config::ConfigError),
-
-    #[error("Environment variable error: {0}")]
-    Env(#[from] env::VarError),
-
-    #[error("Validation error: {0}")]
-    Validation(String),
 }
 
 // Global static config instance
@@ -183,16 +140,4 @@ pub fn config() -> &'static Config {
 /// Check if config is initialized
 pub fn is_initialized() -> bool {
     CONFIG.get().is_some()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_port_assignment() {
-        assert_eq!(Config::get_port_for_service("gateway-service"), 8080);
-        assert_eq!(Config::get_port_for_service("auth-service"), 8081);
-        assert_eq!(Config::get_port_for_service("unknown-service"), 8000);
-    }
 }

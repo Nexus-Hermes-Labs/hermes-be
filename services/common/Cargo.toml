@@ -40,6 +40,7 @@ rand = { workspace = true }         # Token secrets
 once_cell = { workspace = true }
 config = { workspace = true }
 dotenvy = { workspace = true }
+figment = { workspace = true }
 
 # ============================================================================
 # SERIALIZATION & VALIDATION

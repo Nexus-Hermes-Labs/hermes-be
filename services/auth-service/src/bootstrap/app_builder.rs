@@ -140,7 +140,7 @@ impl AppBuilder {
 
         // Event Publisher
         let event_publisher = Arc::new(
-            NatsEventPublisher::new(service_name, &config().nats.url)
+            NatsEventPublisher::new(service_name, &config().nats.get_url())
                 .await
                 .context("Failed to create NATS publisher")?,
         );

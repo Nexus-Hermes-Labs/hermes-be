@@ -1,24 +1,16 @@
 use serde::Deserialize;
+use sqlx::postgres::PgSeverity::Log;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct LoggingConfig {
-    #[serde(default = "default_level")]
     pub level: String,
-    #[serde(default = "default_format")]
     pub format: LogFormat,
 }
 
-fn default_level() -> String {
-    "info".to_string()
-}
-
-fn default_format() -> LogFormat {
-    LogFormat::Json
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum LogFormat {
+    #[default]
     Json,
     Pretty,
 }

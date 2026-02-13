@@ -33,7 +33,7 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     // 3. INITIALIZE REDIS
     // ========================================
     info!("🔴 Connecting to Redis...");
-    let redis_client = redis::Client::open(config().redis.url.clone())
+    let redis_client = redis::Client::open(config().redis.get_url().clone())
         .context("Failed to create Redis client")?;
     let redis_manager = redis::aio::ConnectionManager::new(redis_client)
         .await
