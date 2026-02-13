@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use uuid::Uuid;
+use common::infrastructure::persistence::error::RepositoryError;
 use common::infrastructure::persistence::repository::Repository;
 
 use super::entity::UserProfile;
@@ -7,7 +8,7 @@ use super::valueobject::Username;
 
 /// User profile repository
 #[async_trait]
-pub trait UserProfileRepository: Repository<UserProfile, Uuid> + Send + Sync {
+pub trait UserProfileRepository: Repository<UserProfile, Uuid, Error = RepositoryError> + Send + Sync {
     // Inherits from Repository<UserProfile, Uuid>:
     // - find_by_id(id: Uuid) -> Result<Option<UserProfile>>
     // - save(entity: &UserProfile) -> Result<()>

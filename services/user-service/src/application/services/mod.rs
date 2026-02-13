@@ -1,3 +1,5 @@
-pub mod discriminator;
-pub mod user;
-pub mod user_relationship;
+pub mod user_privacy;
+pub mod user_profile;
+
+pub use user_privacy::{UserPrivacyService, UserPrivacyServiceError};
+pub use user_profile::{UserProfileService, UserProfileServiceError};

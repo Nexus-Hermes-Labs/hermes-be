@@ -1,11 +1,11 @@
+use super::models::UserPrivacySettingsRow;
+use crate::domain::user_privacy::{UserPrivacyError, UserPrivacyRepository, UserPrivacySettings};
+use crate::domain::user_profile::UserProfile;
 use async_trait::async_trait;
+use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::repository::Repository;
 use sqlx::PgPool;
 use uuid::Uuid;
-
-use crate::domain::user_privacy::{UserPrivacyError, UserPrivacyRepository, UserPrivacySettings};
-use common::Repository;
-
-use super::models::UserPrivacySettingsRow;
 
 /// PostgreSQL implementation of UserPrivacyRepository
 pub struct PostgresUserPrivacyRepository {
@@ -20,21 +20,42 @@ impl PostgresUserPrivacyRepository {
 
 #[async_trait]
 impl Repository<UserPrivacySettings, Uuid> for PostgresUserPrivacyRepository {
-    type Error = sqlx::Error;
+    type Error = RepositoryError;
 
     async fn find_by_id(&self, user_id: Uuid) -> Result<Option<UserPrivacySettings>, Self::Error> {
         let row = sqlx::query_as::<_, UserPrivacySettingsRow>(
             r#"
             SELECT *
             FROM user_privacy_settings
-            WHERE user_id = $1
+            WHERE user_id = $1 AND deleted_at IS NULL
             "#,
         )
         .bind(user_id)
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.and_then(|r| r.try_into().ok()))
+        Ok(match row {
+            Some(r) => Some(r.try_into().map_err(|e| RepositoryError::Mapping(e))?),
+            None => None,
+        })
+    }
+
+    async fn find_all(&self) -> Result<Vec<UserPrivacySettings>, Self::Error> {
+        let rows = sqlx::query_as::<_, UserPrivacySettingsRow>(
+            r#"
+            SELECT *
+            FROM user_privacy_settings
+            WHERE deleted_at IS NULL
+        "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let profiles: Vec<UserPrivacySettings> = rows
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<_, RepositoryError>>()?;
+        Ok(profiles)
     }
 
     async fn save(&self, entity: &UserPrivacySettings) -> Result<(), Self::Error> {
@@ -155,9 +176,9 @@ mod tests {
     use super::*;
 
     #[sqlx::test]
-    async fn test_save_and_find(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_save_and_find(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserPrivacyRepository::new(pool);
-        
+
         let user_id = Uuid::new_v4();
         let settings = UserPrivacySettings::new(user_id);
 
@@ -170,9 +191,9 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn test_update(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_update(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserPrivacyRepository::new(pool);
-        
+
         let user_id = Uuid::new_v4();
         let mut settings = UserPrivacySettings::new(user_id);
 
@@ -191,9 +212,9 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn test_delete(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_delete(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserPrivacyRepository::new(pool);
-        
+
         let user_id = Uuid::new_v4();
         let settings = UserPrivacySettings::new(user_id);
 

@@ -1,9 +1,9 @@
+use crate::domain::user_profile::{UserProfile, UserProfileError, UserProfileRepository, Username};
 use async_trait::async_trait;
-use sqlx::PgPool;
-use uuid::Uuid;
 use common::infrastructure::persistence::error::RepositoryError;
 use common::infrastructure::persistence::repository::Repository;
-use crate::domain::user_profile::{UserProfile, UserProfileError, UserProfileRepository, Username};
+use sqlx::PgPool;
+use uuid::Uuid;
 
 use super::models::UserProfileRow;
 
@@ -20,7 +20,7 @@ impl PostgresUserProfileRepository {
 
 #[async_trait]
 impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
-    type Error = sqlx::Error;
+    type Error = RepositoryError;
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<UserProfile>, Self::Error> {
         let row = sqlx::query_as::<_, UserProfileRow>(
@@ -40,13 +40,13 @@ impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
     async fn find_all(&self) -> Result<Vec<UserProfile>, Self::Error> {
         let rows = sqlx::query_as::<_, UserProfileRow>(
             r#"
-        SELECT *
-        FROM user_profiles
-        WHERE deleted_at IS NULL
-        "#,
+            SELECT *
+            FROM user_profiles
+            WHERE deleted_at IS NULL
+            "#,
         )
-            .fetch_all(&self.pool)
-            .await?;
+        .fetch_all(&self.pool)
+        .await?;
 
         let profiles: Vec<UserProfile> = rows
             .into_iter()
@@ -199,10 +199,7 @@ impl UserProfileRepository for PostgresUserProfileRepository {
         Ok(row.and_then(|r| r.try_into().ok()))
     }
 
-    async fn is_username_available(
-        &self,
-        username: &Username,
-    ) -> Result<bool, Self::Error> {
+    async fn is_username_available(&self, username: &Username) -> Result<bool, Self::Error> {
         let exists = self.exists_by_username(username).await?;
         Ok(!exists)
     }
@@ -301,16 +298,11 @@ mod tests {
     // Run with: cargo test --features test-db
 
     #[sqlx::test]
-    async fn test_save_and_find(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_save_and_find(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserProfileRepository::new(pool);
-        
+
         let username = Username::new("testuser").unwrap();
-        let profile = UserProfile::new(
-            Uuid::new_v4(),
-            username,
-            "Test User".to_string(),
-        )
-        .unwrap();
+        let profile = UserProfile::new(Uuid::new_v4(), username, "Test User".to_string()).unwrap();
 
         repo.save(&profile).await?;
 
@@ -322,26 +314,17 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn test_username_uniqueness(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_username_uniqueness(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserProfileRepository::new(pool);
-        
+
         let username = Username::new("uniqueuser").unwrap();
-        let profile1 = UserProfile::new(
-            Uuid::new_v4(),
-            username.clone(),
-            "User 1".to_string(),
-        )
-        .unwrap();
+        let profile1 =
+            UserProfile::new(Uuid::new_v4(), username.clone(), "User 1".to_string()).unwrap();
 
         repo.save(&profile1).await?;
 
         // Try to save another profile with same username
-        let profile2 = UserProfile::new(
-            Uuid::new_v4(),
-            username,
-            "User 2".to_string(),
-        )
-        .unwrap();
+        let profile2 = UserProfile::new(Uuid::new_v4(), username, "User 2".to_string()).unwrap();
 
         let result = repo.save(&profile2).await;
         assert!(result.is_err()); // Should fail due to unique constraint
@@ -350,16 +333,12 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn test_find_by_username(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_find_by_username(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserProfileRepository::new(pool);
-        
+
         let username = Username::new("findmeuser").unwrap();
-        let profile = UserProfile::new(
-            Uuid::new_v4(),
-            username.clone(),
-            "Find Me".to_string(),
-        )
-        .unwrap();
+        let profile =
+            UserProfile::new(Uuid::new_v4(), username.clone(), "Find Me".to_string()).unwrap();
 
         repo.save(&profile).await?;
 
@@ -371,16 +350,12 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn test_search(pool: PgPool) -> sqlx::Result<()> {
+    async fn test_search(pool: PgPool) -> Result<(), RepositoryError> {
         let repo = PostgresUserProfileRepository::new(pool);
-        
+
         let username = Username::new("searchuser").unwrap();
-        let profile = UserProfile::new(
-            Uuid::new_v4(),
-            username,
-            "Searchable User".to_string(),
-        )
-        .unwrap();
+        let profile =
+            UserProfile::new(Uuid::new_v4(), username, "Searchable User".to_string()).unwrap();
 
         repo.save(&profile).await?;
 
