@@ -1,3 +1,4 @@
+use crate::infrastructure::grpc::UserProfileGrpcClient;
 use crate::infrastructure::persistence::postgres::{
     PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
@@ -19,6 +20,7 @@ pub struct AppState {
         Argon2PasswordService,
         Sha256TokenHasher,
         NatsEventPublisher,
+        UserProfileGrpcClient,
     >,
     pub shared: SharedState,
 }

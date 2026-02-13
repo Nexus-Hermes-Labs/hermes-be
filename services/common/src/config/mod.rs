@@ -1,6 +1,7 @@
 // config/mod.rs
 pub mod cache;
 pub mod database;
+pub mod grpc_endpoints;
 pub mod logging;
 pub mod messaging;
 pub mod secrets;
@@ -9,6 +10,7 @@ mod error;
 
 pub use cache::CacheConfig;
 pub use database::DatabaseConfig;
+pub use grpc_endpoints::GrpcEndpointsConfig;
 pub use logging::LoggingConfig;
 pub use messaging::MessagingConfig;
 pub use secrets::SecretsConfig;
@@ -33,6 +35,8 @@ pub struct Config {
     #[serde(default)]
     pub nats: MessagingConfig,
     pub secrets: SecretsConfig,
+    #[serde(default)]
+    pub grpc_endpoints: GrpcEndpointsConfig,
 }
 
 impl Config {

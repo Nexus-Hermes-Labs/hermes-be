@@ -1,3 +1,2 @@
-pub mod auth_client;
-
-pub use auth_client::AuthGrpcClient;
+// gRPC clients moved to infrastructure layer (DDD)
+// See: crate::infrastructure::grpc

@@ -1,14 +1,17 @@
 use super::error::AuthApplicationError;
+use super::user_profile_client::UserProfileClient;
 use crate::application::events::UserCreatedEvent;
 use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordHash, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
-use crate::presentation::http::dto::{AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest, RegisterResponse, UserProfile};
+use crate::presentation::http::dto::{
+    AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
+    RegisterResponse, UserProfile,
+};
 use common::domain::event::IntoEventEnvelope;
 use common::infrastructure::messaging::EventPublisher;
 use common::infrastructure::security::jwt_manager::JwtManager;
-use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -19,7 +22,6 @@ use uuid::Uuid;
 
 const ACCESS_TOKEN_EXPIRY_HOURS: i64 = 6;
 const REFRESH_TOKEN_EXPIRY_DAYS: i64 = 30;
-const MAX_FAILED_LOGIN_ATTEMPTS: i32 = 5;
 
 // ============================================
 // AUTHENTICATION SERVICE
@@ -29,14 +31,15 @@ const MAX_FAILED_LOGIN_ATTEMPTS: i32 = 5;
 /// - Domain entities (AuthCredential, AuthSession)
 /// - Repositories (AuthCredentialRepository, AuthSessionRepository)
 /// - Domain services (PasswordService)
-/// - Infrastructure services (JwtManager, EventPublisher)
-pub struct AuthService<CR, SR, PS, TH, EP>
+/// - Infrastructure services (JwtManager, EventPublisher, UserProfileClient)
+pub struct AuthService<CR, SR, PS, TH, EP, UPC>
 where
     CR: AuthCredentialRepository,
     SR: AuthSessionRepository,
     PS: PasswordService,
     TH: TokenHasher,
     EP: EventPublisher,
+    UPC: UserProfileClient,
 {
     service_name: String,
     credential_repo: Arc<CR>,
@@ -45,17 +48,19 @@ where
     token_hasher: Arc<TH>,
     event_publisher: Arc<EP>,
     jwt_manager: Arc<JwtManager>,
+    user_profile_client: Arc<UPC>,
 }
 
 // ============================================
 
-impl<CR, SR, PS, TH, EP> AuthService<CR, SR, PS, TH, EP>
+impl<CR, SR, PS, TH, EP, UPC> AuthService<CR, SR, PS, TH, EP, UPC>
 where
     CR: AuthCredentialRepository,
     SR: AuthSessionRepository,
     PS: PasswordService,
     TH: TokenHasher,
     EP: EventPublisher,
+    UPC: UserProfileClient,
 {
     pub fn new(
         service_name: impl Into<String>,
@@ -65,6 +70,7 @@ where
         token_hasher: Arc<TH>,
         event_publisher: Arc<EP>,
         jwt_manager: Arc<JwtManager>,
+        user_profile_client: Arc<UPC>,
     ) -> Self {
         Self {
             service_name: service_name.into(),
@@ -74,6 +80,7 @@ where
             token_hasher,
             event_publisher,
             jwt_manager,
+            user_profile_client,
         }
     }
 
@@ -81,17 +88,17 @@ where
     // REGISTRATION
     // ============================================
 
-    /// Register a new user_profile
+    /// Register a new user
     ///
     /// Workflow:
     /// 1. Validate email not already registered
     /// 2. Hash password
     /// 3. Create auth credential
-    /// 4. Call user_profile-service via gRPC to create profile (SYNC)
+    /// 4. Call user-service via gRPC to create profile (SYNC)
     /// 5. Generate JWT tokens
     /// 6. Create session
-    /// 7. Publish user_profile.created event (ASYNC, non-blocking)
-    /// 8. Return tokens + user_profile profile
+    /// 7. Publish user.created event (ASYNC, non-blocking)
+    /// 8. Return tokens + user profile
     pub async fn register(
         &self,
         request: RegisterRequest,
@@ -116,7 +123,7 @@ where
         let password_hash = self
             .password_service
             .hash_password(&request.password)
-            .map_err(|e| AuthApplicationError::HashingFailed)?;
+            .map_err(|_e| AuthApplicationError::HashingFailed)?;
 
         // ═══════════════════════════════════════════════════
         // STEP 3: Create Auth Credential
@@ -133,41 +140,39 @@ where
         // ═══════════════════════════════════════════════════
         // STEP 4: Create User Profile via gRPC (SYNC)
         // ═══════════════════════════════════════════════════
-        // TODO: Implement gRPC call to user_profile-service
-        // let user_profile = self.user_service_client
-        //     .create_user_profile(CreateUserProfileRequest {
-        //         user_id: credential.id().to_string(),
-        //         username: request.username.clone(),
-        //         display_name: request.display_name.clone(),
-        //     })
-        //     .await
-        //     .map_err(|e| {
-        //         error!(error = %e, user_id = %credential.id(), "gRPC call failed");
-        //
-        //         // ROLLBACK: Delete credential
-        //         if let Err(delete_err) = self.credential_repo.delete(credential.id()).await {
-        //             error!(error = %delete_err, "Failed to rollback credential");
-        //         }
-        //
-        //         AuthApplicationError::UserProfileCreationFailed(e.to_string())
-        //     })?;
+        let profile_info = self
+            .user_profile_client
+            .create_profile(
+                credential.id(),
+                &request.username,
+                &request.display_name,
+                credential.email().as_str(),
+            )
+            .await
+            .map_err(|e| {
+                error!(
+                    error = %e,
+                    user_id = %credential.id(),
+                    "Failed to create user profile via user-service"
+                );
+                AuthApplicationError::UserProfileCreationFailed(e.to_string())
+            })?;
 
-        // TEMPORARY: Mock user_profile profile until gRPC is implemented
         let user_profile = UserProfile {
-            user_id: credential.id(),
+            user_id: profile_info.user_id,
             email: credential.email().as_str().to_string(),
-            username: request.username.clone(),
-            discriminator: "0001".to_string(), // TODO: From user_profile-service
-            display_name: request.display_name.clone(),
-            avatar: None,
-            bio: None,
-            created_at: credential.created_at(),
+            username: profile_info.username,
+            discriminator: profile_info.discriminator,
+            display_name: profile_info.display_name,
+            avatar: profile_info.avatar_url,
+            bio: profile_info.bio,
+            created_at: profile_info.created_at,
         };
 
         info!(
             user_id = %credential.id(),
             username = %user_profile.username,
-            "User profile created (mock)"
+            "User profile created via user-service"
         );
 
         // ═══════════════════════════════════════════════════
@@ -324,8 +329,7 @@ where
         let is_valid = self
             .password_service
             .verify_password(&request.password, credential.password_hash())
-            //TODO: map_err weak pass degis.
-            .map_err(|e| AuthApplicationError::WeakPassword)?;
+            .map_err(|_e| AuthApplicationError::WeakPassword)?;
 
         if !is_valid {
             warn!(user_id = %credential.id(), "Login failed: invalid password");

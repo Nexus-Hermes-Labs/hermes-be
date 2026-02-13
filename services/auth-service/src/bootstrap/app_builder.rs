@@ -1,5 +1,6 @@
 // src/bootstrap/app_builder.rs
 use crate::application::services::authentication::service::AuthService;
+use crate::infrastructure::grpc::UserProfileGrpcClient;
 use crate::infrastructure::persistence::postgres::{
     PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
@@ -99,6 +100,17 @@ impl AppBuilder {
         info!("✅ Domain layer ready");
 
         // ========================================
+        // gRPC CLIENTS (infrastructure adapters)
+        // ========================================
+        let user_profile_client = Arc::new(
+            UserProfileGrpcClient::connect(&config().grpc_endpoints.user_service)
+                .await
+                .context("Failed to connect to user-service gRPC")?,
+        );
+
+        info!("✅ gRPC clients ready");
+
+        // ========================================
         // APPLICATION LAYER
         // ========================================
         let application = self.build_application(
@@ -106,6 +118,7 @@ impl AppBuilder {
             domain_services,
             infrastructure.jwt_manager.clone(),
             infrastructure.event_publisher.clone(),
+            user_profile_client,
         )?;
 
         info!("✅ Application layer ready");
@@ -198,6 +211,7 @@ impl AppBuilder {
         services: DomainServices,
         jwt_manager: Arc<JwtManager>,
         event_publisher: Arc<NatsEventPublisher>,
+        user_profile_client: Arc<UserProfileGrpcClient>,
     ) -> Result<Application> {
         let auth_service = Arc::new(AuthService::new(
             config().service.name.clone(),
@@ -207,6 +221,7 @@ impl AppBuilder {
             services.token_hasher,
             event_publisher,
             jwt_manager,
+            user_profile_client,
         ));
 
         Ok(Application {
@@ -272,6 +287,7 @@ struct Application {
             Argon2PasswordService,
             Sha256TokenHasher,
             NatsEventPublisher,
+            UserProfileGrpcClient,
         >,
     >,
     credential_repo: Arc<PostgresAuthCredentialRepository>,

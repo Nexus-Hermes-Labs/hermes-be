@@ -1,3 +1,2 @@
-pub mod user_client;
-
-pub use user_client::UserGrpcClient;
+// gRPC clients moved to infrastructure layer (DDD)
+// See: crate::infrastructure::grpc
