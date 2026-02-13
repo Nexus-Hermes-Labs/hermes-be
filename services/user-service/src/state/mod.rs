@@ -1,16 +1,13 @@
-mod shared_state;
-mod user_state;
+pub mod shared_state;
+pub mod user_state;
 
-use std::sync::Arc;
-
-use sqlx::PgPool;
+pub use shared_state::SharedState;
+pub use user_state::UserState;
 
 use crate::application::services::{UserPrivacyService, UserProfileService};
 use crate::infrastructure::persistence::{
     PostgresUserPrivacyRepository, PostgresUserProfileRepository,
 };
-use crate::state::shared_state::SharedState;
-use crate::state::user_state::UserState;
 
 /// Application state shared across HTTP handlers and gRPC services
 #[derive(Clone)]

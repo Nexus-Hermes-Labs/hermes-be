@@ -50,7 +50,10 @@ impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
 
         let profiles: Vec<UserProfile> = rows
             .into_iter()
-            .map(TryInto::try_into)
+            .map(|r| {
+                UserProfile::try_from(r)
+                    .map_err(|e| RepositoryError::Mapping(e.to_string()))
+            })
             .collect::<Result<_, RepositoryError>>()?;
 
         Ok(profiles)

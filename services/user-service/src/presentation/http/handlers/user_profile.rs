@@ -8,8 +8,9 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::application::services::{UserProfileService, UserProfileServiceError};
-use crate::domain::user_profile::{UserProfileRepository, UserStatus};
+use crate::domain::user_profile::UserStatus;
 use crate::presentation::dto::*;
+use crate::state::AppState;
 
 use super::error::ApiError;
 
@@ -22,40 +23,34 @@ impl UserProfileHandler {
     // ============================================
 
     /// GET /users/:user_id
-    pub async fn get_profile<R>(
+    pub async fn get_profile(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
-    ) -> Result<Json<ProfileResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileResponse>, ApiError> {
+        let service = &state.user.user_profile_service;
         let profile = service.get_profile(user_id).await?;
         Ok(Json(ProfileResponse::from(profile)))
     }
 
     /// GET /users/username/:username
-    pub async fn get_profile_by_username<R>(
+    pub async fn get_profile_by_username(
         State(state): State<AppState>,
         Path(username): Path<String>,
-    ) -> Result<Json<ProfileResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileResponse>, ApiError> {
+        let service = &state.user.user_profile_service;
         let profile = service.get_profile_by_username(username).await?;
         Ok(Json(ProfileResponse::from(profile)))
     }
 
     /// POST /users
-    pub async fn create_profile<R>(
+    pub async fn create_profile(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<CreateProfileRequest>,
-    ) -> Result<(StatusCode, Json<ProfileResponse>), ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<(StatusCode, Json<ProfileResponse>), ApiError> {
         request.validate()?;
 
+        let service = &state.user.user_profile_service;
         let profile = service
             .create_profile(user_id, request.username, request.display_name)
             .await?;
@@ -64,16 +59,14 @@ impl UserProfileHandler {
     }
 
     /// PATCH /users/:user_id
-    pub async fn update_profile<R>(
+    pub async fn update_profile(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<UpdateProfileRequest>,
-    ) -> Result<Json<ProfileResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileResponse>, ApiError> {
         request.validate()?;
 
+        let service = &state.user.user_profile_service;
         let profile = service
             .update_profile(
                 user_id,
@@ -88,29 +81,25 @@ impl UserProfileHandler {
     }
 
     /// PUT /users/:user_id/username
-    pub async fn change_username<R>(
+    pub async fn change_username(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<ChangeUsernameRequest>,
-    ) -> Result<Json<ProfileResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileResponse>, ApiError> {
         request.validate()?;
 
+        let service = &state.user.user_profile_service;
         let profile = service.change_username(user_id, request.new_username).await?;
 
         Ok(Json(ProfileResponse::from(profile)))
     }
 
     /// DELETE /users/:user_id
-    pub async fn delete_profile<R>(
+    pub async fn delete_profile(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
-    ) -> Result<StatusCode, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<StatusCode, ApiError> {
+        let service = &state.user.user_profile_service;
         service.delete_profile(user_id).await?;
         Ok(StatusCode::NO_CONTENT)
     }
@@ -120,35 +109,31 @@ impl UserProfileHandler {
     // ============================================
 
     /// PUT /users/:user_id/status
-    pub async fn update_status<R>(
+    pub async fn update_status(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<UpdateStatusRequest>,
-    ) -> Result<Json<ProfileResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileResponse>, ApiError> {
         let status = request
             .status
             .parse::<UserStatus>()
             .map_err(|e| ApiError::validation(e.to_string()))?;
 
+        let service = &state.user.user_profile_service;
         let profile = service.update_status(user_id, status).await?;
 
         Ok(Json(ProfileResponse::from(profile)))
     }
 
     /// PUT /users/:user_id/custom-status
-    pub async fn set_custom_status<R>(
+    pub async fn set_custom_status(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<SetCustomStatusRequest>,
-    ) -> Result<Json<ProfileResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileResponse>, ApiError> {
         request.validate()?;
 
+        let service = &state.user.user_profile_service;
         let profile = service
             .set_custom_status(user_id, request.text, request.emoji, request.expires_at)
             .await?;
@@ -157,13 +142,11 @@ impl UserProfileHandler {
     }
 
     /// DELETE /users/:user_id/custom-status
-    pub async fn clear_custom_status<R>(
+    pub async fn clear_custom_status(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
-    ) -> Result<StatusCode, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<StatusCode, ApiError> {
+        let service = &state.user.user_profile_service;
         service.clear_custom_status(user_id).await?;
         Ok(StatusCode::NO_CONTENT)
     }
@@ -173,13 +156,11 @@ impl UserProfileHandler {
     // ============================================
 
     /// GET /users/search?query=...&limit=10&offset=0
-    pub async fn search_users<R>(
+    pub async fn search_users(
         State(state): State<AppState>,
         Query(request): Query<SearchUsersRequest>,
-    ) -> Result<Json<ProfileListResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<ProfileListResponse>, ApiError> {
+        let service = &state.user.user_profile_service;
         let profiles = service
             .search_users(request.query, request.limit, request.offset)
             .await?;
@@ -196,13 +177,11 @@ impl UserProfileHandler {
     }
 
     /// GET /users/online?limit=10&offset=0
-    pub async fn get_online_users<R>(
+    pub async fn get_online_users(
         State(state): State<AppState>,
         Query(request): Query<SearchUsersRequest>,
-    ) -> Result<Json<OnlineUsersResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<OnlineUsersResponse>, ApiError> {
+        let service = &state.user.user_profile_service;
         let profiles = service
             .get_online_users(request.limit, request.offset)
             .await?;
@@ -214,13 +193,11 @@ impl UserProfileHandler {
     }
 
     /// GET /users/check-username/:username
-    pub async fn check_username_availability<R>(
+    pub async fn check_username_availability(
         State(state): State<AppState>,
         Path(username): Path<String>,
-    ) -> Result<Json<UsernameAvailabilityResponse>, ApiError>
-    where
-        R: UserProfileRepository,
-    {
+    ) -> Result<Json<UsernameAvailabilityResponse>, ApiError> {
+        let service = &state.user.user_profile_service;
         let available = service.is_username_available(username.clone()).await?;
 
         Ok(Json(UsernameAvailabilityResponse {

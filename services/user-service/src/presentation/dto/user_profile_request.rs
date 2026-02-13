@@ -1,9 +1,16 @@
+use std::sync::OnceLock;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-use lazy_static::lazy_static;
+
 // ============================================
 // CREATE PROFILE REQUEST
 // ============================================
+
+static USERNAME_REGEX: OnceLock<regex::Regex> = OnceLock::new();
+
+fn username_regex() -> &'static regex::Regex {
+    USERNAME_REGEX.get_or_init(|| regex::Regex::new(r"^[a-z0-9_]+$").unwrap())
+}
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CreateProfileRequest {
@@ -13,10 +20,6 @@ pub struct CreateProfileRequest {
 
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     pub display_name: String,
-}
-
-lazy_static::lazy_static! {
-    static ref USERNAME_REGEX: regex::Regex = regex::Regex::new(r"^[a-z0-9_]+$").unwrap();
 }
 
 // ============================================

@@ -1,12 +1,10 @@
 use axum::Router;
 use axum::routing::{delete, get, patch, post, put};
-use crate::application::UserProfileService;
-use crate::domain::user_profile::UserProfileRepository;
-use crate::presentation::UserProfileHandler;
+use crate::state::AppState;
+use crate::presentation::http::handlers::UserProfileHandler;
 
 /// Create user profile routes
-pub fn user_profile_routes() -> Router<AppState>
-{
+pub fn user_profile_routes() -> Router<AppState> {
     Router::new()
         // Profile management
         .route("/users/:user_id", get(UserProfileHandler::get_profile))

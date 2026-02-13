@@ -1,11 +1,10 @@
-use crate::application::UserPrivacyService;
-use crate::domain::user_privacy::UserPrivacyRepository;
-use crate::presentation::UserPrivacyHandler;
+use crate::state::AppState;
+use crate::presentation::http::handlers::UserPrivacyHandler;
 use axum::routing::{get, patch, post, put};
 use axum::Router;
 
 /// Create user privacy routes
-pub fn user_privacy_routes<R>() -> Router<AppState> {
+pub fn user_privacy_routes() -> Router<AppState> {
     Router::new()
         .route(
             "/users/:user_id/privacy",

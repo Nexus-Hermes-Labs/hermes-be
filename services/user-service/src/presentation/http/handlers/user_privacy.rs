@@ -7,9 +7,10 @@ use uuid::Uuid;
 
 use crate::application::services::{UserPrivacyService, UserPrivacyServiceError};
 use crate::domain::user_privacy::{
-    ContentFilterLevel, DmPrivacy, FriendRequestPrivacy, PrivacyPreset, UserPrivacyRepository,
+    ContentFilterLevel, DmPrivacy, FriendRequestPrivacy, PrivacyPreset,
 };
 use crate::presentation::dto::*;
+use crate::state::AppState;
 
 use super::error::ApiError;
 
@@ -22,50 +23,44 @@ impl UserPrivacyHandler {
     // ============================================
 
     /// GET /users/:user_id/privacy
-    pub async fn get_privacy_settings<R>(
-        State(service): State<UserPrivacyService<R>>,
+    pub async fn get_privacy_settings(
+        State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
-    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
-    where
-        R: UserPrivacyRepository,
-    {
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
+        let service = &state.user.user_privacy_service;
         let settings = service.get_privacy_settings(user_id).await?;
         Ok(Json(PrivacySettingsResponse::from(settings)))
     }
 
     /// PUT /users/:user_id/privacy/dm
-    pub async fn update_dm_privacy<R>(
-        State(service): State<UserPrivacyService<R>>,
+    pub async fn update_dm_privacy(
+        State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<UpdateDmPrivacyRequest>,
-    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
-    where
-        R: UserPrivacyRepository,
-    {
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
         let privacy = request
             .allow_dms_from
             .parse::<DmPrivacy>()
             .map_err(|e| ApiError::validation(e))?;
 
+        let service = &state.user.user_privacy_service;
         let settings = service.update_dm_privacy(user_id, privacy).await?;
 
         Ok(Json(PrivacySettingsResponse::from(settings)))
     }
 
     /// PUT /users/:user_id/privacy/friend-requests
-    pub async fn update_friend_request_privacy<R>(
-        State(service): State<UserPrivacyService<R>>,
+    pub async fn update_friend_request_privacy(
+        State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<UpdateFriendRequestPrivacyRequest>,
-    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
-    where
-        R: UserPrivacyRepository,
-    {
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
         let privacy = request
             .allow_friend_requests_from
             .parse::<FriendRequestPrivacy>()
             .map_err(|e| ApiError::validation(e))?;
 
+        let service = &state.user.user_privacy_service;
         let settings = service
             .update_friend_request_privacy(user_id, privacy)
             .await?;
@@ -74,14 +69,12 @@ impl UserPrivacyHandler {
     }
 
     /// PATCH /users/:user_id/privacy/visibility
-    pub async fn update_visibility<R>(
-        State(service): State<UserPrivacyService<R>>,
+    pub async fn update_visibility(
+        State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<UpdateVisibilityRequest>,
-    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
-    where
-        R: UserPrivacyRepository,
-    {
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
+        let service = &state.user.user_privacy_service;
         let settings = service
             .update_visibility(
                 user_id,
@@ -95,14 +88,11 @@ impl UserPrivacyHandler {
     }
 
     /// PATCH /users/:user_id/privacy/content
-    pub async fn update_content_settings<R>(
-        State(service): State<UserPrivacyService<R>>,
+    pub async fn update_content_settings(
+        State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<UpdateContentSettingsRequest>,
-    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
-    where
-        R: UserPrivacyRepository,
-    {
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
         let filter_level = request
             .content_filter_level
             .map(|level| {
@@ -111,6 +101,7 @@ impl UserPrivacyHandler {
             })
             .transpose()?;
 
+        let service = &state.user.user_privacy_service;
         let settings = service
             .update_content_settings(user_id, request.allow_nsfw_content, filter_level)
             .await?;
@@ -119,14 +110,11 @@ impl UserPrivacyHandler {
     }
 
     /// POST /users/:user_id/privacy/preset
-    pub async fn apply_preset<R>(
-        State(service): State<UserPrivacyService<R>>,
+    pub async fn apply_preset(
+        State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(request): Json<ApplyPresetRequest>,
-    ) -> Result<Json<PrivacySettingsResponse>, ApiError>
-    where
-        R: UserPrivacyRepository,
-    {
+    ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
         let preset = match request.preset.as_str() {
             "public" => PrivacyPreset::Public,
             "friends_only" => PrivacyPreset::FriendsOnly,
@@ -134,6 +122,7 @@ impl UserPrivacyHandler {
             _ => return Err(ApiError::validation("Invalid preset")),
         };
 
+        let service = &state.user.user_privacy_service;
         let settings = service.apply_preset(user_id, preset).await?;
 
         Ok(Json(PrivacySettingsResponse::from(settings)))

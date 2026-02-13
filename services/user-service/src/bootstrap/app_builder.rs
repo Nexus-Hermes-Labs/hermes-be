@@ -1,0 +1,110 @@
+use crate::application::services::{UserPrivacyService, UserProfileService};
+use crate::infrastructure::persistence::postgres::{
+    PostgresUserPrivacyRepository, PostgresUserProfileRepository,
+};
+use crate::presentation::http::server::Server;
+use crate::state::user_state::UserState;
+use crate::state::shared_state::SharedState;
+use crate::state::AppState;
+use anyhow::{Context, Result};
+use common::config::config;
+use common::observability::{HealthCheck, Metrics};
+use sqlx::PgPool;
+use std::sync::Arc;
+use tracing::info;
+
+/// Application builder - handles dependency composition
+pub struct AppBuilder {
+    service_name: Option<&'static str>,
+    db_pool: Option<PgPool>,
+    redis: Option<redis::aio::ConnectionManager>,
+    metrics: Option<Metrics>,
+}
+
+impl AppBuilder {
+    pub fn new() -> Self {
+        Self {
+            service_name: None,
+            db_pool: None,
+            redis: None,
+            metrics: None,
+        }
+    }
+
+    pub fn with_service_name(mut self, service_name: &'static str) -> Self {
+        self.service_name = Some(service_name);
+        self
+    }
+
+    pub fn with_database(mut self, pool: PgPool) -> Self {
+        self.db_pool = Some(pool);
+        self
+    }
+
+    pub fn with_redis(mut self, redis: redis::aio::ConnectionManager) -> Self {
+        self.redis = Some(redis);
+        self
+    }
+
+    pub fn with_metrics(mut self, metrics: Metrics) -> Self {
+        self.metrics = Some(metrics);
+        self
+    }
+
+    /// Build the complete application with all dependencies
+    pub async fn build(self) -> Result<Server> {
+        let _service_name = self.service_name.expect("Service name must be provided");
+        let db_pool = self.db_pool.expect("Database pool must be provided");
+        let redis = self.redis.expect("Redis connection must be provided");
+        let metrics = self.metrics.expect("Metrics must be provided");
+
+        // ========================================
+        // INFRASTRUCTURE LAYER
+        // ========================================
+        let health_check = Arc::new(HealthCheck::new(db_pool.clone(), redis.clone()));
+
+        info!("✅ Infrastructure layer ready");
+
+        // ========================================
+        // PERSISTENCE LAYER
+        // ========================================
+        let user_profile_repo = Arc::new(PostgresUserProfileRepository::new(db_pool.clone()));
+        let user_privacy_repo = Arc::new(PostgresUserPrivacyRepository::new(db_pool.clone()));
+
+        info!("✅ Persistence layer ready");
+
+        // ========================================
+        // APPLICATION LAYER
+        // ========================================
+        let user_profile_service = Arc::new(UserProfileService::new(user_profile_repo));
+        let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
+
+        info!("✅ Application layer ready");
+
+        // ========================================
+        // STATE COMPOSITION
+        // ========================================
+        let user_state = UserState::new(user_profile_service, user_privacy_service);
+
+        let shared_state = SharedState {
+            db: db_pool,
+            redis,
+            metrics,
+        };
+
+        let app_state = AppState {
+            user: user_state,
+            shared: shared_state,
+        };
+
+        info!("✅ Application state composed");
+
+        // ========================================
+        // SERVER
+        // ========================================
+        let server = Server::new(app_state, health_check).await?;
+        info!("✅ Server ready");
+
+        Ok(server)
+    }
+}

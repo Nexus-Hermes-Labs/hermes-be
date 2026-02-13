@@ -1,6 +1,6 @@
 pub mod postgres;
 
 pub use postgres::{
-    create_pool, DatabaseConfig, PostgresUserPrivacyRepository,
+    create_pool, PostgresUserPrivacyRepository,
     PostgresUserProfileRepository,
 };

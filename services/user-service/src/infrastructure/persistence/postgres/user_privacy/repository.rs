@@ -35,7 +35,10 @@ impl Repository<UserPrivacySettings, Uuid> for PostgresUserPrivacyRepository {
         .await?;
 
         Ok(match row {
-            Some(r) => Some(r.try_into().map_err(|e| RepositoryError::Mapping(e))?),
+            Some(r) => Some(
+                UserPrivacySettings::try_from(r)
+                    .map_err(|e| RepositoryError::Mapping(e.to_string()))?,
+            ),
             None => None,
         })
     }
@@ -53,7 +56,10 @@ impl Repository<UserPrivacySettings, Uuid> for PostgresUserPrivacyRepository {
 
         let profiles: Vec<UserPrivacySettings> = rows
             .into_iter()
-            .map(TryInto::try_into)
+            .map(|r| {
+                UserPrivacySettings::try_from(r)
+                    .map_err(|e| RepositoryError::Mapping(e.to_string()))
+            })
             .collect::<Result<_, RepositoryError>>()?;
         Ok(profiles)
     }

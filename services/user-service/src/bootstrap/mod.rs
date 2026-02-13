@@ -1,18 +1,19 @@
 mod app_builder;
 
-use anyhow::Context;
+use anyhow::{Context, Result};
 use common::config::config;
 use common::observability;
 use tracing::info;
-use crate::infrastructure::persistence::create_pool;
+
+pub use app_builder::AppBuilder;
 
 /// Bootstrap and run the application
-pub async fn run(service_name: &'static str) -> anyhow::Result<()> {
+pub async fn run(service_name: &'static str) -> Result<()> {
     // ========================================
     // 1. INITIALIZE METRICS
     // ========================================
-    let metrics =
-        observability::metrics::Metrics::init().context("Failed to initialize metrics")?;
+    let metrics = observability::metrics::Metrics::init()
+        .context("Failed to initialize metrics")?;
 
     info!("✅ Metrics initialized");
 
@@ -20,10 +21,11 @@ pub async fn run(service_name: &'static str) -> anyhow::Result<()> {
     // 2. INITIALIZE DATABASE
     // ========================================
     info!("📦 Connecting to PostgreSQL...");
-    let db_pool =
-        create_pool(&config().database)
-            .await
-            .context("Failed to connect to database")?;
+    let db_pool = crate::infrastructure::persistence::postgres::connection::create_pool(
+        &config().database
+    )
+    .await
+    .context("Failed to connect to database")?;
 
     info!("✅ Database connected");
 
@@ -31,8 +33,8 @@ pub async fn run(service_name: &'static str) -> anyhow::Result<()> {
     // 3. INITIALIZE REDIS
     // ========================================
     info!("🔴 Connecting to Redis...");
-    let redis_client =
-        redis::Client::open(config().redis.get_url().clone()).context("Failed to create Redis client")?;
+    let redis_client = redis::Client::open(config().redis.get_url().clone())
+        .context("Failed to create Redis client")?;
     let redis_manager = redis::aio::ConnectionManager::new(redis_client)
         .await
         .context("Failed to connect to Redis")?;
