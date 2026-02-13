@@ -16,6 +16,12 @@ pub struct ServiceConfig {
     pub request_timeout_secs: u64,
     #[serde(default = "default_graceful_shutdown_timeout")]
     pub graceful_shutdown_timeout_secs: u64,
+    #[serde(default = "default_grpc_port")]
+    pub grpc_port: u16,
+}
+
+fn default_grpc_port() -> u16 {
+    50051
 }
 
 fn default_max_request_size() -> usize {

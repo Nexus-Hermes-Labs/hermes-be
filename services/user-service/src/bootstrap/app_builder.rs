@@ -2,12 +2,13 @@ use crate::application::services::{UserPrivacyService, UserProfileService};
 use crate::infrastructure::persistence::postgres::{
     PostgresUserPrivacyRepository, PostgresUserProfileRepository,
 };
+use crate::presentation::grpc::proto::user::v1::user_service_server::UserServiceServer;
+use crate::presentation::grpc::server::UserServiceGrpc;
 use crate::presentation::http::server::Server;
 use crate::state::user_state::UserState;
 use crate::state::shared_state::SharedState;
 use crate::state::AppState;
 use anyhow::{Context, Result};
-use common::config::config;
 use common::observability::{HealthCheck, Metrics};
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -52,7 +53,14 @@ impl AppBuilder {
     }
 
     /// Build the complete application with all dependencies
-    pub async fn build(self) -> Result<Server> {
+    ///
+    /// Returns both the HTTP server and the gRPC service router
+    pub async fn build(
+        self,
+    ) -> Result<(
+        Server,
+        UserServiceServer<UserServiceGrpc<PostgresUserProfileRepository, PostgresUserPrivacyRepository>>,
+    )> {
         let _service_name = self.service_name.expect("Service name must be provided");
         let db_pool = self.db_pool.expect("Database pool must be provided");
         let redis = self.redis.expect("Redis connection must be provided");
@@ -84,7 +92,10 @@ impl AppBuilder {
         // ========================================
         // STATE COMPOSITION
         // ========================================
-        let user_state = UserState::new(user_profile_service, user_privacy_service);
+        let user_state = UserState::new(
+            user_profile_service.clone(),
+            user_privacy_service.clone(),
+        );
 
         let shared_state = SharedState {
             db: db_pool,
@@ -100,11 +111,19 @@ impl AppBuilder {
         info!("✅ Application state composed");
 
         // ========================================
-        // SERVER
+        // gRPC SERVER
+        // ========================================
+        let grpc_service = UserServiceGrpc::new(user_profile_service, user_privacy_service);
+        let grpc_router = UserServiceServer::new(grpc_service);
+
+        info!("✅ gRPC server ready");
+
+        // ========================================
+        // HTTP SERVER
         // ========================================
         let server = Server::new(app_state, health_check).await?;
-        info!("✅ Server ready");
+        info!("✅ HTTP server ready");
 
-        Ok(server)
+        Ok((server, grpc_router))
     }
 }

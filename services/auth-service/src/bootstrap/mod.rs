@@ -14,7 +14,7 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     // ========================================
     let metrics = observability::metrics::Metrics::init()
         .context("Failed to initialize metrics")?;
-    
+
     info!("✅ Metrics initialized");
 
     // ========================================
@@ -26,7 +26,7 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     )
     .await
     .context("Failed to connect to database")?;
-    
+
     info!("✅ Database connected");
 
     // ========================================
@@ -38,15 +38,15 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     let redis_manager = redis::aio::ConnectionManager::new(redis_client)
         .await
         .context("Failed to connect to Redis")?;
-    
+
     info!("✅ Redis connected");
 
     // ========================================
     // 4. BUILD APPLICATION
     // ========================================
     info!("🔧 Building application...");
-    
-    let server = AppBuilder::new()
+
+    let (server, grpc_router) = AppBuilder::new()
         .with_service_name(service_name)
         .with_database(db_pool)
         .with_redis(redis_manager)
@@ -54,19 +54,45 @@ pub async fn run(service_name: &'static str) -> Result<()> {
         .build()
         .await
         .context("Failed to build application")?;
-    
+
     info!("🎯 Application ready!");
 
     // ========================================
-    // 5. RUN SERVER
+    // 5. RUN SERVERS (HTTP + gRPC concurrently)
     // ========================================
     info!(
-        "🌐 Starting server on {}:{}",
+        "🌐 Starting HTTP server on {}:{}",
         config().service.host,
         config().service.port
     );
-    
-    server.run().await.context("Server error")?;
+    info!(
+        "🔗 Starting gRPC server on {}:{}",
+        config().service.host,
+        config().service.grpc_port
+    );
+
+    let http_handle = tokio::spawn(async move {
+        server.run().await.context("HTTP server error")
+    });
+
+    let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port));
+    let grpc_handle = tokio::spawn(async move {
+        tonic::transport::Server::builder()
+            .add_service(grpc_router)
+            .serve(grpc_addr)
+            .await
+            .context("gRPC server error")
+    });
+
+    // Wait for either server to finish (or fail)
+    tokio::select! {
+        result = http_handle => {
+            result.context("HTTP server task panicked")??;
+        }
+        result = grpc_handle => {
+            result.context("gRPC server task panicked")??;
+        }
+    }
 
     Ok(())
 }

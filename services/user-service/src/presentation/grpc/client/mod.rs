@@ -1,9 +1,3 @@
-// gRPC client for calling other services (e.g., auth-service)
+pub mod auth_client;
 
-// Example:
-// pub mod auth_client;
-
-// This would contain gRPC clients for:
-// - Calling auth-service (token validation, etc.)
-// - Calling notification-service (sending notifications)
-// - etc.
+pub use auth_client::AuthGrpcClient;

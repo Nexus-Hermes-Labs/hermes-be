@@ -80,6 +80,18 @@ impl Config {
             ));
         }
 
+        if self.service.grpc_port == 0 {
+            return Err(ConfigError::Validation(
+                "gRPC port cannot be 0. Please define APP_SERVICE__GRPC_PORT.".into(),
+            ));
+        }
+
+        if self.service.grpc_port == self.service.port {
+            return Err(ConfigError::Validation(
+                "gRPC port must be different from HTTP port.".into(),
+            ));
+        }
+
         // Validate database config
         if self.database.host.is_empty() {
             return Err(ConfigError::Validation("Database host cannot be empty".into()));

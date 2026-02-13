@@ -5,6 +5,8 @@ use crate::infrastructure::persistence::postgres::{
 };
 use crate::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use crate::infrastructure::security::token::sha256_service::Sha256TokenHasher;
+use crate::presentation::grpc::proto::auth::v1::auth_service_server::AuthServiceServer;
+use crate::presentation::grpc::server::AuthServiceGrpc;
 use crate::presentation::http::server::Server;
 use crate::state::app_state::AppState;
 use crate::state::auth_state::AuthState;
@@ -57,7 +59,16 @@ impl AppBuilder {
     }
 
     /// Build the complete application with all dependencies
-    pub async fn build(self) -> Result<Server> {
+    ///
+    /// Returns both the HTTP server and the gRPC service router
+    pub async fn build(
+        self,
+    ) -> Result<(
+        Server,
+        AuthServiceServer<
+            AuthServiceGrpc<PostgresAuthCredentialRepository, PostgresAuthSessionRepository>,
+        >,
+    )> {
         let service_name = self.service_name.expect("Service name must be provided");
 
         let db_pool = self.db_pool.clone().expect("Database pool must be provided");
@@ -102,16 +113,28 @@ impl AppBuilder {
         // ========================================
         // STATE COMPOSITION
         // ========================================
-        let app_state = self.compose_state(application, infrastructure.clone())?;
+        let app_state = self.compose_state(application.clone(), infrastructure.clone())?;
         info!("✅ Application state composed");
 
         // ========================================
-        // SERVER
+        // gRPC SERVER
+        // ========================================
+        let grpc_service = AuthServiceGrpc::new(
+            infrastructure.jwt_manager.clone(),
+            application.credential_repo,
+            application.session_repo,
+        );
+        let grpc_router = AuthServiceServer::new(grpc_service);
+
+        info!("✅ gRPC server ready");
+
+        // ========================================
+        // HTTP SERVER
         // ========================================
         let server = Server::new(app_state, infrastructure.health_check).await?;
-        info!("✅ Server ready");
+        info!("✅ HTTP server ready");
 
-        Ok(server)
+        Ok((server, grpc_router))
     }
 
     // ========================================
