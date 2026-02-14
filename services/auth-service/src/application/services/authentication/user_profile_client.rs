@@ -21,18 +21,14 @@ pub struct UserProfileInfo {
 /// following DDD's dependency inversion principle.
 /// The application layer defines the interface; infrastructure implements it.
 #[async_trait]
-pub trait UserProfileClient: Send + Sync {
-    type Error: std::error::Error + Send + Sync + 'static;
-
-    /// Create a user profile in user-service
+pub trait UserProfileClient {
+    type Error;
     async fn create_profile(
         &self,
-        user_id: Uuid,
-        username: &str,
-        display_name: &str,
-        email: &str,
+        username: String,
+        display_name: String,
+        email: String
     ) -> Result<UserProfileInfo, Self::Error>;
 
-    /// Get a user profile from user-service
     async fn get_profile(&self, user_id: Uuid) -> Result<UserProfileInfo, Self::Error>;
 }

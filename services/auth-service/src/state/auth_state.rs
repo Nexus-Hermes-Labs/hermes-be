@@ -19,7 +19,8 @@ where
     PS: PasswordService,
     TH: TokenHasher,
     EP: EventPublisher,
-    UPC: UserProfileClient,
+    UPC: UserProfileClient + Clone,
+    UPC::Error: std::fmt::Debug,
 {
     /// High-level authentication service (orchestrates auth workflows)
     pub service: Arc<AuthService<CR, SR, PS, TH, EP, UPC>>,
@@ -39,7 +40,9 @@ where
     PS: PasswordService,
     TH: TokenHasher,
     EP: EventPublisher,
-    UPC: UserProfileClient,
+    UPC: UserProfileClient + Clone,
+    UPC::Error: std::fmt::Debug,
+    
 {
     pub fn new(
         service: Arc<AuthService<CR, SR, PS, TH, EP, UPC>>,

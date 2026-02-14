@@ -305,7 +305,7 @@ mod tests {
         let repo = PostgresUserProfileRepository::new(pool);
 
         let username = Username::new("testuser").unwrap();
-        let profile = UserProfile::new(Uuid::new_v4(), username, "Test User".to_string()).unwrap();
+        let profile = UserProfile::new(username, "Test User".to_string()).unwrap();
 
         repo.save(&profile).await?;
 
@@ -322,12 +322,12 @@ mod tests {
 
         let username = Username::new("uniqueuser").unwrap();
         let profile1 =
-            UserProfile::new(Uuid::new_v4(), username.clone(), "User 1".to_string()).unwrap();
+            UserProfile::new(username.clone(), "User 1".to_string()).unwrap();
 
         repo.save(&profile1).await?;
 
         // Try to save another profile with same username
-        let profile2 = UserProfile::new(Uuid::new_v4(), username, "User 2".to_string()).unwrap();
+        let profile2 = UserProfile::new(username, "User 2".to_string()).unwrap();
 
         let result = repo.save(&profile2).await;
         assert!(result.is_err()); // Should fail due to unique constraint
@@ -341,7 +341,7 @@ mod tests {
 
         let username = Username::new("findmeuser").unwrap();
         let profile =
-            UserProfile::new(Uuid::new_v4(), username.clone(), "Find Me".to_string()).unwrap();
+            UserProfile::new(username.clone(), "Find Me".to_string()).unwrap();
 
         repo.save(&profile).await?;
 
@@ -358,7 +358,7 @@ mod tests {
 
         let username = Username::new("searchuser").unwrap();
         let profile =
-            UserProfile::new(Uuid::new_v4(), username, "Searchable User".to_string()).unwrap();
+            UserProfile::new(username, "Searchable User".to_string()).unwrap();
 
         repo.save(&profile).await?;
 

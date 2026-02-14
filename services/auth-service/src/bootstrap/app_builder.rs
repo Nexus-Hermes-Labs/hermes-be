@@ -1,6 +1,6 @@
 // src/bootstrap/app_builder.rs
 use crate::application::services::authentication::service::AuthService;
-use crate::infrastructure::grpc::UserProfileGrpcClient;
+use crate::infrastructure::grpc::UserGrpcClient; // Changed from LazyUserProfileGrpcClient and LazyUserProfileClientAdapter
 use crate::infrastructure::persistence::postgres::{
     PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
@@ -13,10 +13,10 @@ use crate::state::app_state::AppState;
 use crate::state::auth_state::AuthState;
 use crate::state::shared_state::SharedState;
 use anyhow::{Context, Result};
-use common_config::config;
 use common::infrastructure::messaging::NatsEventPublisher;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
+use common_config::config;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::info;
@@ -72,9 +72,15 @@ impl AppBuilder {
     )> {
         let service_name = self.service_name.expect("Service name must be provided");
 
-        let db_pool = self.db_pool.clone().expect("Database pool must be provided");
+        let db_pool = self
+            .db_pool
+            .clone()
+            .expect("Database pool must be provided");
 
-        let redis = self.redis.clone().expect("Redis connection must be provided");
+        let redis = self
+            .redis
+            .clone()
+            .expect("Redis connection must be provided");
 
         let metrics = self.metrics.clone().expect("Metrics must be provided");
 
@@ -102,11 +108,8 @@ impl AppBuilder {
         // ========================================
         // gRPC CLIENTS (infrastructure adapters)
         // ========================================
-        let user_profile_client = Arc::new(
-            UserProfileGrpcClient::connect(&config().grpc_endpoints.user_service)
-                .await
-                .context("Failed to connect to user-service gRPC")?,
-        );
+        let user_profile_client =
+            Arc::new(UserGrpcClient::new(config().grpc_endpoints.user_service.clone()).await?);
 
         info!("✅ gRPC clients ready");
 
@@ -211,7 +214,7 @@ impl AppBuilder {
         services: DomainServices,
         jwt_manager: Arc<JwtManager>,
         event_publisher: Arc<NatsEventPublisher>,
-        user_profile_client: Arc<UserProfileGrpcClient>,
+        user_profile_client: Arc<UserGrpcClient>,
     ) -> Result<Application> {
         let auth_service = Arc::new(AuthService::new(
             config().service.name.clone(),
@@ -287,7 +290,7 @@ struct Application {
             Argon2PasswordService,
             Sha256TokenHasher,
             NatsEventPublisher,
-            UserProfileGrpcClient,
+            UserGrpcClient, // Changed from LazyUserProfileClientAdapter
         >,
     >,
     credential_repo: Arc<PostgresAuthCredentialRepository>,

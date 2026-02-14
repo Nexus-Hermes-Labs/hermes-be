@@ -1,4 +1,3 @@
-use crate::infrastructure::grpc::UserProfileGrpcClient;
 use crate::infrastructure::persistence::postgres::{
     PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
@@ -7,6 +6,7 @@ use crate::infrastructure::security::token::sha256_service::Sha256TokenHasher;
 use crate::state::auth_state::AuthState;
 use crate::state::shared_state::SharedState;
 use common::infrastructure::messaging::NatsEventPublisher;
+use crate::infrastructure::grpc::UserGrpcClient; // New import
 
 /// Application-wide state container
 ///
@@ -20,7 +20,7 @@ pub struct AppState {
         Argon2PasswordService,
         Sha256TokenHasher,
         NatsEventPublisher,
-        UserProfileGrpcClient,
+        UserGrpcClient, // Changed from LazyUserProfileClientAdapter
     >,
     pub shared: SharedState,
 }

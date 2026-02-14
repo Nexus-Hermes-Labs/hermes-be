@@ -17,13 +17,13 @@ INSERT INTO auth_audit_log (
 VALUES
 
 -- =====================================================
--- USER 1 ACTIVITY FLOW
+-- USER 1 (Bob) ACTIVITY FLOW
 -- =====================================================
 
 -- Login
 (
-    uuid_generate_v4(),
-    '22222222-2222-2222-2222-222222222222',
+    '10000000-0000-0000-0000-000000000001',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'login',
     'User logged in successfully',
     '127.0.0.1',
@@ -34,8 +34,8 @@ VALUES
 
 -- Password Change
 (
-    uuid_generate_v4(),
-    '22222222-2222-2222-2222-222222222222',
+    '20000000-0000-0000-0000-000000000002',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'password_change',
     'User changed password',
     NULL,
@@ -48,8 +48,8 @@ VALUES
 
 -- Logout
 (
-    uuid_generate_v4(),
-    '22222222-2222-2222-2222-222222222222',
+    '30000000-0000-0000-0000-000000000003',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'logout',
     'User logged out',
     '127.0.0.1',
@@ -59,13 +59,13 @@ VALUES
 ),
 
 -- =====================================================
--- USER 2 ACTIVITY FLOW
+-- USER 2 (Charlie) ACTIVITY FLOW
 -- =====================================================
 
 -- Email Change
 (
-    uuid_generate_v4(),
-    '33333333-3333-3333-3333-333333333333',
+    '40000000-0000-0000-0000-000000000004',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'email_change',
     'Email changed',
     NULL,
@@ -79,8 +79,8 @@ VALUES
 
 -- Failed Login Attempts
 (
-    uuid_generate_v4(),
-    '33333333-3333-3333-3333-333333333333',
+    '50000000-0000-0000-0000-000000000005',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'failed_login',
     'Invalid password attempt',
     '192.168.1.10',
@@ -92,8 +92,8 @@ VALUES
 ),
 
 (
-    uuid_generate_v4(),
-    '33333333-3333-3333-3333-333333333333',
+    '60000000-0000-0000-0000-000000000006',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'failed_login',
     'Invalid password attempt',
     '192.168.1.10',
@@ -104,10 +104,10 @@ VALUES
     NOW() - INTERVAL '5 hours'
 ),
 
--- Account Locked
+-- Account Locked (Diana - Suspended User)
 (
-    uuid_generate_v4(),
-    '44444444-4444-4444-4444-444444444444',
+    '70000000-0000-0000-0000-000000000007',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
     'account_locked',
     'Account locked due to failed login attempts',
     '192.168.1.15',
@@ -119,12 +119,12 @@ VALUES
 ),
 
 -- =====================================================
--- ADMIN ACTIVITY
+-- ADMIN (Alice) ACTIVITY
 -- =====================================================
 
 (
-    uuid_generate_v4(),
-    '11111111-1111-1111-1111-111111111111',
+    '80000000-0000-0000-0000-000000000008',
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     'admin_login',
     'Administrator logged in',
     '10.0.0.1',
@@ -135,10 +135,10 @@ VALUES
     NOW() - INTERVAL '1 day'
 ),
 
--- Deleted User Action
+-- Deleted User Action (Eve)
 (
-    uuid_generate_v4(),
-    '55555555-5555-5555-5555-555555555555',
+    '90000000-0000-0000-0000-000000000009',
+    'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
     'account_deleted',
     'User account soft deleted',
     NULL,

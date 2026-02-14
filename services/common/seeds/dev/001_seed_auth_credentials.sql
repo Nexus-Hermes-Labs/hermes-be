@@ -9,6 +9,7 @@ BEGIN;
 
 INSERT INTO auth_credentials (
     id,
+    user_id,
     email,
     password_hash,
     email_verified,
@@ -20,9 +21,10 @@ INSERT INTO auth_credentials (
 VALUES
 
 -- =====================================================
--- Admin User (Active)
+-- Admin User (Active) - Alice
 -- =====================================================
 (
+    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
     '11111111-1111-1111-1111-111111111111',
     'admin@example.com',
     '$2b$12$KIX6KXbE6o9P8hR1z8G5eOeVJZZzKzbwQ6vurIWBLL8GMDIS9Zh8a',
@@ -34,9 +36,10 @@ VALUES
 ),
 
 -- =====================================================
--- Normal User 1 (Active)
+-- Normal User 1 (Active) - Bob
 -- =====================================================
 (
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     '22222222-2222-2222-2222-222222222222',
     'user1@example.com',
     '$2b$12$KIX6KXbE6o9P8hR1z8G5eOeVJZZzKzbwQ6vurIWBLL8GMDIS9Zh8a',
@@ -48,9 +51,10 @@ VALUES
 ),
 
 -- =====================================================
--- Normal User 2 (Not Verified)
+-- Normal User 2 (Not Verified) - Charlie
 -- =====================================================
 (
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
     '33333333-3333-3333-3333-333333333333',
     'user2@example.com',
     '$2b$12$KIX6KXbE6o9P8hR1z8G5eOeVJZZzKzbwQ6vurIWBLL8GMDIS9Zh8a',
@@ -62,9 +66,10 @@ VALUES
 ),
 
 -- =====================================================
--- Suspended User
+-- Suspended User - Diana
 -- =====================================================
 (
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
     '44444444-4444-4444-4444-444444444444',
     'suspended@example.com',
     '$2b$12$KIX6KXbE6o9P8hR1z8G5eOeVJZZzKzbwQ6vurIWBLL8GMDIS9Zh8a',
@@ -76,9 +81,10 @@ VALUES
 ),
 
 -- =====================================================
--- Deleted User
+-- Deleted User - Eve
 -- =====================================================
 (
+    'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
     '55555555-5555-5555-5555-555555555555',
     'deleted@example.com',
     '$2b$12$KIX6KXbE6o9P8hR1z8G5eOeVJZZzKzbwQ6vurIWBLL8GMDIS9Zh8a',

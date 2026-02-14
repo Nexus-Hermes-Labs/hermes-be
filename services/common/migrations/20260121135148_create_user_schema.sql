@@ -138,9 +138,7 @@ CREATE TABLE user_relationships
         message IS NULL OR LENGTH(message) <= 200
         ),
     CONSTRAINT check_message_only_on_pending CHECK (
-        (type IN ('pending_incoming', 'pending_outgoing') AND message IS NOT NULL)
-            OR (type IN ('friend', 'blocked') AND message IS NULL)
-            OR message IS NULL
+        (type IN ('pending_incoming', 'pending_outgoing')) = (message IS NOT NULL)
         ),
 
     created_at     TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
@@ -280,6 +278,11 @@ reverse_type relationship_type;
     reverse_message
 TEXT;
 BEGIN
+    -- Prevent recursive calls
+    IF pg_trigger_depth() > 1 THEN
+        RETURN NEW;
+    END IF;
+
 CASE NEW.type
         WHEN 'pending_outgoing' THEN
             reverse_type := 'pending_incoming';
@@ -332,28 +335,32 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CREATE
-OR REPLACE FUNCTION prevent_conflicting_relationships()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF
-EXISTS (
-        SELECT 1 FROM user_relationships
-        WHERE user_id = NEW.target_user_id
-          AND target_user_id = NEW.user_id
-          AND (
-              (NEW.type IN ('pending_outgoing', 'pending_incoming') AND type = 'friend')
-              OR
-              (NEW.type = 'friend' AND type IN ('pending_incoming', 'pending_outgoing'))
-          )
-    ) THEN
-        RAISE EXCEPTION 'Conflicting relationship exists';
-END IF;
+-- CREATE OR REPLACE FUNCTION prevent_conflicting_relationships()
+-- RETURNS TRIGGER AS $$
+-- BEGIN
+--     -- Allow direct transition from pending_incoming to friend
+--     IF (TG_OP = 'UPDATE' AND OLD.type = 'pending_incoming' AND NEW.type = 'friend') THEN
+--         RETURN NEW;
+--     END IF;
 
-RETURN NEW;
-END;
-$$
-LANGUAGE plpgsql;
+--     IF EXISTS (
+--         SELECT 1 FROM user_relationships
+--         WHERE user_id = NEW.target_user_id
+--           AND target_user_id = NEW.user_id
+--           AND (
+--               (NEW.type IN ('pending_outgoing', 'pending_incoming') AND type = 'friend')
+--               OR
+--               (NEW.type = 'friend' AND type IN ('pending_incoming', 'pending_outgoing'))
+--           )
+--     ) THEN
+--         RAISE EXCEPTION 'Conflicting relationship exists: % -> % (NEW.type: %, existing reverse type: %)',
+--                        NEW.user_id, NEW.target_user_id, NEW.type, (SELECT type FROM user_relationships WHERE user_id = NEW.target_user_id AND target_user_id = NEW.user_id);
+--     END IF;
+
+--     RETURN NEW;
+-- END;
+-- $$
+-- LANGUAGE plpgsql;
 
 CREATE
 OR REPLACE FUNCTION update_user_relationships_updated_at()
@@ -408,11 +415,13 @@ ON user_relationships
     FOR EACH ROW
     EXECUTE FUNCTION sync_bidirectional_relationship();
 
-CREATE TRIGGER trg_prevent_conflicts
-    BEFORE INSERT OR
-UPDATE ON user_relationships
-    FOR EACH ROW
-    EXECUTE FUNCTION prevent_conflicting_relationships();
+-- CREATE TRIGGER trg_prevent_conflicts
+
+--     BEFORE INSERT OR UPDATE ON user_relationships
+
+--     FOR EACH ROW
+
+--     EXECUTE FUNCTION prevent_conflicting_relationships();
 
 CREATE TRIGGER trg_user_relationships_updated_at
     BEFORE UPDATE

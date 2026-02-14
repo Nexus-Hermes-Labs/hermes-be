@@ -8,6 +8,7 @@ use crate::domain::auth_credential::{AccountStatus, AuthCredential, Email, Passw
 #[derive(Debug, Clone, FromRow)]
 pub struct AuthCredentialRow {
     pub id: Uuid,
+    pub user_id: Uuid,
     pub email: String,
     pub password_hash: String,
     pub email_verified: bool,
@@ -42,6 +43,7 @@ impl TryFrom<AuthCredentialRow> for AuthCredential {
 
         Ok(AuthCredential::from_persisted(
             row.id,
+            row.user_id,
             email,
             password_hash,
             row.email_verified,
@@ -65,6 +67,7 @@ impl TryFrom<AuthCredentialRow> for AuthCredential {
 /// Helper for INSERT operations
 pub struct AuthCredentialInsert {
     pub id: Uuid,
+    pub user_id: Uuid,
     pub email: String,
     pub password_hash: String,
 }
@@ -73,6 +76,7 @@ impl From<&AuthCredential> for AuthCredentialInsert {
     fn from(credential: &AuthCredential) -> Self {
         Self {
             id: credential.id(),
+            user_id: credential.user_id(),
             email: credential.email().as_str().to_string(),
             password_hash: credential.password_hash().as_str().to_string(),
         }
@@ -128,6 +132,7 @@ mod tests {
     fn test_credential_row_conversion() {
         let row = AuthCredentialRow {
             id: Uuid::new_v4(),
+            user_id: Default::default(),
             email: "test@example.com".to_string(),
             password_hash: "$argon2id$...".to_string(),
             email_verified: false,

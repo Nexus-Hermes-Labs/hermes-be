@@ -11,8 +11,11 @@ pub struct DatabaseConfig {
     pub database: String,
     pub max_connections: u32,
     pub min_connections: u32,
+    #[serde(with = "humantime_serde")]
     pub acquire_timeout: Duration,
+    #[serde(with = "humantime_serde")]
     pub idle_timeout: Duration,
+    #[serde(with = "humantime_serde")]
     pub max_lifetime: Duration,
 }
 

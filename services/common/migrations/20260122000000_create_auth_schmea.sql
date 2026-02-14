@@ -14,6 +14,7 @@ CREATE TYPE account_status AS ENUM ('active', 'suspended', 'deleted');
 CREATE TABLE auth_credentials
 (
     id    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES user_profiles (id) ON DELETE CASCADE,
 
     -- ================= IDENTITY =================
     email VARCHAR(255) NOT NULL UNIQUE

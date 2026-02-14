@@ -11,6 +11,7 @@ use super::valueobject::{AccountStatus, Email, PasswordHash};
 #[derive(Debug, Clone)]
 pub struct AuthCredential {
     id: Uuid,
+    user_id: Uuid,
     email: Email,
     password_hash: PasswordHash,
 
@@ -41,11 +42,12 @@ pub struct AuthCredential {
 
 impl AuthCredential {
     /// Create new auth credential for registration
-    pub fn new(email: Email, password_hash: PasswordHash) -> Self {
+    pub fn new(user_id: Uuid, email: Email, password_hash: PasswordHash) -> Self {
         let now = Utc::now();
 
         Self {
             id: Uuid::new_v4(),
+            user_id,
             email,
             password_hash,
             email_verified: false,
@@ -69,6 +71,7 @@ impl AuthCredential {
     #[allow(clippy::too_many_arguments)]
     pub fn from_persisted(
         id: Uuid,
+        user_id: Uuid,
         email: Email,
         password_hash: PasswordHash,
         email_verified: bool,
@@ -88,6 +91,7 @@ impl AuthCredential {
     ) -> Self {
         Self {
             id,
+            user_id,
             email,
             password_hash,
             email_verified,
@@ -113,6 +117,10 @@ impl AuthCredential {
 
     pub fn id(&self) -> Uuid {
         self.id
+    }
+
+    pub fn user_id(&self) -> Uuid {
+        self.user_id
     }
 
     pub fn email(&self) -> &Email {
@@ -419,6 +427,10 @@ impl AuthCredential {
 mod tests {
     use super::*;
 
+    fn create_test_user_id() -> Uuid {
+        Uuid::new_v4()
+    }
+
     fn create_test_email() -> Email {
         Email::new("test@example.com").unwrap()
     }
@@ -432,7 +444,7 @@ mod tests {
         let email = create_test_email();
         let password = create_test_password();
 
-        let credential = AuthCredential::new(email.clone(), password);
+        let credential = AuthCredential::new(create_test_user_id(), email.clone(), password);
 
         assert_eq!(credential.email(), &email);
         assert!(!credential.is_email_verified());
@@ -443,7 +455,11 @@ mod tests {
 
     #[test]
     fn test_email_verification_flow() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         // Generate token
         let token = credential.generate_verification_token();
@@ -458,7 +474,11 @@ mod tests {
 
     #[test]
     fn test_failed_login_attempts() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         // First 4 attempts should not lock
         for _ in 0..4 {
@@ -476,7 +496,11 @@ mod tests {
 
     #[test]
     fn test_successful_login_resets_attempts() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         // Record failed attempts
         credential.record_failed_login();
@@ -492,7 +516,11 @@ mod tests {
 
     #[test]
     fn test_password_reset_flow() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         // Generate reset token
         let token = credential.generate_password_reset_token();
@@ -508,7 +536,11 @@ mod tests {
 
     #[test]
     fn test_account_suspension() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         assert!(credential.is_active());
 
@@ -525,7 +557,11 @@ mod tests {
 
     #[test]
     fn test_soft_delete() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         credential.delete();
         assert!(credential.is_deleted());
@@ -535,7 +571,11 @@ mod tests {
 
     #[test]
     fn test_email_change_requires_reverification() {
-        let mut credential = AuthCredential::new(create_test_email(), create_test_password());
+        let mut credential = AuthCredential::new(
+            create_test_user_id(),
+            create_test_email(),
+            create_test_password(),
+        );
 
         // Verify email first
         let token = credential.generate_verification_token();

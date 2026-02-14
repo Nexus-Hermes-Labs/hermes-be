@@ -110,7 +110,6 @@ mod tests {
     fn test_entity_to_row_conversion() {
         let username = Username::new("testuser").unwrap();
         let profile = UserProfile::new(
-            Uuid::new_v4(),
             username,
             "Test User".to_string(),
         )

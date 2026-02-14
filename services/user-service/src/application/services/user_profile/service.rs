@@ -30,7 +30,6 @@ where
     /// Create new user profile
     pub async fn create_profile(
         &self,
-        user_id: Uuid,
         username: String,
         display_name: String,
     ) -> Result<UserProfile, UserProfileServiceError> {
@@ -44,7 +43,7 @@ where
         }
 
         // Create profile
-        let profile = UserProfile::new(user_id, username, display_name)
+        let profile = UserProfile::new(username, display_name)
             .map_err(UserProfileServiceError::DomainError)?;
 
         // Save to database

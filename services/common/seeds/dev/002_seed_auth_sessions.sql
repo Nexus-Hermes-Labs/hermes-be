@@ -20,11 +20,11 @@ INSERT INTO auth_sessions (
 VALUES
 
 -- =====================================================
--- Active Session - User1
+-- Active Session - User1 (Bob)
 -- =====================================================
 (
-    'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-    '22222222-2222-2222-2222-222222222222',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'hashed_refresh_token_1',
     '127.0.0.1',
     'Mozilla/5.0',
@@ -37,11 +37,11 @@ VALUES
 ),
 
 -- =====================================================
--- Active Session - User2
+-- Active Session - User2 (Charlie)
 -- =====================================================
 (
-    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-    '33333333-3333-3333-3333-333333333333',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'hashed_refresh_token_2',
     '192.168.1.10',
     'Chrome',
@@ -54,16 +54,16 @@ VALUES
 ),
 
 -- =====================================================
--- Revoked Session
+-- Revoked Session - User1 (Bob)
 -- =====================================================
 (
-    'cccccccc-cccc-cccc-cccc-cccccccccccc',
-    '22222222-2222-2222-2222-222222222222',
+    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'hashed_refresh_token_3',
     '10.0.0.5',
     'Safari',
     'iPhone',
-    NOW() + INTERVAL '30 days',
+    NOW(),
     NOW() - INTERVAL '1 day',
     TRUE,
     NOW() - INTERVAL '1 day',
@@ -71,11 +71,11 @@ VALUES
 ),
 
 -- =====================================================
--- Expired Session
+-- Expired Session - User2 (Charlie)
 -- =====================================================
 (
-    'dddddddd-dddd-dddd-dddd-dddddddddddd',
-    '33333333-3333-3333-3333-333333333333',
+    'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+    'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'hashed_refresh_token_4',
     '172.16.0.2',
     'Firefox',

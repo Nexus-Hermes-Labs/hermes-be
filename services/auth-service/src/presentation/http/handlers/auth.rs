@@ -1,8 +1,8 @@
-
 use crate::presentation::http::dto::{
     ClientInfo, LoginRequest, LogoutRequest, RefreshTokenRequest, RegisterRequest,
 };
 use crate::presentation::http::error::ApiError;
+use crate::application::services::authentication::error::AuthApplicationError;
 use crate::state::app_state::AppState;
 use axum::{
     extract::State,
@@ -36,20 +36,17 @@ use validator::Validate;
 /// - `500 Internal Server Error` - Server error
 pub async fn register_handler(
     State(state): State<AppState>,
-    Json(request): Json<RegisterRequest>,
+    client_info: ClientInfo,
+    Json(request_body): Json<RegisterRequest>,
 ) -> Result<Response, ApiError> {
     // Validate request
-    request.validate()?;
-
-    // TODO: Extract client info from HTTP request
-    // For now, use default (will be implemented with full HTTP context)
-    let client_info = self::extract_client_info_from_request();
+    request_body.validate()?;
 
     // Call auth service
     let response = state
         .auth
         .service
-        .register(request, client_info)
+        .register(request_body, client_info)
         .await
         .map_err(ApiError::from)?;
 
@@ -78,19 +75,17 @@ pub async fn register_handler(
 /// - `500 Internal Server Error` - Server error
 pub async fn login_handler(
     State(state): State<AppState>,
-    Json(request): Json<LoginRequest>,
+    client_info: ClientInfo,
+    Json(request_body): Json<LoginRequest>,
 ) -> Result<Response, ApiError> {
     // Validate request
-    request.validate()?;
-
-    // TODO: Extract client info from HTTP request
-    let client_info = self::extract_client_info_from_request();
+    request_body.validate()?;
 
     // Call auth service
     let response = state
         .auth
         .service
-        .login(request, client_info)
+        .login(request_body, client_info)
         .await
         .map_err(ApiError::from)?;
 
@@ -158,46 +153,32 @@ pub async fn refresh_token_handler(
 /// - `401 Unauthorized` - Invalid refresh token
 /// - `500 Internal Server Error` - Server error
 pub async fn logout_handler(
-    State(_state): State<AppState>,
-    Json(_request): Json<LogoutRequest>,
+    State(state): State<AppState>,
+    Json(request): Json<LogoutRequest>,
 ) -> Result<Response, ApiError> {
-    unimplemented!("Extract user_id and session_id from refresh token");
-    // Validate request
-    // request.validate()?;
+    request.validate()?;
 
-    // Extract user_id and session_id from refresh token
-    // For MVP, we'll just use the token to find the session
-    // TODO: Parse JWT to get user_id and session_id
-}
+    let claims = state
+        .auth
+        .jwt_manager
+        .verify_refresh_token(&request.refresh_token)
+        .map_err(|_e| {
+            Into::<ApiError>::into(AuthApplicationError::InvalidToken)
+        })?;
 
-// ============================================
-// HELPER: EXTRACT CLIENT INFO FROM REQUEST
-// ============================================
+    let user_id = claims.user_id().map_err(|_e| {
+                    Into::<ApiError>::into(AuthApplicationError::InvalidToken)    })?;
 
-/// Extract client information from HTTP request
-///
-/// This should be implemented as an Axum extractor in production.
-/// For now, it's a placeholder showing what needs to be extracted.
-///
-/// # Example (Future Implementation)
-/// ```rust
-/// #[async_trait]
-/// impl<S> FromRequestParts<S> for ClientInfo {
-///     async fn from_request_parts(
-///         parts: &mut Parts,
-///         _state: &S,
-///     ) -> Result<Self, Self::Rejection> {
-///         let ip = extract_ip_from_headers(&parts.headers);
-///         let user_agent = extract_user_agent(&parts.headers);
-///         Ok(ClientInfo::new(ip, user_agent, None))
-///     }
-/// }
-/// ```
-#[allow(dead_code)]
-fn extract_client_info_from_request(/* req: &Request */) -> ClientInfo {
-    // TODO: Implement with full HTTP context
-    // Extract from headers:
-    // - X-Forwarded-For or X-Real-IP for IP
-    // - User-Agent header
-    ClientInfo::default()
+    // Session ID is optional in the claims, but if present, we use it for specific logout
+    // Otherwise, all_devices will handle revoking all sessions for the user.
+    let session_id = claims.jwt_id().ok(); // Convert Option<&Uuid> to Option<Uuid>
+
+    let response = state
+        .auth
+        .service
+        .logout(user_id, session_id, request.all_devices)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok((StatusCode::OK, Json(response)).into_response())
 }

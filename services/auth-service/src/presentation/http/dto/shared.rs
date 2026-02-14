@@ -1,6 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use axum::{
+    async_trait,
+    extract::{ConnectInfo, FromRequestParts},
+    http::{request::Parts, StatusCode},
+};
+use std::net::SocketAddr;
 
 // ============================================
 // BASE AUTHENTICATION RESPONSE TYPES
@@ -265,5 +271,28 @@ mod tests {
         assert_eq!(info.ip_address, Some("127.0.0.1".to_string()));
         assert_eq!(info.user_agent, Some("Mozilla/5.0".to_string()));
         assert_eq!(info.device_name, Some("Chrome".to_string()));
+    }
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for ClientInfo
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let ip_address = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(addr)| addr.ip().to_string());
+
+        let user_agent = parts
+            .headers
+            .get("user-agent")
+            .and_then(|h_val| h_val.to_str().ok())
+            .map(|s| s.to_string());
+
+        Ok(ClientInfo::new(ip_address, user_agent, None))
     }
 }

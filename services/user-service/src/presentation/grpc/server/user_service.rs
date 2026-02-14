@@ -73,12 +73,9 @@ where
     ) -> Result<Response<UserProfileResponse>, Status> {
         let req = request.into_inner();
 
-        let user_id = Uuid::parse_str(&req.user_id)
-            .map_err(|_| Status::invalid_argument("Invalid user_id format"))?;
-
         let profile = self
             .profile_service
-            .create_profile(user_id, req.username, req.display_name)
+            .create_profile(req.username, req.display_name)
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 

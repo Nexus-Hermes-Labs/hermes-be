@@ -57,24 +57,26 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
         let insert: AuthCredentialInsert = credential.into();
 
         info!(
-            user_id = %insert.id,
+            credential_id = %insert.id,
+            user_id = %insert.user_id,
             email = %insert.email,
             "Saving auth credential"
         );
 
         sqlx::query(
             r#"
-            INSERT INTO auth_credentials (id, email, password_hash)
-            VALUES ($1, $2, $3)
+            INSERT INTO auth_credentials (id, user_id, email, password_hash)
+            VALUES ($1, $2, $3, $4)
             "#,
         )
         .bind(insert.id)
+        .bind(insert.user_id)
         .bind(insert.email)
         .bind(insert.password_hash)
         .execute(&self.pool)
         .await?;
 
-        debug!(user_id = %insert.id, "Auth credential saved");
+        debug!(credential_id = %insert.id, user_id = %insert.user_id, "Auth credential saved");
         Ok(())
     }
 
@@ -297,7 +299,8 @@ mod tests {
 
         let email = Email::new("test@example.com").unwrap();
         let password_hash = PasswordHash::from_hash("$argon2id$...");
-        let credential = AuthCredential::new(email.clone(), password_hash);
+        let user_id = Uuid::new_v4(); // Dummy user_id for test
+        let credential = AuthCredential::new(user_id, email.clone(), password_hash);
 
         // Save
         repo.save(&credential).await.unwrap();
@@ -319,7 +322,8 @@ mod tests {
 
         let email = Email::new("exists@example.com").unwrap();
         let password_hash = PasswordHash::from_hash("$argon2id$...");
-        let credential = AuthCredential::new(email.clone(), password_hash);
+        let user_id = Uuid::new_v4(); // Dummy user_id for test
+        let credential = AuthCredential::new(user_id, email.clone(), password_hash);
 
         // Should not exist initially
         assert!(!repo.exists(credential.id()).await.unwrap());
@@ -342,7 +346,8 @@ mod tests {
         for i in 0..5 {
             let email = Email::new(&format!("user_profile{}@example.com", i)).unwrap();
             let password_hash = PasswordHash::from_hash("$argon2id$...");
-            let credential = AuthCredential::new(email, password_hash);
+            let user_id = Uuid::new_v4(); // Dummy user_id for test
+            let credential = AuthCredential::new(user_id, email, password_hash);
             repo.save(&credential).await.unwrap();
         }
 

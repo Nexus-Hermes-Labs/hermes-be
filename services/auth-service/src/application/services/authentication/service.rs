@@ -5,6 +5,7 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
+use crate::infrastructure::grpc::UserGrpcError;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
@@ -15,7 +16,6 @@ use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-
 // ============================================
 // CONFIGURATION
 // ============================================
@@ -39,7 +39,8 @@ where
     PS: PasswordService,
     TH: TokenHasher,
     EP: EventPublisher,
-    UPC: UserProfileClient,
+    UPC: UserProfileClient + Clone,
+    UPC::Error: std::fmt::Debug,
 {
     service_name: String,
     credential_repo: Arc<CR>,
@@ -60,7 +61,8 @@ where
     PS: PasswordService,
     TH: TokenHasher,
     EP: EventPublisher,
-    UPC: UserProfileClient,
+    UPC: UserProfileClient + Clone,
+    UPC::Error: std::fmt::Debug,
 {
     pub fn new(
         service_name: impl Into<String>,
@@ -126,37 +128,29 @@ where
             .map_err(|_e| AuthApplicationError::HashingFailed)?;
 
         // ═══════════════════════════════════════════════════
-        // STEP 3: Create Auth Credential
-        // ═══════════════════════════════════════════════════
-        let credential = AuthCredential::new(email.clone(), password_hash);
-        self.credential_repo.save(&credential).await?;
-
-        info!(
-            user_id = %credential.id(),
-            email = %credential.email(),
-            "Auth credential created"
-        );
-
-        // ═══════════════════════════════════════════════════
-        // STEP 4: Create User Profile via gRPC (SYNC)
+        // STEP 3: Create User Profile via gRPC (SYNC) to get user_id
         // ═══════════════════════════════════════════════════
         let profile_info = self
             .user_profile_client
             .create_profile(
-                credential.id(),
-                &request.username,
-                &request.display_name,
-                credential.email().as_str(),
+                request.username.to_owned(),
+                request.display_name.to_owned(),
+                email.as_str().to_owned(), // Use the validated email here
             )
             .await
-            .map_err(|e| {
-                error!(
-                    error = %e,
-                    user_id = %credential.id(),
-                    "Failed to create user profile via user-service"
-                );
-                AuthApplicationError::UserProfileCreationFailed(e.to_string())
-            })?;
+            .map_err(|e| AuthApplicationError::UserProfileCreationFailed(format!("{:?}", e)))?;
+        // ═══════════════════════════════════════════════════
+        // STEP 4: Create Auth Credential using obtained user_id
+        // ═══════════════════════════════════════════════════
+        let credential = AuthCredential::new(profile_info.user_id, email.clone(), password_hash);
+        self.credential_repo.save(&credential).await?;
+
+        info!(
+            credential_id = %credential.id(),
+            user_id = %credential.user_id(),
+            email = %credential.email(),
+            "Auth credential created"
+        );
 
         let user_profile = UserProfile {
             user_id: profile_info.user_id,
@@ -181,7 +175,7 @@ where
         let access_token = self
             .jwt_manager
             .create_access_token(
-                credential.id(),
+                credential.user_id(),
                 credential.email().as_str(),
                 ACCESS_TOKEN_EXPIRY_HOURS,
             )
@@ -190,7 +184,7 @@ where
         let refresh_token = self
             .jwt_manager
             .create_refresh_token(
-                credential.id(),
+                credential.user_id(),
                 credential.email().as_str(),
                 REFRESH_TOKEN_EXPIRY_DAYS,
             )
@@ -204,7 +198,7 @@ where
             .hash(&refresh_token)
             .map_err(|_| AuthApplicationError::TokenGenerationFailed(refresh_token.clone()))?;
         let session = AuthSession::create(
-            credential.id(),
+            credential.user_id(),
             token_hash.as_str().to_owned(),
             REFRESH_TOKEN_EXPIRY_DAYS,
             client_info.ip_address,
@@ -223,7 +217,7 @@ where
         // STEP 7: Publish Event (ASYNC, Non-blocking)
         // ═══════════════════════════════════════════════════
         let event = UserCreatedEvent::new(
-            credential.id(),
+            credential.user_id(),
             credential.email().as_str().to_string(),
             request.username.clone(),
             request.display_name.clone(),
@@ -365,7 +359,7 @@ where
         let access_token = self
             .jwt_manager
             .create_access_token(
-                credential.id(),
+                credential.user_id(),
                 credential.email().as_str(),
                 ACCESS_TOKEN_EXPIRY_HOURS,
             )
@@ -374,7 +368,7 @@ where
         let refresh_token = self
             .jwt_manager
             .create_refresh_token(
-                credential.id(),
+                credential.user_id(),
                 credential.email().as_str(),
                 REFRESH_TOKEN_EXPIRY_DAYS,
             )
@@ -388,7 +382,7 @@ where
             .hash(&refresh_token)
             .map_err(|_| AuthApplicationError::TokenGenerationFailed(refresh_token.to_string()))?;
         let session = AuthSession::create(
-            credential.id(),
+            credential.user_id(),
             token_hash.as_str().to_owned(),
             REFRESH_TOKEN_EXPIRY_DAYS,
             client_info.ip_address,

@@ -51,7 +51,6 @@ impl UserProfile {
     
     /// Create new user profile
     pub fn new(
-        id: Uuid,
         username: Username,
         display_name: String,
     ) -> Result<Self, UserProfileError> {
@@ -63,7 +62,7 @@ impl UserProfile {
         let now = Utc::now();
         
         Ok(Self {
-            id,
+            id: Uuid::new_v4(),
             username,
             display_name,
             avatar_url: None,
@@ -377,12 +376,10 @@ mod tests {
 
     #[test]
     fn test_create_user_profile() {
-        let id = Uuid::new_v4();
         let username = Username::new("johndoe").unwrap();
         
-        let profile = UserProfile::new(id, username.clone(), "John Doe".to_string()).unwrap();
+        let profile = UserProfile::new(username.clone(), "John Doe".to_string()).unwrap();
         
-        assert_eq!(profile.id(), id);
         assert_eq!(profile.username(), &username);
         assert_eq!(profile.display_name(), "John Doe");
         assert!(profile.is_active());
@@ -390,9 +387,8 @@ mod tests {
 
     #[test]
     fn test_full_display_and_mention() {
-        let id = Uuid::new_v4();
         let username = Username::new("johndoe").unwrap();
-        let profile = UserProfile::new(id, username, "John Doe 🎮".to_string()).unwrap();
+        let profile = UserProfile::new(username, "John Doe 🎮".to_string()).unwrap();
         
         assert_eq!(profile.full_display(), "John Doe 🎮 (@johndoe)");
         assert_eq!(profile.mention(), "@johndoe");
@@ -400,9 +396,8 @@ mod tests {
 
     #[test]
     fn test_update_profile() {
-        let id = Uuid::new_v4();
         let username = Username::new("johndoe").unwrap();
-        let mut profile = UserProfile::new(id, username, "John Doe".to_string()).unwrap();
+        let mut profile = UserProfile::new(username, "John Doe".to_string()).unwrap();
         
         profile.update_profile(
             Some("Jane Doe".to_string()),
@@ -417,9 +412,8 @@ mod tests {
 
     #[test]
     fn test_change_username_rate_limit() {
-        let id = Uuid::new_v4();
         let username = Username::new("johndoe").unwrap();
-        let mut profile = UserProfile::new(id, username, "John Doe".to_string()).unwrap();
+        let mut profile = UserProfile::new(username, "John Doe".to_string()).unwrap();
         
         // First change should work
         let new_username = Username::new("janedoe").unwrap();
@@ -432,9 +426,8 @@ mod tests {
 
     #[test]
     fn test_custom_status() {
-        let id = Uuid::new_v4();
         let username = Username::new("johndoe").unwrap();
-        let mut profile = UserProfile::new(id, username, "John Doe".to_string()).unwrap();
+        let mut profile = UserProfile::new(username, "John Doe".to_string()).unwrap();
         
         profile.set_custom_status(
             Some("Coding".to_string()),
@@ -448,9 +441,8 @@ mod tests {
 
     #[test]
     fn test_delete_profile() {
-        let id = Uuid::new_v4();
         let username = Username::new("johndoe").unwrap();
-        let mut profile = UserProfile::new(id, username, "John Doe".to_string()).unwrap();
+        let mut profile = UserProfile::new(username, "John Doe".to_string()).unwrap();
         
         assert!(profile.is_active());
         

@@ -43,14 +43,13 @@ impl UserProfileHandler {
     /// POST /users
     pub async fn create_profile(
         State(state): State<AppState>,
-        Path(user_id): Path<Uuid>,
         Json(request): Json<CreateProfileRequest>,
     ) -> Result<(StatusCode, Json<ProfileResponse>), ApiError> {
         request.validate()?;
 
         let service = &state.user.user_profile_service;
         let profile = service
-            .create_profile(user_id, request.username, request.display_name)
+            .create_profile(request.username, request.display_name)
             .await?;
 
         Ok((StatusCode::CREATED, Json(ProfileResponse::from(profile))))

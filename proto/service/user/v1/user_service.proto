@@ -48,9 +48,8 @@ service UserService {
 // ──────────────────────────────────────────
 
 message CreateUserProfileRequest {
-  string user_id = 1;           // UUID from auth-service
-  string username = 2;          // Desired username
-  string display_name = 3;      // Display name
+  string username = 1;          // Desired username
+  string display_name = 2;      // Display name
   
   // Optional metadata from auth-service
   string email = 4;             // For discriminator generation
