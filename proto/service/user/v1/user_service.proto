@@ -52,7 +52,7 @@ message CreateUserProfileRequest {
   string display_name = 2;      // Display name
   
   // Optional metadata from auth-service
-  string email = 4;             // For discriminator generation
+  string email = 4;
   string source = 5;            // Registration source (web, mobile, etc.)
 }
 
@@ -119,7 +119,6 @@ message SearchUsersResponse {
 message UserProfileResponse {
   string user_id = 1;
   string username = 2;
-  string discriminator = 3;     // 4-digit discriminator (e.g., "0001")
   string display_name = 4;
   string avatar_url = 5;
   string bio = 6;

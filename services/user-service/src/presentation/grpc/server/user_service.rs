@@ -46,7 +46,6 @@ fn to_proto_response(profile: &crate::domain::user_profile::UserProfile) -> User
     UserProfileResponse {
         user_id: profile.id().to_string(),
         username: profile.username().to_string(),
-        discriminator: String::new(), // Not used in simplified identity system
         display_name: profile.display_name().to_string(),
         avatar_url: profile.avatar_url().unwrap_or_default().to_string(),
         bio: profile.bio().unwrap_or_default().to_string(),

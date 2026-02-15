@@ -108,13 +108,8 @@ pub struct UserProfile {
     /// User's email address
     pub email: String,
 
-    /// User's username (unique with discriminator)
+    /// User's username
     pub username: String,
-
-    /// 4-digit discriminator (like Discord)
-    ///
-    /// Example: "johndoe#0001"
-    pub discriminator: String,
 
     /// User's display name
     ///
@@ -207,7 +202,7 @@ mod tests {
             user_id: Uuid::new_v4(),
             email: "test@example.com".to_string(),
             username: "testuser".to_string(),
-            discriminator: "0001".to_string(),
+
             display_name: "Test User".to_string(),
             avatar: None,
             bio: None,
@@ -231,7 +226,7 @@ mod tests {
             user_id: Uuid::new_v4(),
             email: "test@example.com".to_string(),
             username: "testuser".to_string(),
-            discriminator: "0001".to_string(),
+
             display_name: "Test User".to_string(),
             avatar: None,
             bio: None,

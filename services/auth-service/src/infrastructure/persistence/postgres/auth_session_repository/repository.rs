@@ -68,7 +68,7 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
                 id, credential_id, refresh_token_hash, ip_address, user_agent,
                 device_name, expires_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4::inet, $5, $6, $7)
             "#,
         )
         .bind(insert.id)

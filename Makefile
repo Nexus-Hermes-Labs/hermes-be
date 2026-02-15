@@ -94,14 +94,23 @@ health: ## Check health status of all services
 
 ##@ Protobuf / gRPC
 
-proto-generate: ## Generate protobuf (gRPC) code for common crate
-	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code (common)...$(NC)"
-	@cargo build -p common
-	@echo -e "$(GREEN)✅ Protobuf code generated successfully$(NC)"
+proto-generate: proto-generate-auth proto-generate-user ## Generate protobuf (gRPC) code for all services
+	@echo -e "$(GREEN)✅ All protobuf code generated successfully$(NC)"
+
+proto-generate-auth: ## Generate protobuf (gRPC) code for auth-service
+	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code for auth-service...$(NC)"
+	@cargo build -p auth-service
+	@echo -e "$(GREEN)✅ Protobuf code for auth-service generated successfully$(NC)"
+
+proto-generate-user: ## Generate protobuf (gRPC) code for user-service
+	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code for user-service...$(NC)"
+	@cargo build -p user-service
+	@echo -e "$(GREEN)✅ Protobuf code for user-service generated successfully$(NC)"
 
 proto-clean: ## Clean generated protobuf code (OUT_DIR)
 	@echo -e "$(YELLOW)🧹 Cleaning generated protobuf artifacts...$(NC)"
-	@cargo clean -p common
+	@cargo clean -p auth-service
+	@cargo clean -p user-service
 	@echo -e "$(GREEN)✅ Protobuf artifacts cleaned$(NC)"
 
 ##@ Database

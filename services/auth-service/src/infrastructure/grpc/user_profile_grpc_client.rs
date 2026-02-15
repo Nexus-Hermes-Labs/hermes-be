@@ -64,7 +64,6 @@ impl TryFrom<UserProfileResponse> for UserProfileInfo {
             user_id: Uuid::parse_str(&res.user_id)
                 .map_err(|e| UserGrpcError::InvalidResponse(format!("Invalid UUID: {}", e)))?,
             username: res.username,
-            discriminator: res.discriminator,
             display_name: res.display_name,
             avatar_url: if res.avatar_url.is_empty() {
                 None
@@ -101,7 +100,14 @@ impl UserProfileClient for UserGrpcClient {
             source: "registration".to_string(),
         });
 
-        let response = client.create_user_profile(request).await?.into_inner();
+        let response = client.create_user_profile(request).await.map_err(|e| {
+            tracing::error!(
+                code = ?e.code(),
+                message = %e.message(),
+                "gRPC create_user_profile failed"
+            );
+            e
+        })?.into_inner();
 
         response.try_into()
     }
@@ -135,7 +141,6 @@ mod tests {
         let response = UserProfileResponse {
             user_id: "550e8400-e29b-41d4-a716-446655440000".to_string(),
             username: "testuser".to_string(),
-            discriminator: "0001".to_string(),
             display_name: "Test User".to_string(),
             avatar_url: String::new(),
             bio: String::new(),

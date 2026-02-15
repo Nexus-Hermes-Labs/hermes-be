@@ -19,7 +19,7 @@ pub struct UserCreatedEvent {
     /// User's email address
     pub email: String,
 
-    /// Username (unique with discriminator)
+    /// Username
     pub username: String,
 
     /// User's display name

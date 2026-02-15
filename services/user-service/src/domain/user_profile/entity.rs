@@ -7,7 +7,7 @@ use super::valueobject::{Username, UserStatus};
 /// User Profile Aggregate Root
 ///
 /// Represents a user's public profile and presence information.
-/// Simplified identity system (no discriminator).
+/// Simplified identity system with unique usernames.
 #[derive(Debug, Clone)]
 pub struct UserProfile {
     // ============================================

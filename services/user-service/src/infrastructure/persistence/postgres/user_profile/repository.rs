@@ -69,7 +69,7 @@ impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
                 status, custom_status_text, custom_status_emoji, custom_status_expires_at,
                 last_seen_at, created_at, updated_at, deleted_at, last_username_changed_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::user_status, $8, $9, $10, $11, $12, $13, $14, $15)
             "#,
         )
         .bind(row.id)
@@ -104,7 +104,7 @@ impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
                 avatar_url = $4,
                 banner_url = $5,
                 bio = $6,
-                status = $7,
+                status = $7::user_status,
                 custom_status_text = $8,
                 custom_status_emoji = $9,
                 custom_status_expires_at = $10,

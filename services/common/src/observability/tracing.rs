@@ -10,6 +10,7 @@ use tracing_subscriber::{
 pub fn init_tracing(config: &LoggingConfig, service_name: &str, environment: &str) -> Result<()> {
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.level));
+    let file_appender = rolling::daily("logs", "error.log");
 
     match config.format {
         LogFormat::Json => {
@@ -18,7 +19,6 @@ pub fn init_tracing(config: &LoggingConfig, service_name: &str, environment: &st
                 .with_level(true)
                 .with_thread_ids(true)
                 .json();
-            let file_appender = rolling::daily("logs", "error.log");
             let file_layer = fmt::layer()
                 .with_writer(file_appender)
                 .with_target(true)
@@ -39,7 +39,6 @@ pub fn init_tracing(config: &LoggingConfig, service_name: &str, environment: &st
                 .with_thread_ids(true)
                 .pretty()
                 .with_ansi(true);
-            let file_appender = rolling::daily("logs", "error.log");
             let file_layer = fmt::layer()
                 .with_writer(file_appender)
                 .with_target(true)

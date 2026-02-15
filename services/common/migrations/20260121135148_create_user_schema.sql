@@ -64,6 +64,8 @@ last_seen_at TIMESTAMPTZ,
 
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+deleted_at TIMESTAMPTZ,
+last_username_changed_at TIMESTAMPTZ;
 
 CONSTRAINT valid_custom_status
     CHECK (
@@ -208,6 +210,9 @@ CREATE INDEX idx_relationships_pending_incoming
 
 CREATE INDEX idx_relationships_pending_outgoing
     ON user_relationships (user_id) WHERE type = 'pending_outgoing';
+
+CREATE INDEX idx_user_profiles_deleted_at
+    ON user_profiles (deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- =====================================================
 -- COMMON TRIGGERS

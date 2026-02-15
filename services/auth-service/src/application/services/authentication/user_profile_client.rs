@@ -7,7 +7,6 @@ use uuid::Uuid;
 pub struct UserProfileInfo {
     pub user_id: Uuid,
     pub username: String,
-    pub discriminator: String,
     pub display_name: String,
     pub avatar_url: Option<String>,
     pub bio: Option<String>,

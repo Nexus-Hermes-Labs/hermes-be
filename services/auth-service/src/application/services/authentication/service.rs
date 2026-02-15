@@ -143,7 +143,10 @@ where
         // STEP 4: Create Auth Credential using obtained user_id
         // ═══════════════════════════════════════════════════
         let credential = AuthCredential::new(profile_info.user_id, email.clone(), password_hash);
-        self.credential_repo.save(&credential).await?;
+        self.credential_repo.save(&credential).await.map_err(|e| {
+            error!(error = %e, "STEP 4 FAILED: credential_repo.save");
+            e
+        })?;
 
         info!(
             credential_id = %credential.id(),
@@ -156,7 +159,6 @@ where
             user_id: profile_info.user_id,
             email: credential.email().as_str().to_string(),
             username: profile_info.username,
-            discriminator: profile_info.discriminator,
             display_name: profile_info.display_name,
             avatar: profile_info.avatar_url,
             bio: profile_info.bio,
@@ -205,7 +207,10 @@ where
             client_info.user_agent,
         );
 
-        self.session_repo.save(&session).await?;
+        self.session_repo.save(&session).await.map_err(|e| {
+            error!(error = %e, "STEP 6 FAILED: session_repo.save");
+            e
+        })?;
 
         info!(
             user_id = %credential.id(),
