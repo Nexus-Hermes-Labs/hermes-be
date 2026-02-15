@@ -58,21 +58,21 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
 
         info!(
             session_id = %insert.id,
-            user_id = %insert.user_id,
+            credential_id = %insert.credential_id,
             "Saving auth session"
         );
 
         sqlx::query(
             r#"
             INSERT INTO auth_sessions (
-                id, user_id, refresh_token_hash, ip_address, user_agent,
+                id, credential_id, refresh_token_hash, ip_address, user_agent,
                 device_name, expires_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
         )
         .bind(insert.id)
-        .bind(insert.user_id)
+        .bind(insert.credential_id)
         .bind(insert.refresh_token_hash)
         .bind(insert.ip_address)
         .bind(insert.user_agent)
@@ -187,59 +187,59 @@ impl AuthSessionRepository for PostgresAuthSessionRepository {
         Ok(row.and_then(|r| r.try_into().ok()))
     }
 
-    async fn find_active_by_user_id(&self, user_id: Uuid) -> Result<Vec<AuthSession>, Self::Error> {
-        debug!(user_id = %user_id, "Finding active sessions by user_profile ID");
+    async fn find_active_by_credential_id(&self, credential_id: Uuid) -> Result<Vec<AuthSession>, Self::Error> {
+        debug!(credential_id = %credential_id, "Finding active sessions by credential ID");
 
         let rows = sqlx::query_as::<_, AuthSessionRow>(
             r#"
             SELECT * FROM auth_sessions
-            WHERE user_id = $1
+            WHERE credential_id = $1
               AND is_revoked = FALSE
               AND expires_at > NOW()
             ORDER BY created_at DESC
             "#,
         )
-        .bind(user_id)
+        .bind(credential_id)
         .fetch_all(&self.pool)
         .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
 
-    async fn find_all_by_user_id(&self, user_id: Uuid) -> Result<Vec<AuthSession>, Self::Error> {
-        debug!(user_id = %user_id, "Finding all sessions by user_profile ID");
+    async fn find_all_by_credential_id(&self, credential_id: Uuid) -> Result<Vec<AuthSession>, Self::Error> {
+        debug!(credential_id = %credential_id, "Finding all sessions by credential ID");
 
         let rows = sqlx::query_as::<_, AuthSessionRow>(
             r#"
             SELECT * FROM auth_sessions
-            WHERE user_id = $1
+            WHERE credential_id = $1
             ORDER BY created_at DESC
             "#,
         )
-        .bind(user_id)
+        .bind(credential_id)
         .fetch_all(&self.pool)
         .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
 
-    async fn revoke_all_by_user_id(&self, user_id: Uuid) -> Result<usize, Self::Error> {
-        info!(user_id = %user_id, "Revoking all sessions for user_profile");
+    async fn revoke_all_by_credential_id(&self, credential_id: Uuid) -> Result<usize, Self::Error> {
+        info!(credential_id = %credential_id, "Revoking all sessions for credential");
 
         let result = sqlx::query(
             r#"
             UPDATE auth_sessions
             SET is_revoked = TRUE, revoked_at = NOW()
-            WHERE user_id = $1
+            WHERE credential_id = $1
               AND is_revoked = FALSE
             "#,
         )
-        .bind(user_id)
+        .bind(credential_id)
         .execute(&self.pool)
         .await?;
 
         let count = result.rows_affected() as usize;
-        info!(user_id = %user_id, revoked_count = count, "Sessions revoked");
+        info!(credential_id = %credential_id, revoked_count = count, "Sessions revoked");
 
         Ok(count)
     }
@@ -289,9 +289,9 @@ mod tests {
     async fn test_save_and_find_session(pool: PgPool) {
         let repo = PostgresAuthSessionRepository::new(pool);
 
-        let user_id = Uuid::new_v4();
+        let credential_id = Uuid::new_v4();
         let session = AuthSession::create(
-            user_id,
+            credential_id,
             "token_hash_123".to_string(),
             30,
             Some("127.0.0.1".to_string()),
@@ -321,12 +321,12 @@ mod tests {
     async fn test_revoke_all_sessions(pool: PgPool) {
         let repo = PostgresAuthSessionRepository::new(pool);
 
-        let user_id = Uuid::new_v4();
+        let credential_id = Uuid::new_v4();
 
         // Create 3 sessions
         for i in 0..3 {
             let session = AuthSession::create(
-                user_id,
+                credential_id,
                 format!("token_{}", i),
                 30,
                 None,
@@ -336,11 +336,11 @@ mod tests {
         }
 
         // Revoke all
-        let count = repo.revoke_all_by_user_id(user_id).await.unwrap();
+        let count = repo.revoke_all_by_credential_id(credential_id).await.unwrap();
         assert_eq!(count, 3);
 
         // Verify no active sessions
-        let active = repo.find_active_by_user_id(user_id).await.unwrap();
+        let active = repo.find_active_by_credential_id(credential_id).await.unwrap();
         assert_eq!(active.len(), 0);
     }
 

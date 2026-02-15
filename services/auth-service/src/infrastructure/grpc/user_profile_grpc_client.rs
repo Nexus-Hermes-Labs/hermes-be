@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use std::time::Duration;
-use thiserror::Error;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 

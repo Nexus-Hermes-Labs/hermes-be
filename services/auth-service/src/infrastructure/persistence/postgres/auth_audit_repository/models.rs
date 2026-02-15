@@ -7,7 +7,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow)]
 pub struct AuthAuditLogRow {
     pub id: Uuid,
-    pub user_id: Uuid,
+    pub credential_id: Uuid,
     pub event_type: String,
     pub event_description: Option<String>,
     pub ip_address: Option<String>,
@@ -20,7 +20,7 @@ pub struct AuthAuditLogRow {
 #[derive(Debug, Clone)]
 pub struct AuthAuditLog {
     pub id: Uuid,
-    pub user_id: Uuid,
+    pub credential_id: Uuid,
     pub event_type: String,
     pub event_description: Option<String>,
     pub ip_address: Option<String>,
@@ -33,7 +33,7 @@ impl From<AuthAuditLogRow> for AuthAuditLog {
     fn from(row: AuthAuditLogRow) -> Self {
         Self {
             id: row.id,
-            user_id: row.user_id,
+            credential_id: row.credential_id,
             event_type: row.event_type,
             event_description: row.event_description,
             ip_address: row.ip_address,
@@ -47,7 +47,7 @@ impl From<AuthAuditLogRow> for AuthAuditLog {
 /// Audit log query filters
 #[derive(Debug, Clone, Default)]
 pub struct AuditLogFilters {
-    pub user_id: Option<Uuid>,
+    pub credential_id: Option<Uuid>,
     pub event_type: Option<String>,
     pub from_date: Option<DateTime<Utc>>,
     pub to_date: Option<DateTime<Utc>>,

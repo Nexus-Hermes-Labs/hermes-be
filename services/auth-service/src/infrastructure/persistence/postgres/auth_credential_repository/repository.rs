@@ -191,6 +191,19 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
 
 #[async_trait]
 impl AuthCredentialRepository for PostgresAuthCredentialRepository {
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<AuthCredential>, Self::Error> {
+        debug!(user_id = %user_id, "Finding auth credential by user ID");
+
+        let row = sqlx::query_as::<_, AuthCredentialRow>(
+            "SELECT * FROM auth_credentials WHERE user_id = $1 AND deleted_at IS NULL",
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.and_then(|r| r.try_into().ok()))
+    }
+
     async fn find_by_email(&self, email: &Email) -> Result<Option<AuthCredential>, Self::Error> {
         debug!(email = %email.as_str(), "Finding auth credential by email");
 

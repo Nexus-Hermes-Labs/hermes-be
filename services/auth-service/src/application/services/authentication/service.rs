@@ -5,7 +5,6 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
-use crate::infrastructure::grpc::UserGrpcError;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
@@ -16,6 +15,7 @@ use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
+use crate::infrastructure::grpc::UserGrpcError;
 // ============================================
 // CONFIGURATION
 // ============================================
@@ -198,7 +198,7 @@ where
             .hash(&refresh_token)
             .map_err(|_| AuthApplicationError::TokenGenerationFailed(refresh_token.clone()))?;
         let session = AuthSession::create(
-            credential.user_id(),
+            credential.id(),
             token_hash.as_str().to_owned(),
             REFRESH_TOKEN_EXPIRY_DAYS,
             client_info.ip_address,
@@ -382,7 +382,7 @@ where
             .hash(&refresh_token)
             .map_err(|_| AuthApplicationError::TokenGenerationFailed(refresh_token.to_string()))?;
         let session = AuthSession::create(
-            credential.user_id(),
+            credential.id(),
             token_hash.as_str().to_owned(),
             REFRESH_TOKEN_EXPIRY_DAYS,
             client_info.ip_address,
@@ -424,6 +424,15 @@ where
             AuthApplicationError::InvalidToken
         })?;
 
+        let credential = self
+            .credential_repo
+            .find_by_user_id(user_id)
+            .await?
+            .ok_or_else(|| {
+                warn!("Refresh failed: credential not found");
+                AuthApplicationError::InvalidToken
+            })?;
+
         // Find session by token hash
         let token_hash = self
             .token_hasher
@@ -437,6 +446,11 @@ where
                 warn!("Refresh failed: session not found");
                 AuthApplicationError::InvalidToken
             })?;
+
+        if session.credential_id() != credential.id() {
+            warn!("Refresh failed: session does not belong to user");
+            return Err(AuthApplicationError::InvalidToken);
+        }
 
         if !session.is_valid() {
             warn!(session_id = %session.id(), "Refresh failed: session invalid");
@@ -475,9 +489,15 @@ where
     ) -> Result<LogoutResponse, AuthApplicationError> {
         info!(user_id = %user_id, all_devices = all_devices, "Logout");
 
+        let credential = self
+            .credential_repo
+            .find_by_user_id(user_id)
+            .await?
+            .ok_or_else(|| AuthApplicationError::UserNotFound(user_id))?;
+
         let revoked_count = if all_devices {
             // Revoke all sessions
-            self.session_repo.revoke_all_by_user_id(user_id).await?
+            self.session_repo.revoke_all_by_credential_id(credential.id()).await?
         } else if let Some(session_id) = session_id {
             // Revoke specific session
             if let Some(mut session) = self.session_repo.find_by_id(session_id).await? {

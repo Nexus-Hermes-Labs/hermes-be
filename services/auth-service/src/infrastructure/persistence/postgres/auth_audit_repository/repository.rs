@@ -19,28 +19,28 @@ impl PostgresAuthAuditRepository {
     }
 
     /// Find audit logs by user_profile ID
-    pub async fn find_by_user_id(
+    pub async fn find_by_credential_id(
         &self,
-        user_id: Uuid,
+        credential_id: Uuid,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<AuthAuditLog>, sqlx::Error> {
         debug!(
-            user_id = %user_id,
+            credential_id = %credential_id,
             limit = limit,
             offset = offset,
-            "Finding audit logs by user_profile ID"
+            "Finding audit logs by credential ID"
         );
 
         let rows = sqlx::query_as::<_, AuthAuditLogRow>(
             r#"
             SELECT * FROM auth_audit_log
-            WHERE user_id = $1
+            WHERE credential_id = $1
             ORDER BY created_at DESC
             LIMIT $2 OFFSET $3
             "#,
         )
-        .bind(user_id)
+        .bind(credential_id)
         .bind(limit)
         .bind(offset)
         .fetch_all(&self.pool)
@@ -93,9 +93,9 @@ impl PostgresAuthAuditRepository {
         let mut bindings: Vec<Box<dyn sqlx::Encode<sqlx::Postgres> + Send>> = Vec::new();
         let mut param_count = 1;
 
-        if let Some(user_id) = filters.user_id {
-            query.push_str(&format!(" AND user_id = ${}", param_count));
-            bindings.push(Box::new(user_id));
+        if let Some(credential_id) = filters.credential_id {
+            query.push_str(&format!(" AND credential_id = ${}", param_count));
+            bindings.push(Box::new(credential_id));
             param_count += 1;
         }
 
@@ -127,19 +127,19 @@ impl PostgresAuthAuditRepository {
         // For now, we use the simpler specific methods above
 
         // This is a simplified version - in production you'd want proper dynamic query building
-        if filters.user_id.is_some() && filters.event_type.is_none() {
+        if filters.credential_id.is_some() && filters.event_type.is_none() {
             return self
-                .find_by_user_id(filters.user_id.unwrap(), limit, offset)
+                .find_by_credential_id(filters.credential_id.unwrap(), limit, offset)
                 .await;
         }
 
-        if let (None, Some(event_type)) = (&filters.user_id, &filters.event_type) {
+        if let (None, Some(event_type)) = (&filters.credential_id, &filters.event_type) {
             return self.find_by_event_type(event_type, limit, offset).await;
         }
 
-        // Fallback to user_id if both are present
-        if let Some(user_id) = filters.user_id {
-            return self.find_by_user_id(user_id, limit, offset).await;
+        // Fallback to credential_id if both are present
+        if let Some(credential_id) = filters.credential_id {
+            return self.find_by_credential_id(credential_id, limit, offset).await;
         }
 
         // No filters - return recent logs
@@ -170,10 +170,10 @@ impl PostgresAuthAuditRepository {
     }
 
     /// Count audit logs by user_profile
-    pub async fn count_by_user_id(&self, user_id: Uuid) -> Result<i64, sqlx::Error> {
+    pub async fn count_by_credential_id(&self, credential_id: Uuid) -> Result<i64, sqlx::Error> {
         let count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM auth_audit_log WHERE user_id = $1")
-                .bind(user_id)
+            sqlx::query_scalar("SELECT COUNT(*) FROM auth_audit_log WHERE credential_id = $1")
+                .bind(credential_id)
                 .fetch_one(&self.pool)
                 .await?;
 

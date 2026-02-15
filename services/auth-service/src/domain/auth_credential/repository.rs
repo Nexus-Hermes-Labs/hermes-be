@@ -38,6 +38,9 @@ pub trait AuthCredentialRepository:
     // DOMAIN QUERIES
     // ============================================
 
+    /// Find credential by user ID
+    async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<AuthCredential>, Self::Error>;
+
     /// Find credential by email
     async fn find_by_email(&self, email: &Email) -> Result<Option<AuthCredential>, Self::Error>;
 

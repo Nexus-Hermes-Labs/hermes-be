@@ -10,7 +10,7 @@ use super::error::AuthSessionError;
 #[derive(Debug, Clone)]
 pub struct AuthSession {
     id: Uuid,
-    user_id: Uuid,
+    credential_id: Uuid,
     refresh_token_hash: String,
 
     // Session Info
@@ -31,16 +31,16 @@ pub struct AuthSession {
 }
 
 impl AuthSession {
-    /// Create new session for user_profile
+    /// Create new session for credential
     ///
     /// # Arguments
-    /// * `user_id` - User ID
+    /// * `credential_id` - Credential ID
     /// * `refresh_token_hash` - SHA256 hash of the refresh token
     /// * `expiry_days` - How long the session is valid
     /// * `ip_address` - Client IP address
-    /// * `user_agent` - Client user_profile agent string
+    /// * `user_agent` - Client user agent string
     pub fn create(
-        user_id: Uuid,
+        credential_id: Uuid,
         refresh_token_hash: String,
         expiry_days: i64,
         ip_address: Option<String>,
@@ -50,7 +50,7 @@ impl AuthSession {
 
         Self {
             id: Uuid::new_v4(),
-            user_id,
+            credential_id,
             refresh_token_hash,
             ip_address,
             user_agent: user_agent.clone(),
@@ -67,7 +67,7 @@ impl AuthSession {
     #[allow(clippy::too_many_arguments)]
     pub fn from_persisted(
         id: Uuid,
-        user_id: Uuid,
+        credential_id: Uuid,
         refresh_token_hash: String,
         ip_address: Option<String>,
         user_agent: Option<String>,
@@ -80,7 +80,7 @@ impl AuthSession {
     ) -> Self {
         Self {
             id,
-            user_id,
+            credential_id,
             refresh_token_hash,
             ip_address,
             user_agent,
@@ -101,8 +101,8 @@ impl AuthSession {
         self.id
     }
 
-    pub fn user_id(&self) -> Uuid {
-        self.user_id
+    pub fn credential_id(&self) -> Uuid {
+        self.credential_id
     }
 
     pub fn refresh_token_hash(&self) -> &str {
@@ -226,18 +226,18 @@ mod tests {
 
     #[test]
     fn test_create_session() {
-        let user_id = Uuid::new_v4();
+        let credential_id = Uuid::new_v4();
         let token_hash = "hash123".to_string();
 
         let session = AuthSession::create(
-            user_id,
+            credential_id,
             token_hash.clone(),
             30,
             Some("192.168.1.1".to_string()),
             Some("Mozilla/5.0".to_string()),
         );
 
-        assert_eq!(session.user_id(), user_id);
+        assert_eq!(session.credential_id(), credential_id);
         assert_eq!(session.refresh_token_hash(), &token_hash);
         assert!(session.is_valid());
         assert!(!session.is_revoked());

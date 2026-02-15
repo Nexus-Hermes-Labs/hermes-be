@@ -6,7 +6,7 @@ BEGIN;
 
 INSERT INTO auth_sessions (
     id,
-    user_id,
+    credential_id,
     refresh_token_hash,
     ip_address,
     user_agent,
@@ -23,7 +23,7 @@ VALUES
 -- Active Session - User1 (Bob)
 -- =====================================================
 (
-    'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+    '11111111-2222-3333-4444-555555555555',
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'hashed_refresh_token_1',
     '127.0.0.1',
@@ -40,7 +40,7 @@ VALUES
 -- Active Session - User2 (Charlie)
 -- =====================================================
 (
-    'cccccccc-cccc-cccc-cccc-cccccccccccc',
+    '22222222-3333-4444-5555-666666666666',
     'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'hashed_refresh_token_2',
     '192.168.1.10',
@@ -57,7 +57,7 @@ VALUES
 -- Revoked Session - User1 (Bob)
 -- =====================================================
 (
-    'dddddddd-dddd-dddd-dddd-dddddddddddd',
+    '33333333-4444-5555-6666-777777777777',
     'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     'hashed_refresh_token_3',
     '10.0.0.5',
@@ -74,7 +74,7 @@ VALUES
 -- Expired Session - User2 (Charlie)
 -- =====================================================
 (
-    'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
+    '44444444-5555-6666-7777-888888888888',
     'cccccccc-cccc-cccc-cccc-cccccccccccc',
     'hashed_refresh_token_4',
     '172.16.0.2',
@@ -90,7 +90,7 @@ VALUES
 -- Verify
 SELECT
     id,
-    user_id,
+    credential_id,
     expires_at,
     is_revoked,
     revoked_at

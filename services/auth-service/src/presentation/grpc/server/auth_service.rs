@@ -137,9 +137,16 @@ where
         let user_id = Uuid::parse_str(&req.user_id)
             .map_err(|_| Status::invalid_argument("Invalid user_id format"))?;
 
+        let credential = self
+            .credential_repo
+            .find_by_user_id(user_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?
+            .ok_or_else(|| Status::not_found("Credential not found"))?;
+
         let sessions = self
             .session_repo
-            .find_active_by_user_id(user_id)
+            .find_active_by_credential_id(credential.id())
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -209,6 +216,13 @@ where
         let user_id = Uuid::parse_str(&req.user_id)
             .map_err(|_| Status::invalid_argument("Invalid user_id format"))?;
 
+        let credential = self
+            .credential_repo
+            .find_by_user_id(user_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?
+            .ok_or_else(|| Status::not_found("Credential not found"))?;
+
         // If except_session_id is provided, we need to handle it differently
         let revoked_count = if let Some(except_id) = &req.except_session_id {
             let _except_uuid = Uuid::parse_str(except_id)
@@ -217,7 +231,7 @@ where
             // Get all active sessions and revoke individually (except the excluded one)
             let sessions = self
                 .session_repo
-                .find_active_by_user_id(user_id)
+                .find_active_by_credential_id(credential.id())
                 .await
                 .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -235,7 +249,7 @@ where
             count
         } else {
             self.session_repo
-                .revoke_all_by_user_id(user_id)
+                .revoke_all_by_credential_id(credential.id())
                 .await
                 .map_err(|e| Status::internal(e.to_string()))? as i32
         };

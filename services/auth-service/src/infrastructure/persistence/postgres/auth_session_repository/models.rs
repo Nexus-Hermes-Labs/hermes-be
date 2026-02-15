@@ -8,7 +8,7 @@ use crate::domain::auth_session::AuthSession;
 #[derive(Debug, Clone, FromRow)]
 pub struct AuthSessionRow {
     pub id: Uuid,
-    pub user_id: Uuid,
+    pub credential_id: Uuid,
     pub refresh_token_hash: String,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
@@ -26,7 +26,7 @@ impl TryFrom<AuthSessionRow> for AuthSession {
     fn try_from(row: AuthSessionRow) -> Result<Self, Self::Error> {
         Ok(AuthSession::from_persisted(
             row.id,
-            row.user_id,
+            row.credential_id,
             row.refresh_token_hash,
             row.ip_address,
             row.user_agent,
@@ -43,7 +43,7 @@ impl TryFrom<AuthSessionRow> for AuthSession {
 /// Helper for INSERT operations
 pub struct AuthSessionInsert {
     pub id: Uuid,
-    pub user_id: Uuid,
+    pub credential_id: Uuid,
     pub refresh_token_hash: String,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
@@ -55,7 +55,7 @@ impl From<&AuthSession> for AuthSessionInsert {
     fn from(session: &AuthSession) -> Self {
         Self {
             id: session.id(),
-            user_id: session.user_id(),
+            credential_id: session.credential_id(),
             refresh_token_hash: session.refresh_token_hash().to_string(),
             ip_address: session.ip_address().map(|s| s.to_string()),
             user_agent: session.user_agent().map(|s| s.to_string()),
@@ -92,7 +92,7 @@ mod tests {
     fn test_session_row_conversion() {
         let row = AuthSessionRow {
             id: Uuid::new_v4(),
-            user_id: Uuid::new_v4(),
+            credential_id: Uuid::new_v4(),
             refresh_token_hash: "hash123".to_string(),
             ip_address: Some("127.0.0.1".to_string()),
             user_agent: Some("Mozilla/5.0".to_string()),

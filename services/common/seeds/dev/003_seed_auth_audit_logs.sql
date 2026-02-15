@@ -6,7 +6,7 @@ BEGIN;
 
 INSERT INTO auth_audit_log (
     id,
-    user_id,
+    credential_id,
     event_type,
     event_description,
     ip_address,
@@ -151,7 +151,7 @@ VALUES
 
 -- Verify chronological order
 SELECT
-    user_id,
+    credential_id,
     event_type,
     created_at
 FROM auth_audit_log
