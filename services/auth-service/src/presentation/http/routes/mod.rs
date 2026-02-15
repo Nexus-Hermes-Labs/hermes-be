@@ -24,7 +24,7 @@ pub fn create_router(
     // Complete router
     Router::new()
         .nest("/health", health::routes().with_state(health_check))
-        .nest("/api/auth", api_routes)
+        .nest("/api/v1", api_routes)
         .layer(cors)
         .layer(trace_layer)
 }

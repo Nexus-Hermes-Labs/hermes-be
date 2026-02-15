@@ -108,8 +108,16 @@ impl AppBuilder {
         // ========================================
         // gRPC CLIENTS (infrastructure adapters)
         // ========================================
-        let user_profile_client =
-            Arc::new(UserGrpcClient::new(config().grpc_endpoints.user_service.clone()).await?);
+        let user_profile_client = Arc::new(
+            UserGrpcClient::new(
+                config()
+                    .grpc_endpoints
+                    .user_service
+                    .clone()
+                    .expect("User service endpoint not configured"),
+            )
+            .await?,
+        );
 
         info!("✅ gRPC clients ready");
 

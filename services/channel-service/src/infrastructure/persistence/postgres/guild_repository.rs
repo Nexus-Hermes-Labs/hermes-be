@@ -1,19 +1,10 @@
 use async_trait::async_trait;
-use sqlx::PgPool;
 use uuid::Uuid;
 use common::infrastructure::persistence::error::RepositoryError;
 use crate::domain::guild::Guild;
 use crate::domain::guild_repository::GuildRepository;
 
-pub struct PostgresGuildRepository {
-    pool: PgPool,
-}
-
-impl PostgresGuildRepository {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
-    }
-}
+pub struct PostgresGuildRepository;
 
 #[async_trait]
 impl GuildRepository for PostgresGuildRepository {}

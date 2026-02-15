@@ -84,16 +84,18 @@ impl Config {
             ));
         }
 
-        if self.service.grpc_port == 0 {
-            return Err(ConfigError::Validation(
-                "gRPC port cannot be 0. Please define APP_SERVICE__GRPC_PORT.".into(),
-            ));
-        }
+        if let Some(grpc_port) = self.service.grpc_port {
+            if grpc_port == 0 {
+                return Err(ConfigError::Validation(
+                    "gRPC port cannot be 0. Please define APP_SERVICE__GRPC_PORT.".into(),
+                ));
+            }
 
-        if self.service.grpc_port == self.service.port {
-            return Err(ConfigError::Validation(
-                "gRPC port must be different from HTTP port.".into(),
-            ));
+            if grpc_port == self.service.port {
+                return Err(ConfigError::Validation(
+                    "gRPC port must be different from HTTP port.".into(),
+                ));
+            }
         }
 
         // Validate database config

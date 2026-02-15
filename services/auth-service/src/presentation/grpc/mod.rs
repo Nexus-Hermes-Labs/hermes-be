@@ -1,4 +1,3 @@
-pub mod client;
 pub mod server;
 
 /// Generated protobuf types for auth service

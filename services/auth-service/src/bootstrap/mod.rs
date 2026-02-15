@@ -68,14 +68,14 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     info!(
         "🔗 Starting gRPC server on {}:{}",
         config().service.host,
-        config().service.grpc_port
+        config().service.grpc_port.unwrap_or(0)
     );
 
     let http_handle = tokio::spawn(async move {
         server.run().await.context("HTTP server error")
     });
 
-    let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port));
+    let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()
             .add_service(grpc_router)

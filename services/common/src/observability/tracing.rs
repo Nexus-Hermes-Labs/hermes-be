@@ -1,32 +1,57 @@
+use anyhow::Result;
 use common_config::logging::LogFormat;
 use common_config::LoggingConfig;
-use anyhow::Result;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Registry};
+use tracing_appender::rolling;
+use tracing_subscriber::{
+    filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
+    Registry,
+};
 
 pub fn init_tracing(config: &LoggingConfig, service_name: &str, environment: &str) -> Result<()> {
-    // Config'ten level al, yoksa RUST_LOG'dan, o da yoksa config'ten
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&config.level));
 
-    // Format'a göre subscriber kur
     match config.format {
         LogFormat::Json => {
-            let fmt_layer = fmt::layer()
+            let console_layer = fmt::layer()
                 .with_target(true)
                 .with_level(true)
                 .with_thread_ids(true)
                 .json();
-
-            Registry::default().with(env_filter).with(fmt_layer).init();
-        }
-        LogFormat::Pretty => {
-            let fmt_layer = fmt::layer()
+            let file_appender = rolling::daily("logs", "error.log");
+            let file_layer = fmt::layer()
+                .with_writer(file_appender)
                 .with_target(true)
                 .with_level(true)
                 .with_thread_ids(true)
-                .pretty();
-
-            Registry::default().with(env_filter).with(fmt_layer).init();
+                .json()
+                .with_filter(LevelFilter::ERROR);
+            Registry::default()
+                .with(env_filter)
+                .with(console_layer)
+                .with(file_layer)
+                .init();
+        }
+        LogFormat::Pretty => {
+            let console_layer = fmt::layer()
+                .with_target(true)
+                .with_level(true)
+                .with_thread_ids(true)
+                .pretty()
+                .with_ansi(true);
+            let file_appender = rolling::daily("logs", "error.log");
+            let file_layer = fmt::layer()
+                .with_writer(file_appender)
+                .with_target(true)
+                .with_level(true)
+                .with_thread_ids(true)
+                .pretty()
+                .with_filter(LevelFilter::ERROR);
+            Registry::default()
+                .with(env_filter)
+                .with(console_layer)
+                .with(file_layer)
+                .init();
         }
     }
 

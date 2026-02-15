@@ -15,7 +15,7 @@ use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use crate::infrastructure::grpc::UserGrpcError;
+
 // ============================================
 // CONFIGURATION
 // ============================================
