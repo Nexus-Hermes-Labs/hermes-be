@@ -1,14 +1,6 @@
 use anyhow::{Context, Result};
 use tracing::info;
 
-
-pub mod application;
-pub mod bootstrap;
-pub mod domain;
-pub mod infrastructure;
-pub mod presentation;
-pub mod state;
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let service_name = env!("CARGO_PKG_NAME");
@@ -32,7 +24,7 @@ async fn main() -> Result<()> {
     info!("📍 Environment: {}", common_config::config().service.environment);
 
     // Bootstrap and run application
-    let result = bootstrap::run(service_name).await;
+    let result = user_service::bootstrap::run(service_name).await;
 
     // Cleanup
     info!("👋 {} stopped", service_name);

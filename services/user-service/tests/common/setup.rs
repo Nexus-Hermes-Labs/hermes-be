@@ -1,0 +1,134 @@
+use user_service::application::services::{UserPrivacyService, UserProfileService};
+use user_service::infrastructure::persistence::postgres::{
+    PostgresUserPrivacyRepository, PostgresUserProfileRepository,
+};
+use user_service::state::user_state::UserState;
+use user_service::state::shared_state::SharedState;
+use user_service::state::AppState;
+use common::observability::{HealthCheck, Metrics};
+use axum::Router;
+use sqlx::PgPool;
+use std::sync::Arc;
+use testcontainers::runners::AsyncRunner;
+use testcontainers::{ContainerAsync, GenericImage};
+use testcontainers_modules::postgres::Postgres;
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
+
+// SQL migration
+const USER_SCHEMA_SQL: &str =
+    include_str!("../../../common/migrations/20260121135148_create_user_schema.sql");
+
+/// Initialize the global metrics recorder exactly once across all tests.
+static METRICS_INIT: std::sync::Once = std::sync::Once::new();
+static mut METRICS: Option<Metrics> = None;
+
+fn get_or_init_metrics() -> Metrics {
+    METRICS_INIT.call_once(|| {
+        let m = Metrics::init().expect("init metrics");
+        // SAFETY: only written once inside call_once, read after
+        unsafe { METRICS = Some(m) };
+    });
+    // SAFETY: guaranteed to be initialized after call_once
+    unsafe { METRICS.clone().expect("metrics initialized") }
+}
+
+/// Holds all testcontainers and the fully-built router.
+///
+/// Containers are dropped (and stopped) when `TestHarness` is dropped.
+pub struct TestHarness {
+    pub router: Router,
+    // Keep containers alive for the test duration
+    _pg_container: ContainerAsync<Postgres>,
+    _redis_container: ContainerAsync<GenericImage>,
+}
+
+impl TestHarness {
+    pub async fn new() -> Self {
+        // 1. Start PostgreSQL
+        let pg_container = Postgres::default()
+            .start()
+            .await
+            .expect("start postgres container");
+        let pg_host = pg_container.get_host().await.expect("get pg host");
+        let pg_port = pg_container
+            .get_host_port_ipv4(5432)
+            .await
+            .expect("get pg port");
+        let pg_url = format!(
+            "postgres://postgres:postgres@{}:{}/postgres",
+            pg_host, pg_port
+        );
+
+        let pool = PgPool::connect(&pg_url)
+            .await
+            .expect("connect to test postgres");
+
+        // Run migrations
+        sqlx::raw_sql(USER_SCHEMA_SQL)
+            .execute(&pool)
+            .await
+            .expect("run user schema migration");
+
+        // 2. Start Redis
+        let redis_container = GenericImage::new("redis", "7-alpine")
+            .with_exposed_port(6379.into())
+            .with_wait_for(testcontainers::core::WaitFor::message_on_stdout(
+                "Ready to accept connections",
+            ))
+            .start()
+            .await
+            .expect("start redis container");
+        let redis_host = redis_container
+            .get_host()
+            .await
+            .expect("get redis host");
+        let redis_port = redis_container
+            .get_host_port_ipv4(6379)
+            .await
+            .expect("get redis port");
+        let redis_url = format!("redis://{}:{}", redis_host, redis_port);
+        let redis_client =
+            redis::Client::open(redis_url.as_str()).expect("create redis client");
+        let redis_conn = redis::aio::ConnectionManager::new(redis_client)
+            .await
+            .expect("create redis connection manager");
+
+        // 3. Build services
+        let user_profile_repo = Arc::new(PostgresUserProfileRepository::new(pool.clone()));
+        let user_privacy_repo = Arc::new(PostgresUserPrivacyRepository::new(pool.clone()));
+
+        let user_profile_service = Arc::new(UserProfileService::new(user_profile_repo));
+        let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
+
+        let user_state = UserState::new(user_profile_service, user_privacy_service);
+
+        let metrics = get_or_init_metrics();
+
+        let shared_state = SharedState {
+            db: pool.clone(),
+            redis: redis_conn.clone(),
+            metrics,
+        };
+
+        let app_state = AppState {
+            user: user_state,
+            shared: shared_state,
+        };
+
+        // 4. Build router (same as production, but with minimal layers)
+        let health_check = Arc::new(HealthCheck::new(pool, redis_conn));
+        let cors = CorsLayer::permissive();
+        let trace = TraceLayer::new_for_http();
+
+        let router = user_service::presentation::http::routes::create_router(
+            app_state, health_check, cors, trace,
+        );
+
+        Self {
+            router,
+            _pg_container: pg_container,
+            _redis_container: redis_container,
+        }
+    }
+}

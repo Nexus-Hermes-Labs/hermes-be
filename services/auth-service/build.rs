@@ -8,9 +8,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &["../../proto"],
         )?;
 
-    // Compile user-service proto (client only, for calling user-service)
+    // Compile user-service proto
+    // Server stubs are also generated so integration tests can create mock gRPC servers.
+    // They're dead code in production and stripped by the linker.
     tonic_build::configure()
-        .build_server(false)
+        .build_server(true)
         .build_client(true)
         .compile(
             &["../../proto/service/user/v1/user_service.proto"],

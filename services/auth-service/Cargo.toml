@@ -116,6 +116,9 @@ fake = { workspace = true }
 rstest = { workspace = true }
 testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+http-body-util = { workspace = true }
+tokio-stream = { workspace = true }
 
 # ============================================================================
 # BUILD DEPENDENCIES (proto compilation)
@@ -128,4 +131,3 @@ tonic-build = { workspace = true }
 # ============================================================================
 [features]
 default = []
-# Future: Add feature flags if needed (e.g., "oauth", "2fa")

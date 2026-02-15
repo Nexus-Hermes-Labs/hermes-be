@@ -1,6 +1,6 @@
-mod error;
-mod handlers;
+pub mod error;
+pub mod handlers;
 mod middleware;
-mod routes;
+pub mod routes;
 pub mod server;
 pub mod dto;
