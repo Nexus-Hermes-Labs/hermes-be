@@ -65,7 +65,7 @@ last_seen_at TIMESTAMPTZ,
 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 deleted_at TIMESTAMPTZ,
-last_username_changed_at TIMESTAMPTZ;
+last_username_changed_at TIMESTAMPTZ,
 
 CONSTRAINT valid_custom_status
     CHECK (
