@@ -398,6 +398,54 @@ async fn test_search_users() {
 }
 
 // ============================================
+// RELATIONSHIP TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_block_user_preserves_reverse_block() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create two users
+    let (_, user_a_body) = create_profile(&harness, "blocker_a", "Blocker A").await;
+    let user_a_id = user_a_body["user_id"].as_str().unwrap();
+
+    let (_, user_b_body) = create_profile(&harness, "blocker_b", "Blocker B").await;
+    let user_b_id = user_b_body["user_id"].as_str().unwrap();
+
+    // 2. User B blocks User A
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_b_id}/relationships/block"),
+        Some(json!({ "target_user_id": user_a_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. User A blocks User B
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_a_id}/relationships/block"),
+        Some(json!({ "target_user_id": user_b_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 4. Verify User B's block on User A still exists
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        None,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["type"], "blocked");
+}
+
+// ============================================
 // PRIVACY TESTS
 // ============================================
 

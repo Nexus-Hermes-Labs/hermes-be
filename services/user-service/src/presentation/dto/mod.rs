@@ -1,7 +1,7 @@
-mod user_privacy;
-mod user_profile_request;
-mod user_profile_response;
+pub mod user_privacy;
+pub mod user_profile;
+pub mod user_relationship;
 
 pub use user_privacy::*;
-pub use user_profile_request::*;
-pub use user_profile_response::*;
+pub use user_profile::*;
+pub use user_relationship::*;

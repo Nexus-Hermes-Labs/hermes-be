@@ -1,6 +1,8 @@
-use crate::application::services::{UserPrivacyService, UserProfileService};
+use crate::application::services::{
+    UserPrivacyService, UserProfileService, UserRelationshipService,
+};
 use crate::infrastructure::persistence::postgres::{
-    PostgresUserPrivacyRepository, PostgresUserProfileRepository,
+    PostgresUserPrivacyRepository, PostgresUserProfileRepository, PostgresUserRelationshipRepository,
 };
 use crate::presentation::grpc::proto::user::v1::user_service_server::UserServiceServer;
 use crate::presentation::grpc::server::UserServiceGrpc;
@@ -59,7 +61,13 @@ impl AppBuilder {
         self,
     ) -> Result<(
         Server,
-        UserServiceServer<UserServiceGrpc<PostgresUserProfileRepository, PostgresUserPrivacyRepository>>,
+        UserServiceServer<
+            UserServiceGrpc<
+                PostgresUserProfileRepository,
+                PostgresUserPrivacyRepository,
+                PostgresUserRelationshipRepository,
+            >,
+        >,
     )> {
         let _service_name = self.service_name.expect("Service name must be provided");
         let db_pool = self.db_pool.expect("Database pool must be provided");
@@ -78,6 +86,7 @@ impl AppBuilder {
         // ========================================
         let user_profile_repo = Arc::new(PostgresUserProfileRepository::new(db_pool.clone()));
         let user_privacy_repo = Arc::new(PostgresUserPrivacyRepository::new(db_pool.clone()));
+        let relationship_repo = Arc::new(PostgresUserRelationshipRepository::new(db_pool.clone()));
 
         info!("✅ Persistence layer ready");
 
@@ -86,6 +95,7 @@ impl AppBuilder {
         // ========================================
         let user_profile_service = Arc::new(UserProfileService::new(user_profile_repo));
         let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
+        let relationship_service = Arc::new(UserRelationshipService::new(relationship_repo));
 
         info!("✅ Application layer ready");
 
@@ -95,6 +105,7 @@ impl AppBuilder {
         let user_state = UserState::new(
             user_profile_service.clone(),
             user_privacy_service.clone(),
+            relationship_service.clone(),
         );
 
         let shared_state = SharedState {
@@ -113,7 +124,11 @@ impl AppBuilder {
         // ========================================
         // gRPC SERVER
         // ========================================
-        let grpc_service = UserServiceGrpc::new(user_profile_service, user_privacy_service);
+        let grpc_service = UserServiceGrpc::new(
+            user_profile_service.clone(),
+            user_privacy_service.clone(),
+            relationship_service,
+        );
         let grpc_router = UserServiceServer::new(grpc_service);
 
         info!("✅ gRPC server ready");

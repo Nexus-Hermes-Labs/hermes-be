@@ -1,5 +1,6 @@
 mod user_privacy;
 mod user_profile;
+mod user_relationship;
 
 use crate::state::AppState;
 use axum::Router;
@@ -18,6 +19,7 @@ pub fn create_router(
     let user_routes = Router::new()
         .merge(user_profile::user_profile_routes())
         .merge(user_privacy::user_privacy_routes())
+        .merge(user_relationship::user_relationship_routes())
         .with_state(app_state);
 
     Router::new()

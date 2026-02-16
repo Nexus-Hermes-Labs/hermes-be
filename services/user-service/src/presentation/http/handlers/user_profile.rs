@@ -7,7 +7,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::domain::user_profile::UserStatus;
-use crate::presentation::dto::*;
+use crate::presentation::dto::user_profile::{request::*, response::*};
 use crate::state::AppState;
 
 use super::error::ApiError;

@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::domain::user_privacy::{
     ContentFilterLevel, DmPrivacy, FriendRequestPrivacy, PrivacyPreset,
 };
-use crate::presentation::dto::*;
+use crate::presentation::dto::user_privacy::*;
 use crate::state::AppState;
 
 use super::error::ApiError;

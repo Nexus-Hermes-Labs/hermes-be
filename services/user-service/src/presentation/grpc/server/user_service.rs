@@ -2,9 +2,10 @@ use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
-use crate::application::services::{UserPrivacyService, UserProfileService};
+use crate::application::services::{UserPrivacyService, UserProfileService, UserRelationshipService};
 use crate::domain::user_privacy::UserPrivacyRepository;
 use crate::domain::user_profile::UserProfileRepository;
+use crate::domain::user_relationship::UserRelationshipRepository;
 use crate::presentation::grpc::proto::user::v1::user_service_server::UserService;
 use crate::presentation::grpc::proto::user::v1::{
     BatchGetUserProfilesRequest, BatchGetUserProfilesResponse, CreateUserProfileRequest,
@@ -15,28 +16,34 @@ use crate::presentation::grpc::proto::user::v1::{
 /// gRPC server implementation for UserService
 ///
 /// This is used for service-to-service communication (e.g., auth-service calling user-service)
-pub struct UserServiceGrpc<PR, VR>
+pub struct UserServiceGrpc<PR, VR, RR>
 where
     PR: UserProfileRepository,
     VR: UserPrivacyRepository,
+    RR: UserRelationshipRepository,
 {
     profile_service: Arc<UserProfileService<PR>>,
     #[allow(dead_code)]
     privacy_service: Arc<UserPrivacyService<VR>>,
+    #[allow(dead_code)]
+    relationship_service: Arc<UserRelationshipService<RR>>,
 }
 
-impl<PR, VR> UserServiceGrpc<PR, VR>
+impl<PR, VR, RR> UserServiceGrpc<PR, VR, RR>
 where
     PR: UserProfileRepository,
     VR: UserPrivacyRepository,
+    RR: UserRelationshipRepository,
 {
     pub fn new(
         profile_service: Arc<UserProfileService<PR>>,
         privacy_service: Arc<UserPrivacyService<VR>>,
+        relationship_service: Arc<UserRelationshipService<RR>>,
     ) -> Self {
         Self {
             profile_service,
             privacy_service,
+            relationship_service,
         }
     }
 }
@@ -61,10 +68,11 @@ fn to_proto_response(profile: &crate::domain::user_profile::UserProfile) -> User
 }
 
 #[tonic::async_trait]
-impl<PR, VR> UserService for UserServiceGrpc<PR, VR>
+impl<PR, VR, RR> UserService for UserServiceGrpc<PR, VR, RR>
 where
     PR: UserProfileRepository + Send + Sync + 'static,
     VR: UserPrivacyRepository + Send + Sync + 'static,
+    RR: UserRelationshipRepository + Send + Sync + 'static,
 {
     async fn create_user_profile(
         &self,

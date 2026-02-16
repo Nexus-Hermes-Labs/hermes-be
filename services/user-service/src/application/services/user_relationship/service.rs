@@ -188,27 +188,30 @@ where
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<UserRelationship, UserRelationshipServiceError> {
-        // Remove any existing relationship first (friend, pending, etc.)
-        if self
+        if let Some(mut relationship) = self
             .repository
-            .exists_by_user_and_target(user_id, target_user_id)
+            .find_by_user_and_target(user_id, target_user_id)
             .await?
         {
+            // Relationship exists, transition it to blocked
+            relationship
+                .block()
+                .map_err(UserRelationshipServiceError::DomainError)?;
             self.repository
-                .delete_by_user_and_target(user_id, target_user_id)
+                .update(&relationship)
                 .await
                 .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?;
+            Ok(relationship)
+        } else {
+            // No relationship, create a new block
+            let block = UserRelationship::create_block(user_id, target_user_id)
+                .map_err(UserRelationshipServiceError::DomainError)?;
+            self.repository
+                .save(&block)
+                .await
+                .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?;
+            Ok(block)
         }
-
-        let block = UserRelationship::create_block(user_id, target_user_id)
-            .map_err(UserRelationshipServiceError::DomainError)?;
-
-        self.repository
-            .save(&block)
-            .await
-            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?;
-
-        Ok(block)
     }
 
     /// Unblock a user.

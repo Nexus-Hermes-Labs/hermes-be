@@ -1,6 +1,8 @@
-use user_service::application::services::{UserPrivacyService, UserProfileService};
+use user_service::application::services::{
+    UserPrivacyService, UserProfileService, UserRelationshipService,
+};
 use user_service::infrastructure::persistence::postgres::{
-    PostgresUserPrivacyRepository, PostgresUserProfileRepository,
+    PostgresUserPrivacyRepository, PostgresUserProfileRepository, PostgresUserRelationshipRepository,
 };
 use user_service::state::user_state::UserState;
 use user_service::state::shared_state::SharedState;
@@ -123,11 +125,18 @@ impl TestHarness {
         // 3. Build services
         let user_profile_repo = Arc::new(PostgresUserProfileRepository::new(pool.clone()));
         let user_privacy_repo = Arc::new(PostgresUserPrivacyRepository::new(pool.clone()));
+        let relationship_repo =
+            Arc::new(PostgresUserRelationshipRepository::new(pool.clone()));
 
         let user_profile_service = Arc::new(UserProfileService::new(user_profile_repo));
         let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
+        let relationship_service = Arc::new(UserRelationshipService::new(relationship_repo));
 
-        let user_state = UserState::new(user_profile_service, user_privacy_service);
+        let user_state = UserState::new(
+            user_profile_service,
+            user_privacy_service,
+            relationship_service,
+        );
 
         let metrics = get_or_init_metrics();
 
