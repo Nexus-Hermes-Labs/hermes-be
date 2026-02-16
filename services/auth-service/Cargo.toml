@@ -23,7 +23,6 @@ common-config = { path = "../common/common-config" }
 # WEB FRAMEWORK
 # ============================================================================
 axum = { workspace = true }
-axum-extra = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
@@ -57,7 +56,6 @@ anyhow = { workspace = true }
 # AUTHENTICATION & SECURITY (Auth-specific)
 # ============================================================================
 argon2 = { workspace = true }       # Password hashing
-jsonwebtoken = { workspace = true } # JWT generation
 sha2 = { workspace = true }
 rand = { workspace = true }         # Token secrets
 
@@ -65,13 +63,10 @@ rand = { workspace = true }         # Token secrets
 # LOGGING & OBSERVABILITY
 # ============================================================================
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 
 # ============================================================================
 # METRICS
 # ============================================================================
-metrics = { workspace = true }
-metrics-exporter-prometheus = { workspace = true }
 
 # ============================================================================
 # TIME & UUID
@@ -92,7 +87,6 @@ async-trait = { workspace = true }
 # ============================================================================
 # NATS (for publishing user_profile.created events)
 # ============================================================================
-async-nats = { workspace = true }
 
 # ============================================================================
 # API DOCUMENTATION
@@ -111,14 +105,14 @@ regex = { workspace = true }
 # TESTING
 # ============================================================================
 [dev-dependencies]
+common = { path = "../common", features = ["testing"] }
 mockall = { workspace = true }
 fake = { workspace = true }
 rstest = { workspace = true }
 testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
-tower = { workspace = true, features = ["util"] }
-http-body-util = { workspace = true }
-tokio-stream = { workspace = true }
+http-body-util = "0.1"
+tokio-stream = "0.1"
 
 # ============================================================================
 # BUILD DEPENDENCIES (proto compilation)
@@ -131,3 +125,4 @@ tonic-build = { workspace = true }
 # ============================================================================
 [features]
 default = []
+# Future: Add feature flags if needed (e.g., "oauth", "2fa")

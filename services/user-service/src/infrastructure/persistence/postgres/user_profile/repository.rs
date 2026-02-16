@@ -7,6 +7,15 @@ use uuid::Uuid;
 
 use super::models::UserProfileRow;
 
+/// Column list for SELECT queries on user_profiles.
+/// Casts PG enum columns to TEXT so they can be decoded into String fields.
+const USER_PROFILE_COLUMNS: &str = r#"
+    id, username, display_name, avatar_url, banner_url, bio,
+    status::TEXT as status,
+    custom_status_text, custom_status_emoji, custom_status_expires_at,
+    last_seen_at, created_at, updated_at, deleted_at, last_username_changed_at
+"#;
+
 /// PostgreSQL implementation of UserProfileRepository
 pub struct PostgresUserProfileRepository {
     pool: PgPool,
@@ -23,30 +32,26 @@ impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
     type Error = RepositoryError;
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<UserProfile>, Self::Error> {
-        let row = sqlx::query_as::<_, UserProfileRow>(
-            r#"
-            SELECT *
-            FROM user_profiles
-            WHERE id = $1 AND deleted_at IS NULL
-            "#,
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM user_profiles WHERE id = $1 AND deleted_at IS NULL",
+            USER_PROFILE_COLUMNS
+        );
+        let row = sqlx::query_as::<_, UserProfileRow>(&sql)
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
 
     async fn find_all(&self) -> Result<Vec<UserProfile>, Self::Error> {
-        let rows = sqlx::query_as::<_, UserProfileRow>(
-            r#"
-            SELECT *
-            FROM user_profiles
-            WHERE deleted_at IS NULL
-            "#,
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM user_profiles WHERE deleted_at IS NULL",
+            USER_PROFILE_COLUMNS
+        );
+        let rows = sqlx::query_as::<_, UserProfileRow>(&sql)
+            .fetch_all(&self.pool)
+            .await?;
 
         let profiles: Vec<UserProfile> = rows
             .into_iter()
@@ -188,16 +193,14 @@ impl UserProfileRepository for PostgresUserProfileRepository {
         &self,
         username: &Username,
     ) -> Result<Option<UserProfile>, Self::Error> {
-        let row = sqlx::query_as::<_, UserProfileRow>(
-            r#"
-            SELECT *
-            FROM user_profiles
-            WHERE username = $1 AND deleted_at IS NULL
-            "#,
-        )
-        .bind(username.as_str())
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM user_profiles WHERE username = $1 AND deleted_at IS NULL",
+            USER_PROFILE_COLUMNS
+        );
+        let row = sqlx::query_as::<_, UserProfileRow>(&sql)
+            .bind(username.as_str())
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -231,40 +234,29 @@ impl UserProfileRepository for PostgresUserProfileRepository {
     ) -> Result<Vec<UserProfile>, Self::Error> {
         let search_query = format!("%{}%", query);
 
-        let rows = sqlx::query_as::<_, UserProfileRow>(
-            r#"
-            SELECT *
-            FROM user_profiles
-            WHERE deleted_at IS NULL
-              AND (
-                username ILIKE $1
-                OR display_name ILIKE $1
-                OR bio ILIKE $1
-              )
-            ORDER BY created_at DESC
-            LIMIT $2 OFFSET $3
-            "#,
-        )
-        .bind(&search_query)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM user_profiles WHERE deleted_at IS NULL AND (username ILIKE $1 OR display_name ILIKE $1 OR bio ILIKE $1) ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+            USER_PROFILE_COLUMNS
+        );
+        let rows = sqlx::query_as::<_, UserProfileRow>(&sql)
+            .bind(&search_query)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
 
     async fn find_by_ids(&self, ids: Vec<Uuid>) -> Result<Vec<UserProfile>, Self::Error> {
-        let rows = sqlx::query_as::<_, UserProfileRow>(
-            r#"
-            SELECT *
-            FROM user_profiles
-            WHERE id = ANY($1) AND deleted_at IS NULL
-            "#,
-        )
-        .bind(&ids)
-        .fetch_all(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM user_profiles WHERE id = ANY($1) AND deleted_at IS NULL",
+            USER_PROFILE_COLUMNS
+        );
+        let rows = sqlx::query_as::<_, UserProfileRow>(&sql)
+            .bind(&ids)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
@@ -274,20 +266,15 @@ impl UserProfileRepository for PostgresUserProfileRepository {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<UserProfile>, Self::Error> {
-        let rows = sqlx::query_as::<_, UserProfileRow>(
-            r#"
-            SELECT *
-            FROM user_profiles
-            WHERE deleted_at IS NULL
-              AND status IN ('online', 'idle')
-            ORDER BY last_seen_at DESC NULLS LAST
-            LIMIT $1 OFFSET $2
-            "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM user_profiles WHERE deleted_at IS NULL AND status IN ('online', 'idle') ORDER BY last_seen_at DESC NULLS LAST LIMIT $1 OFFSET $2",
+            USER_PROFILE_COLUMNS
+        );
+        let rows = sqlx::query_as::<_, UserProfileRow>(&sql)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
@@ -296,75 +283,70 @@ impl UserProfileRepository for PostgresUserProfileRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use common::test_utils::TestDb;
+    use std::path::Path;
 
-    // Note: These are integration tests and require a running PostgreSQL instance
-    // Run with: cargo test --features test-db
-
-    #[sqlx::test]
-    async fn test_save_and_find(pool: PgPool) -> Result<(), RepositoryError> {
-        let repo = PostgresUserProfileRepository::new(pool);
+    #[tokio::test]
+    async fn test_save_and_find() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("testuser").unwrap();
         let profile = UserProfile::new(username, "Test User".to_string()).unwrap();
 
-        repo.save(&profile).await?;
+        repo.save(&profile).await.unwrap();
 
-        let found = repo.find_by_id(profile.id()).await?;
+        let found = repo.find_by_id(profile.id()).await.unwrap();
         assert!(found.is_some());
         assert_eq!(found.unwrap().username().as_str(), "testuser");
-
-        Ok(())
     }
 
-    #[sqlx::test]
-    async fn test_username_uniqueness(pool: PgPool) -> Result<(), RepositoryError> {
-        let repo = PostgresUserProfileRepository::new(pool);
+    #[tokio::test]
+    async fn test_username_uniqueness() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("uniqueuser").unwrap();
         let profile1 =
             UserProfile::new(username.clone(), "User 1".to_string()).unwrap();
 
-        repo.save(&profile1).await?;
+        repo.save(&profile1).await.unwrap();
 
         // Try to save another profile with same username
         let profile2 = UserProfile::new(username, "User 2".to_string()).unwrap();
 
         let result = repo.save(&profile2).await;
         assert!(result.is_err()); // Should fail due to unique constraint
-
-        Ok(())
     }
 
-    #[sqlx::test]
-    async fn test_find_by_username(pool: PgPool) -> Result<(), RepositoryError> {
-        let repo = PostgresUserProfileRepository::new(pool);
+    #[tokio::test]
+    async fn test_find_by_username() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("findmeuser").unwrap();
         let profile =
             UserProfile::new(username.clone(), "Find Me".to_string()).unwrap();
 
-        repo.save(&profile).await?;
+        repo.save(&profile).await.unwrap();
 
-        let found = repo.find_by_username(&username).await?;
+        let found = repo.find_by_username(&username).await.unwrap();
         assert!(found.is_some());
         assert_eq!(found.unwrap().display_name(), "Find Me");
-
-        Ok(())
     }
 
-    #[sqlx::test]
-    async fn test_search(pool: PgPool) -> Result<(), RepositoryError> {
-        let repo = PostgresUserProfileRepository::new(pool);
+    #[tokio::test]
+    async fn test_search() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("searchuser").unwrap();
         let profile =
             UserProfile::new(username, "Searchable User".to_string()).unwrap();
 
-        repo.save(&profile).await?;
+        repo.save(&profile).await.unwrap();
 
-        let results = repo.search("search", 10, 0).await?;
+        let results = repo.search("search", 10, 0).await.unwrap();
         assert!(!results.is_empty());
-
-        Ok(())
     }
 }

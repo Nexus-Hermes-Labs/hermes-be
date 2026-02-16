@@ -107,13 +107,13 @@ once_cell = { workspace = true }
 # TESTING
 # ============================================================================
 [dev-dependencies]
+common = { path = "../common", features = ["testing"] }
 mockall = { workspace = true }
 fake = { workspace = true }
 rstest = { workspace = true }
 testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
-tower = { workspace = true, features = ["util"] }
-http-body-util = { workspace = true }
+http-body-util = "0.1"
 
 # ============================================================================
 # BUILD DEPENDENCIES (proto compilation)

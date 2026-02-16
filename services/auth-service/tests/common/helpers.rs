@@ -34,7 +34,10 @@ pub async fn make_json_request(
     let value: serde_json::Value = if bytes.is_empty() {
         serde_json::Value::Null
     } else {
-        serde_json::from_slice(&bytes).expect("parse response body as JSON")
+        serde_json::from_slice(&bytes).unwrap_or_else(|_| {
+            // Response wasn't JSON (e.g. plain-text axum rejection) — wrap it
+            serde_json::Value::String(String::from_utf8_lossy(&bytes).into_owned())
+        })
     };
 
     (status, value)

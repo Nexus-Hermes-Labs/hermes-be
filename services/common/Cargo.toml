@@ -92,8 +92,11 @@ tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 
 # ============================================================================
-# TESTING
+# TESTING (optional, feature-gated)
 # ============================================================================
+testcontainers = { workspace = true, optional = true }
+testcontainers-modules = { workspace = true, optional = true }
+
 [dev-dependencies]
 mockall = { workspace = true }
 fake = { workspace = true }
@@ -105,7 +108,7 @@ tokio-test = "0.4"
 # ============================================================================
 [features]
 default = []
-# Future features if needed
+testing = ["dep:testcontainers", "dep:testcontainers-modules"]
 
 [build-dependencies]
 tonic-build = { workspace = true }

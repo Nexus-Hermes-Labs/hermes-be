@@ -31,11 +31,39 @@ use tonic::{Request, Response, Status};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-// SQL migrations
-const USER_SCHEMA_SQL: &str =
-    include_str!("../../../common/migrations/20260121135148_create_user_schema.sql");
-const AUTH_SCHEMA_SQL: &str =
-    include_str!("../../../common/migrations/20260122000000_create_auth_schmea.sql");
+// User-service migrations (auth-service depends on user schema for mock gRPC)
+const USER_ENUMS_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135148_create_enums.sql");
+const USER_PROFILES_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135149_create_user_profiles.sql");
+const USER_PRIVACY_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135150_create_user_privacy_settings.sql");
+const USER_BADGES_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135151_create_user_badges.sql");
+const USER_RELATIONSHIPS_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135152_create_user_relationships.sql");
+const USER_INDEXES_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135153_create_indexes.sql");
+const USER_FUNCTIONS_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135154_create_functions.sql");
+const USER_TRIGGERS_SQL: &str =
+    include_str!("../../../user-service/migrations/20260121135155_create_triggers.sql");
+
+// Auth-service migrations
+const AUTH_ENUMS_SQL: &str =
+    include_str!("../../migrations/20260122000000_create_enums.sql");
+const AUTH_CREDENTIALS_SQL: &str =
+    include_str!("../../migrations/20260122000001_create_auth_credentials.sql");
+const AUTH_SESSIONS_SQL: &str =
+    include_str!("../../migrations/20260122000002_create_auth_sessions.sql");
+const AUTH_AUDIT_LOG_SQL: &str =
+    include_str!("../../migrations/20260122000003_create_auth_audit_log.sql");
+const AUTH_INDEXES_SQL: &str =
+    include_str!("../../migrations/20260122000004_create_indexes.sql");
+const AUTH_FUNCTIONS_SQL: &str =
+    include_str!("../../migrations/20260122000005_create_functions.sql");
+const AUTH_TRIGGERS_SQL: &str =
+    include_str!("../../migrations/20260122000006_create_triggers.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -193,15 +221,30 @@ impl TestHarness {
             .await
             .expect("connect to test postgres");
 
-        // Run migrations
-        sqlx::raw_sql(USER_SCHEMA_SQL)
-            .execute(&pool)
-            .await
-            .expect("run user schema migration");
-        sqlx::raw_sql(AUTH_SCHEMA_SQL)
-            .execute(&pool)
-            .await
-            .expect("run auth schema migration");
+        // Run migrations in dependency order
+        let migrations: &[(&str, &str)] = &[
+            ("user enums", USER_ENUMS_SQL),
+            ("user profiles", USER_PROFILES_SQL),
+            ("user privacy", USER_PRIVACY_SQL),
+            ("user badges", USER_BADGES_SQL),
+            ("user relationships", USER_RELATIONSHIPS_SQL),
+            ("user indexes", USER_INDEXES_SQL),
+            ("user functions", USER_FUNCTIONS_SQL),
+            ("user triggers", USER_TRIGGERS_SQL),
+            ("auth enums", AUTH_ENUMS_SQL),
+            ("auth credentials", AUTH_CREDENTIALS_SQL),
+            ("auth sessions", AUTH_SESSIONS_SQL),
+            ("auth audit log", AUTH_AUDIT_LOG_SQL),
+            ("auth indexes", AUTH_INDEXES_SQL),
+            ("auth functions", AUTH_FUNCTIONS_SQL),
+            ("auth triggers", AUTH_TRIGGERS_SQL),
+        ];
+        for (name, sql) in migrations {
+            sqlx::raw_sql(sql)
+                .execute(&pool)
+                .await
+                .unwrap_or_else(|e| panic!("run migration '{}': {}", name, e));
+        }
 
         // 2. Start Redis
         let redis_container = GenericImage::new("redis", "7-alpine")
@@ -242,11 +285,22 @@ impl TestHarness {
             .await
             .expect("get nats port");
         let nats_url = format!("nats://{}:{}", nats_host, nats_port);
-        let event_publisher = Arc::new(
-            NatsEventPublisher::new("test-auth-service", &nats_url)
-                .await
-                .expect("connect to nats"),
-        );
+
+        // Retry NATS connection — container may need extra time to accept connections
+        let mut event_publisher = None;
+        for attempt in 0..10 {
+            match NatsEventPublisher::new("test-auth-service", &nats_url).await {
+                Ok(ep) => {
+                    event_publisher = Some(ep);
+                    break;
+                }
+                Err(_) if attempt < 9 => {
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                }
+                Err(e) => panic!("connect to nats after retries: {e}"),
+            }
+        }
+        let event_publisher = Arc::new(event_publisher.unwrap());
 
         // 4. Start mock gRPC server
         let grpc_addr = start_mock_grpc_server().await;

@@ -11,5 +11,8 @@ pub mod observability;
 pub mod pagination;
 pub mod utils;
 
+#[cfg(feature = "testing")]
+pub mod test_utils;
+
 // Re-export commonly used types
 pub use events::Event;

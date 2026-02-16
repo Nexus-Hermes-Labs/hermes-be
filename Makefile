@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-seed db-reset dev test build format lint check install
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-seed db-seed-auth db-reset dev test build format lint check install
 
 # Colors for output
 BLUE := \033[0;34m
@@ -9,8 +9,9 @@ NC := \033[0m # No Color
 
 # Variables
 COMPOSE := docker-compose
-MIGRATION_PATH := services/common/migrations
-SEED_PATH := services/common/seeds/dev
+AUTH_MIGRATION_PATH := services/auth-service/migrations
+USER_MIGRATION_PATH := services/user-service/migrations
+AUTH_SEED_PATH := services/auth-service/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
 
 ##@ Help
@@ -94,40 +95,66 @@ health: ## Check health status of all services
 
 ##@ Protobuf / gRPC
 
-proto-generate: proto-generate-auth proto-generate-user ## Generate protobuf (gRPC) code for all services
-	@echo -e "$(GREEN)✅ All protobuf code generated successfully$(NC)"
-
-proto-generate-auth: ## Generate protobuf (gRPC) code for auth-service
-	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code for auth-service...$(NC)"
+proto-generate: ## Generate protobuf for all services
+	@echo -e "$(BLUE)🧬 Generating all gRPC protobuf code...$(NC)"
 	@cargo build -p auth-service
-	@echo -e "$(GREEN)✅ Protobuf code for auth-service generated successfully$(NC)"
-
-proto-generate-user: ## Generate protobuf (gRPC) code for user-service
-	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code for user-service...$(NC)"
 	@cargo build -p user-service
-	@echo -e "$(GREEN)✅ Protobuf code for user-service generated successfully$(NC)"
+	@echo -e "$(GREEN)✅ All protobuf generated$(NC)"
 
-proto-clean: ## Clean generated protobuf code (OUT_DIR)
-	@echo -e "$(YELLOW)🧹 Cleaning generated protobuf artifacts...$(NC)"
+
+proto-generate-auth:
+	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code (auth-service)...$(NC)"
+	@cargo build -p auth-service
+	@echo -e "$(GREEN)✅ Auth protobuf generated$(NC)"
+
+proto-generate-user:
+	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code (user-service)...$(NC)"
+	@cargo build -p user-service
+	@echo -e "$(GREEN)✅ User protobuf generated$(NC)"
+
+proto-clean: ## Clean all protobuf artifacts
+	@echo -e "$(YELLOW)🧹 Cleaning all protobuf artifacts...$(NC)"
 	@cargo clean -p auth-service
 	@cargo clean -p user-service
-	@echo -e "$(GREEN)✅ Protobuf artifacts cleaned$(NC)"
+	@echo -e "$(GREEN)✅ All cleaned$(NC)"
+
+
+proto-clean-auth:
+	@echo -e "$(YELLOW)🧹 Cleaning auth-service protobuf...$(NC)"
+	@cargo clean -p auth-service
+	@echo -e "$(GREEN)✅ Auth cleaned$(NC)"
+
+proto-clean-user:
+	@echo -e "$(YELLOW)🧹 Cleaning user-service protobuf...$(NC)"
+	@cargo clean -p user-service
+	@echo -e "$(GREEN)✅ User cleaned$(NC)"
 
 ##@ Database
 
-db-migrate: ## Run database migrations
-	@echo -e "$(BLUE)📦 Running database migrations...$(NC)"
-	@sqlx migrate run --source $(MIGRATION_PATH)
-	@echo -e "$(GREEN)✅ Migrations completed$(NC)"
+db-migrate: db-migrate-auth db-migrate-user ## Run all database migrations
+	@echo -e "$(GREEN)✅ All migrations completed$(NC)"
 
-db-seed:
-	@echo -e "$(BLUE)🌱 Seeding database...$(NC)"
+db-migrate-auth: ## Run auth-service migrations
+	@echo -e "$(BLUE)📦 Running auth-service migrations...$(NC)"
+	@sqlx migrate run --source $(AUTH_MIGRATION_PATH)
+	@echo -e "$(GREEN)✅ Auth migrations completed$(NC)"
+
+db-migrate-user: ## Run user-service migrations
+	@echo -e "$(BLUE)📦 Running user-service migrations...$(NC)"
+	@sqlx migrate run --source $(USER_MIGRATION_PATH)
+	@echo -e "$(GREEN)✅ User migrations completed$(NC)"
+
+db-seed: db-seed-auth ## Run all database seeds
+	@echo -e "$(GREEN)✅ All seeds completed$(NC)"
+
+db-seed-auth: ## Run auth-service seeds
+	@echo -e "$(BLUE)🌱 Seeding auth database...$(NC)"
 	@set -e; \
-	for file in $$(ls $(SEED_PATH)/*.sql | sort); do \
+	for file in $$(ls $(AUTH_SEED_PATH)/*.sql | sort); do \
 		echo "Running $$file"; \
 		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
 	done
-	@echo -e "$(GREEN)✅ Database seeded$(NC)"
+	@echo -e "$(GREEN)✅ Auth database seeded$(NC)"
 
 db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database
 	@echo -e "$(GREEN)✅ Database reset completed$(NC)"

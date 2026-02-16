@@ -1,3 +1,4 @@
+
 BEGIN;
 
 -- Insert into user_profiles with FIXED UUIDs

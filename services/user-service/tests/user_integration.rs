@@ -50,11 +50,11 @@ async fn test_create_profile_invalid_username() {
 
     // Uppercase not allowed
     let (status, _) = create_profile(&harness, "Alice", "Alice").await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 
     // Too short (< 3 chars)
     let (status, _) = create_profile(&harness, "ab", "AB").await;
-    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]

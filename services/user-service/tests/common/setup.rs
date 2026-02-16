@@ -15,9 +15,23 @@ use testcontainers_modules::postgres::Postgres;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-// SQL migration
-const USER_SCHEMA_SQL: &str =
-    include_str!("../../../common/migrations/20260121135148_create_user_schema.sql");
+// SQL migrations
+const USER_ENUMS_SQL: &str =
+    include_str!("../../migrations/20260121135148_create_enums.sql");
+const USER_PROFILES_SQL: &str =
+    include_str!("../../migrations/20260121135149_create_user_profiles.sql");
+const USER_PRIVACY_SQL: &str =
+    include_str!("../../migrations/20260121135150_create_user_privacy_settings.sql");
+const USER_BADGES_SQL: &str =
+    include_str!("../../migrations/20260121135151_create_user_badges.sql");
+const USER_RELATIONSHIPS_SQL: &str =
+    include_str!("../../migrations/20260121135152_create_user_relationships.sql");
+const USER_INDEXES_SQL: &str =
+    include_str!("../../migrations/20260121135153_create_indexes.sql");
+const USER_FUNCTIONS_SQL: &str =
+    include_str!("../../migrations/20260121135154_create_functions.sql");
+const USER_TRIGGERS_SQL: &str =
+    include_str!("../../migrations/20260121135155_create_triggers.sql");
 
 /// Initialize the global metrics recorder exactly once across all tests.
 static METRICS_INIT: std::sync::Once = std::sync::Once::new();
@@ -64,11 +78,23 @@ impl TestHarness {
             .await
             .expect("connect to test postgres");
 
-        // Run migrations
-        sqlx::raw_sql(USER_SCHEMA_SQL)
-            .execute(&pool)
-            .await
-            .expect("run user schema migration");
+        // Run migrations in dependency order
+        let migrations: &[(&str, &str)] = &[
+            ("user enums", USER_ENUMS_SQL),
+            ("user profiles", USER_PROFILES_SQL),
+            ("user privacy", USER_PRIVACY_SQL),
+            ("user badges", USER_BADGES_SQL),
+            ("user relationships", USER_RELATIONSHIPS_SQL),
+            ("user indexes", USER_INDEXES_SQL),
+            ("user functions", USER_FUNCTIONS_SQL),
+            ("user triggers", USER_TRIGGERS_SQL),
+        ];
+        for (name, sql) in migrations {
+            sqlx::raw_sql(sql)
+                .execute(&pool)
+                .await
+                .unwrap_or_else(|e| panic!("run migration '{}': {}", name, e));
+        }
 
         // 2. Start Redis
         let redis_container = GenericImage::new("redis", "7-alpine")

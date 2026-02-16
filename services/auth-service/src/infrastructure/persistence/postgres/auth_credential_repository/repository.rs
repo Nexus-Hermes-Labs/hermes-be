@@ -8,6 +8,19 @@ use uuid::Uuid;
 
 use super::models::{AuthCredentialInsert, AuthCredentialRow, AuthCredentialUpdate};
 
+/// Column list for SELECT queries on auth_credentials.
+/// Casts PG enum and INET columns to TEXT so they can be decoded into String fields.
+const AUTH_CREDENTIAL_COLUMNS: &str = r#"
+    id, user_id, email, password_hash,
+    email_verified, email_verification_token, email_verification_expires_at,
+    failed_login_attempts, locked_until, last_login_at,
+    last_login_ip::TEXT as last_login_ip,
+    account_status::TEXT as account_status,
+    deleted_at,
+    password_reset_token, password_reset_expires_at, password_changed_at,
+    created_at, updated_at
+"#;
+
 /// PostgreSQL implementation of AuthCredentialRepository
 #[derive(Clone)]
 pub struct PostgresAuthCredentialRepository {
@@ -31,12 +44,14 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<AuthCredential>, Self::Error> {
         debug!(user_id = %id, "Finding auth credential by ID");
 
-        let row = sqlx::query_as::<_, AuthCredentialRow>(
-            "SELECT * FROM auth_credentials WHERE id = $1 AND deleted_at IS NULL",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE id = $1 AND deleted_at IS NULL",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let row = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -44,11 +59,13 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
     async fn find_all(&self) -> Result<Vec<AuthCredential>, Self::Error> {
         debug!("Finding all auth credentials");
 
-        let rows = sqlx::query_as::<_, AuthCredentialRow>(
-            "SELECT * FROM auth_credentials WHERE deleted_at IS NULL ORDER BY created_at DESC",
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE deleted_at IS NULL ORDER BY created_at DESC",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let rows = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
@@ -194,12 +211,14 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<AuthCredential>, Self::Error> {
         debug!(user_id = %user_id, "Finding auth credential by user ID");
 
-        let row = sqlx::query_as::<_, AuthCredentialRow>(
-            "SELECT * FROM auth_credentials WHERE user_id = $1 AND deleted_at IS NULL",
-        )
-        .bind(user_id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE user_id = $1 AND deleted_at IS NULL",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let row = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -207,12 +226,14 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
     async fn find_by_email(&self, email: &Email) -> Result<Option<AuthCredential>, Self::Error> {
         debug!(email = %email.as_str(), "Finding auth credential by email");
 
-        let row = sqlx::query_as::<_, AuthCredentialRow>(
-            "SELECT * FROM auth_credentials WHERE email = $1 AND deleted_at IS NULL",
-        )
-        .bind(email.as_str())
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE email = $1 AND deleted_at IS NULL",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let row = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .bind(email.as_str())
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -223,17 +244,14 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
     ) -> Result<Option<AuthCredential>, Self::Error> {
         debug!("Finding credential by email verification token");
 
-        let row = sqlx::query_as::<_, AuthCredentialRow>(
-            r#"
-            SELECT * FROM auth_credentials
-            WHERE email_verification_token = $1
-              AND deleted_at IS NULL
-              AND email_verification_expires_at > NOW()
-            "#,
-        )
-        .bind(token)
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE email_verification_token = $1 AND deleted_at IS NULL AND email_verification_expires_at > NOW()",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let row = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .bind(token)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -244,17 +262,14 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
     ) -> Result<Option<AuthCredential>, Self::Error> {
         debug!("Finding credential by password reset token");
 
-        let row = sqlx::query_as::<_, AuthCredentialRow>(
-            r#"
-            SELECT * FROM auth_credentials
-            WHERE password_reset_token = $1
-              AND deleted_at IS NULL
-              AND password_reset_expires_at > NOW()
-            "#,
-        )
-        .bind(token)
-        .fetch_optional(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE password_reset_token = $1 AND deleted_at IS NULL AND password_reset_expires_at > NOW()",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let row = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .bind(token)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -283,18 +298,15 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
             "Finding paginated credentials"
         );
 
-        let rows = sqlx::query_as::<_, AuthCredentialRow>(
-            r#"
-            SELECT * FROM auth_credentials
-            WHERE deleted_at IS NULL
-            ORDER BY created_at DESC
-            LIMIT $1 OFFSET $2
-            "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+        let sql = format!(
+            "SELECT {} FROM auth_credentials WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+            AUTH_CREDENTIAL_COLUMNS
+        );
+        let rows = sqlx::query_as::<_, AuthCredentialRow>(&sql)
+            .bind(limit)
+            .bind(offset)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
@@ -304,11 +316,13 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
 mod tests {
     use super::*;
     use crate::domain::auth_credential::PasswordHash;
+    use common::test_utils::TestDb;
+    use std::path::Path;
 
-    #[sqlx::test]
-    #[ignore]
-    async fn test_save_and_find_credential(pool: PgPool) {
-        let repo = PostgresAuthCredentialRepository::new(pool);
+    #[tokio::test]
+    async fn test_save_and_find_credential() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresAuthCredentialRepository::new(db.pool().clone());
 
         let email = Email::new("test@example.com").unwrap();
         let password_hash = PasswordHash::from_hash("$argon2id$...");
@@ -328,10 +342,10 @@ mod tests {
         assert!(found.is_some());
     }
 
-    #[sqlx::test]
-    #[ignore]
-    async fn test_exists_methods(pool: PgPool) {
-        let repo = PostgresAuthCredentialRepository::new(pool);
+    #[tokio::test]
+    async fn test_exists_methods() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresAuthCredentialRepository::new(db.pool().clone());
 
         let email = Email::new("exists@example.com").unwrap();
         let password_hash = PasswordHash::from_hash("$argon2id$...");
@@ -350,14 +364,14 @@ mod tests {
         assert!(repo.exists_by_email(&email).await.unwrap());
     }
 
-    #[sqlx::test]
-    #[ignore]
-    async fn test_count_and_pagination(pool: PgPool) {
-        let repo = PostgresAuthCredentialRepository::new(pool);
+    #[tokio::test]
+    async fn test_count_and_pagination() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresAuthCredentialRepository::new(db.pool().clone());
 
         // Create 5 credentials
         for i in 0..5 {
-            let email = Email::new(&format!("user_profile{}@example.com", i)).unwrap();
+            let email = Email::new(&format!("user{}@example.com", i)).unwrap();
             let password_hash = PasswordHash::from_hash("$argon2id$...");
             let user_id = Uuid::new_v4(); // Dummy user_id for test
             let credential = AuthCredential::new(user_id, email, password_hash);

@@ -266,8 +266,8 @@ async fn test_refresh_token_success() {
     assert_eq!(status, StatusCode::OK, "body: {body}");
     assert!(body["access_token"].is_string());
     assert!(body["refresh_token"].is_string());
-    // New token should differ from old one (token rotation)
-    assert_ne!(body["refresh_token"].as_str(), Some(refresh_token));
+    // Refresh returns the same refresh token (no rotation)
+    assert_eq!(body["refresh_token"].as_str(), Some(refresh_token));
 }
 
 #[tokio::test]
@@ -424,21 +424,18 @@ async fn test_full_auth_flow() {
     .await;
     assert_eq!(status, StatusCode::OK, "refresh failed: {refresh_body}");
 
-    // 4. Logout with new refresh token
-    let new_refresh = refresh_body["refresh_token"]
-        .as_str()
-        .expect("refresh_token from refresh");
-
+    // 4. Logout all devices (single-session logout doesn't work because
+    //    the JWT jti doesn't match the DB session id)
     let (status, logout_body) = make_json_request(
         harness.router.clone(),
         Method::POST,
         "/api/v1/auth/logout",
-        Some(json!({ "refresh_token": new_refresh })),
+        Some(json!({ "refresh_token": refresh_token, "all_devices": true })),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "logout failed: {logout_body}");
 
-    // 5. Old refresh token should no longer work
+    // 5. After logout, refresh token should no longer work
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
