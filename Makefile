@@ -12,6 +12,7 @@ COMPOSE := docker-compose
 AUTH_MIGRATION_PATH := services/auth-service/migrations
 USER_MIGRATION_PATH := services/user-service/migrations
 AUTH_SEED_PATH := services/auth-service/seeds/dev
+USER_SEED_PATH := services/user-service/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
 
 ##@ Help
@@ -136,15 +137,15 @@ db-migrate: db-migrate-auth db-migrate-user ## Run all database migrations
 
 db-migrate-auth: ## Run auth-service migrations
 	@echo -e "$(BLUE)📦 Running auth-service migrations...$(NC)"
-	@sqlx migrate run --source $(AUTH_MIGRATION_PATH)
+	@sqlx migrate run --source $(AUTH_MIGRATION_PATH) --ignore-missing
 	@echo -e "$(GREEN)✅ Auth migrations completed$(NC)"
 
 db-migrate-user: ## Run user-service migrations
 	@echo -e "$(BLUE)📦 Running user-service migrations...$(NC)"
-	@sqlx migrate run --source $(USER_MIGRATION_PATH)
+	@sqlx migrate run --source $(USER_MIGRATION_PATH) --ignore-missing
 	@echo -e "$(GREEN)✅ User migrations completed$(NC)"
 
-db-seed: db-seed-auth ## Run all database seeds
+db-seed: db-seed-auth db-seed-user ## Run all database seeds
 	@echo -e "$(GREEN)✅ All seeds completed$(NC)"
 
 db-seed-auth: ## Run auth-service seeds
@@ -155,6 +156,15 @@ db-seed-auth: ## Run auth-service seeds
 		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
 	done
 	@echo -e "$(GREEN)✅ Auth database seeded$(NC)"
+
+db-seed-user: ## Run user-service seeds
+	@echo -e "$(BLUE)🌱 Seeding user database...$(NC)"
+	@set -e; \
+	for file in $$(ls $(USER_SEED_PATH)/*.sql | sort); do \
+		echo "Running $$file"; \
+		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
+	done
+	@echo -e "$(GREEN)✅ User database seeded$(NC)"
 
 db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database
 	@echo -e "$(GREEN)✅ Database reset completed$(NC)"
