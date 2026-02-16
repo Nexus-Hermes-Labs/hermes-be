@@ -445,6 +445,276 @@ async fn test_block_user_preserves_reverse_block() {
     assert_eq!(body["type"], "blocked");
 }
 
+#[tokio::test]
+async fn test_friend_request_accept_and_remove() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create two users
+    let (_, user_a_body) = create_profile(&harness, "friend_a", "Friend A").await;
+    let user_a_id = user_a_body["user_id"].as_str().unwrap();
+
+    let (_, user_b_body) = create_profile(&harness, "friend_b", "Friend B").await;
+    let user_b_id = user_b_body["user_id"].as_str().unwrap();
+
+    // 2. User A sends friend request to User B
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_a_id}/relationships/request"),
+        Some(json!({ "target_user_id": user_b_id, "message": "hello" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. Verify pending status
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_a_id}/relationships/{user_b_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["type"], "pending_outgoing");
+
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["type"], "pending_incoming");
+
+    // 4. User B accepts the request
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/users/users/{user_b_id}/relationships/request/accept"),
+        Some(json!({ "target_user_id": user_a_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 5. Verify friendship
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_a_id}/relationships/{user_b_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["type"], "friend");
+
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["type"], "friend");
+
+    // 6. User A removes User B
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::DELETE,
+        &format!("/api/users/users/{user_a_id}/relationships/friend/{user_b_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // 7. Verify removal
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_a_id}/relationships/{user_b_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_friend_request_decline() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create two users
+    let (_, user_c_body) = create_profile(&harness, "friend_c", "Friend C").await;
+    let user_c_id = user_c_body["user_id"].as_str().unwrap();
+
+    let (_, user_d_body) = create_profile(&harness, "friend_d", "Friend D").await;
+    let user_d_id = user_d_body["user_id"].as_str().unwrap();
+
+    // 2. User C sends friend request to User D
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_c_id}/relationships/request"),
+        Some(json!({ "target_user_id": user_d_id, "message": "hello" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. User D declines the request
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/users/users/{user_d_id}/relationships/request/decline"),
+        Some(json!({ "target_user_id": user_c_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // 4. Verify removal
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_c_id}/relationships/{user_d_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_d_id}/relationships/{user_c_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_unblock_user() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create two users
+    let (_, user_c_body) = create_profile(&harness, "blocker_c", "Blocker C").await;
+    let user_c_id = user_c_body["user_id"].as_str().unwrap();
+
+    let (_, user_d_body) = create_profile(&harness, "blocker_d", "Blocker D").await;
+    let user_d_id = user_d_body["user_id"].as_str().unwrap();
+
+    // 2. User C blocks User D
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_c_id}/relationships/block"),
+        Some(json!({ "target_user_id": user_d_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. User C unblocks User D
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::DELETE,
+        &format!("/api/users/users/{user_c_id}/relationships/block/{user_d_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // 4. Verify removal
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/users/users/{user_c_id}/relationships/{user_d_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_friend_request_to_blocked_user() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create two users
+    let (_, user_e_body) = create_profile(&harness, "blocker_e", "Blocker E").await;
+    let user_e_id = user_e_body["user_id"].as_str().unwrap();
+
+    let (_, user_f_body) = create_profile(&harness, "blocker_f", "Blocker F").await;
+    let user_f_id = user_f_body["user_id"].as_str().unwrap();
+
+    // 2. User E blocks User F
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_e_id}/relationships/block"),
+        Some(json!({ "target_user_id": user_f_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. User E (blocker) tries to send a friend request to User F (blocked) -> Fails
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_e_id}/relationships/request"),
+        Some(json!({ "target_user_id": user_f_id, "message": "hello" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+
+    // 4. User F (blocked) tries to send a friend request to User E (blocker) -> Fails
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_f_id}/relationships/request"),
+        Some(json!({ "target_user_id": user_e_id, "message": "hello" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+#[tokio::test]
+async fn test_friend_request_privacy_none() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create two users
+    let (_, user_a_body) = create_profile(&harness, "privacy_a", "Privacy A").await;
+    let user_a_id = user_a_body["user_id"].as_str().unwrap();
+
+    let (_, user_b_body) = create_profile(&harness, "privacy_b", "Privacy B").await;
+    let user_b_id = user_b_body["user_id"].as_str().unwrap();
+
+    // 2. User B sets friend request privacy to "none"
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/users/users/{user_b_id}/privacy/friend-requests"),
+        Some(json!({ "allow_friend_requests_from": "none" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. User A attempts to send a friend request to User B -> Fails
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/users/users/{user_a_id}/relationships/request"),
+        Some(json!({ "target_user_id": user_b_id, "message": "hello" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
 // ============================================
 // PRIVACY TESTS
 // ============================================

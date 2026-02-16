@@ -26,7 +26,7 @@ where
     #[allow(dead_code)]
     privacy_service: Arc<UserPrivacyService<VR>>,
     #[allow(dead_code)]
-    relationship_service: Arc<UserRelationshipService<RR>>,
+    relationship_service: Arc<UserRelationshipService<RR, VR>>,
 }
 
 impl<PR, VR, RR> UserServiceGrpc<PR, VR, RR>
@@ -38,7 +38,7 @@ where
     pub fn new(
         profile_service: Arc<UserProfileService<PR>>,
         privacy_service: Arc<UserPrivacyService<VR>>,
-        relationship_service: Arc<UserRelationshipService<RR>>,
+        relationship_service: Arc<UserRelationshipService<RR, VR>>,
     ) -> Self {
         Self {
             profile_service,

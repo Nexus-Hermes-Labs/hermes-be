@@ -13,14 +13,24 @@ pub struct UserState {
     // Services
     pub user_profile_service: Arc<UserProfileService<PostgresUserProfileRepository>>,
     pub user_privacy_service: Arc<UserPrivacyService<PostgresUserPrivacyRepository>>,
-    pub relationship_service: Arc<UserRelationshipService<PostgresUserRelationshipRepository>>,
+    pub relationship_service: Arc<
+        UserRelationshipService<
+            PostgresUserRelationshipRepository,
+            PostgresUserPrivacyRepository,
+        >,
+    >,
 }
 
 impl UserState {
     pub fn new(
         user_profile_service: Arc<UserProfileService<PostgresUserProfileRepository>>,
         user_privacy_service: Arc<UserPrivacyService<PostgresUserPrivacyRepository>>,
-        relationship_service: Arc<UserRelationshipService<PostgresUserRelationshipRepository>>,
+        relationship_service: Arc<
+            UserRelationshipService<
+                PostgresUserRelationshipRepository,
+                PostgresUserPrivacyRepository,
+            >,
+        >,
     ) -> Self {
         Self {
             user_profile_service,

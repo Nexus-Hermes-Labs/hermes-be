@@ -1,9 +1,11 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::domain::user_privacy::{FriendRequestPrivacy, UserPrivacyRepository};
 use crate::domain::user_relationship::{
     RelationshipType, UserRelationship, UserRelationshipRepository,
 };
+use crate::application::services::UserPrivacyService;
 
 use super::error::UserRelationshipServiceError;
 
@@ -20,19 +22,25 @@ use super::error::UserRelationshipServiceError;
 /// - **Blocks are one-directional** — the trigger does NOT create a reverse for blocks.
 ///
 /// This means the service only needs to operate on one side; the trigger handles the rest.
-pub struct UserRelationshipService<R>
+pub struct UserRelationshipService<R, VR>
 where
     R: UserRelationshipRepository,
+    VR: UserPrivacyRepository,
 {
     repository: Arc<R>,
+    privacy_service: Arc<UserPrivacyService<VR>>,
 }
 
-impl<R> UserRelationshipService<R>
+impl<R, VR> UserRelationshipService<R, VR>
 where
     R: UserRelationshipRepository,
+    VR: UserPrivacyRepository,
 {
-    pub fn new(repository: Arc<R>) -> Self {
-        Self { repository }
+    pub fn new(repository: Arc<R>, privacy_service: Arc<UserPrivacyService<VR>>) -> Self {
+        Self {
+            repository,
+            privacy_service,
+        }
     }
 
     // ============================================
@@ -49,6 +57,25 @@ where
         target_user_id: Uuid,
         message: String,
     ) -> Result<UserRelationship, UserRelationshipServiceError> {
+        // Check privacy settings of the target user
+        let privacy_settings = self
+            .privacy_service
+            .get_privacy_settings(target_user_id)
+            .await
+            .map_err(|_| UserRelationshipServiceError::CannotSendFriendRequest)?;
+
+        match privacy_settings.allow_friend_requests_from() {
+            FriendRequestPrivacy::None => {
+                return Err(UserRelationshipServiceError::CannotSendFriendRequest);
+            }
+            FriendRequestPrivacy::FriendsOfFriends => {
+                // TODO: Implement logic to check for mutual friends
+            }
+            FriendRequestPrivacy::Everyone => {
+                // Allow the request
+            }
+        }
+
         // Check if target has blocked the sender
         if self
             .repository

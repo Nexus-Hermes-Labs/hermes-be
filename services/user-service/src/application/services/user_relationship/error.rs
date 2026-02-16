@@ -21,6 +21,9 @@ pub enum UserRelationshipServiceError {
     #[error("Cannot send friend request: you have blocked the target user")]
     BlockedTarget,
 
+    #[error("Cannot send friend request due to privacy settings")]
+    CannotSendFriendRequest,
+
     #[error("Domain error: {0}")]
     DomainError(#[from] UserRelationshipError),
 

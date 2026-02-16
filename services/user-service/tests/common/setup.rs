@@ -130,7 +130,10 @@ impl TestHarness {
 
         let user_profile_service = Arc::new(UserProfileService::new(user_profile_repo));
         let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
-        let relationship_service = Arc::new(UserRelationshipService::new(relationship_repo));
+        let relationship_service = Arc::new(UserRelationshipService::new(
+            relationship_repo,
+            user_privacy_service.clone(),
+        ));
 
         let user_state = UserState::new(
             user_profile_service,
