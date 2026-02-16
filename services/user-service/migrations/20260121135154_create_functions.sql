@@ -54,24 +54,30 @@ DECLARE
 BEGIN
     -- Prevent recursive calls
     IF pg_trigger_depth() > 1 THEN
-        RETURN NEW;
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
     END IF;
 
-    CASE NEW.type
-        WHEN 'pending_outgoing' THEN
-            reverse_type := 'pending_incoming';
-            reverse_message := NEW.message;
-        WHEN 'pending_incoming' THEN
-            reverse_type := 'pending_outgoing';
-            reverse_message := NEW.message;
-        WHEN 'friend' THEN
-            reverse_type := 'friend';
-            reverse_message := NULL;
-        WHEN 'blocked' THEN
-            RETURN NEW;
-    END CASE;
-
     IF TG_OP = 'INSERT' THEN
+        CASE NEW.type
+            WHEN 'pending_outgoing' THEN
+                reverse_type := 'pending_incoming';
+                reverse_message := NEW.message;
+            WHEN 'pending_incoming' THEN
+                reverse_type := 'pending_outgoing';
+                reverse_message := NEW.message;
+            WHEN 'friend' THEN
+                reverse_type := 'friend';
+                reverse_message := NULL;
+            WHEN 'blocked' THEN
+                RETURN NEW;
+            ELSE
+                RETURN NEW;
+        END CASE;
+
         INSERT INTO user_relationships (user_id, target_user_id, type, message)
         VALUES (NEW.target_user_id, NEW.user_id, reverse_type, reverse_message)
         ON CONFLICT (user_id, target_user_id) DO UPDATE
@@ -80,6 +86,22 @@ BEGIN
             updated_at = NOW();
 
     ELSIF TG_OP = 'UPDATE' THEN
+        CASE NEW.type
+            WHEN 'pending_outgoing' THEN
+                reverse_type := 'pending_incoming';
+                reverse_message := NEW.message;
+            WHEN 'pending_incoming' THEN
+                reverse_type := 'pending_outgoing';
+                reverse_message := NEW.message;
+            WHEN 'friend' THEN
+                reverse_type := 'friend';
+                reverse_message := NULL;
+            WHEN 'blocked' THEN
+                RETURN NEW;
+            ELSE
+                RETURN NEW;
+        END CASE;
+
         UPDATE user_relationships
         SET type       = reverse_type,
             message    = reverse_message,
@@ -91,7 +113,7 @@ BEGIN
         DELETE FROM user_relationships
         WHERE user_id = OLD.target_user_id
           AND target_user_id = OLD.user_id
-          AND type != 'blocked';
+          AND OLD.type != 'blocked';
         RETURN OLD;
     END IF;
 
