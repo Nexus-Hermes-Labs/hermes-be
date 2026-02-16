@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hermes is a Discord-like real-time communication platform built as a Rust microservices system. Currently in early development (auth-service complete, user-service ~60%, other services not yet started).
+Hermes is a real-time communication platform with AI-powered translation, built as a Rust microservices system. nginx serves as the edge proxy for REST routing/TLS/rate limiting. Currently in early development (auth-service complete, user-service ~60%, other services stubbed).
 
 ## Common Commands
 
@@ -47,9 +47,9 @@ make proto-generate      # Build services to trigger tonic codegen
 
 ### Workspace Structure
 
-Cargo workspace with 9 crates: 7 services + `common` (shared models/errors/utilities) + `common-config` (configuration loading).
+Cargo workspace with 14 crates: 12 services + `common` (shared models/errors/utilities) + `common-config` (configuration loading).
 
-Services: `auth-service` (8081), `user-service` (8082), `channel-service` (8083), `chat-service` (8084), `voice-service` (8085), `presence-service` (8087), `gateway-service` (8080).
+Services: `auth-service` (8081), `user-service` (8082), `guild-service` (8086), `channel-service` (8083), `chat-service` (8084), `voice-service` (8085), `presence-service` (8087), `realtime-service` (8080), `media-service` (8088), `notification-service` (8089), `search-service` (8090), `ai-service` (8091). nginx handles REST routing at the edge.
 
 ### DDD Layer Pattern (per service)
 
@@ -63,9 +63,11 @@ Each service follows Domain-Driven Design with these layers:
 
 ### Communication
 
-- **HTTP REST** (client-facing): Axum with JSON, JWT bearer auth
-- **gRPC** (service-to-service): Tonic with Protocol Buffers in `proto/` directory. Proto codegen happens at build time via `build.rs`.
-- **NATS** (async events): Post-MVP, for cross-service notifications
+- **nginx** (edge proxy): REST routing, TLS termination, rate limiting, CORS
+- **HTTP REST** (client-facing): Axum with JSON, JWT bearer auth. Clients hit nginx, which routes to services.
+- **gRPC** (service-to-service): Tonic with Protocol Buffers in `proto/` directory. Proto codegen happens at build time via `build.rs`. Direct between services, not through nginx.
+- **NATS** (async events): Cross-service notifications, AI translation pipeline
+- **WebSocket** (real-time): Clients connect to realtime-service for live event streaming via NATS fanout
 
 ### Database
 

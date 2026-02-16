@@ -1,0 +1,20 @@
+# Notification Service - Cargo.toml
+# Handles push notifications, unreads, and mentions
+
+[package]
+name = "notification-service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "notification-service"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,20 @@
+# AI Service - Cargo.toml
+# Handles real-time translation (text + voice STT/TTS)
+
+[package]
+name = "ai-service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ai-service"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,20 @@
+# Guild Service - Cargo.toml
+# Handles guilds, roles, members, invites, and permissions
+
+[package]
+name = "guild-service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "guild-service"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+
+[lints]
+workspace = true

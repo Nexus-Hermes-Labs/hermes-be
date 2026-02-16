@@ -190,13 +190,13 @@ dev: ## Start development environment
 	@make db-migrate
 	@make db-seed
 	@echo -e "$(GREEN)🎯 Development environment ready!$(NC)"
-	@echo -e "$(YELLOW)Run services with: make run-auth, make run-chat, etc.$(NC)"
+	@echo -e "$(YELLOW)Run services with: make run-auth, make run-user, etc.$(NC)"
 
 run-infra: up ## Start infrastructure services (alias)
 
-run-gateway: ## Run gateway service
-	@echo -e "$(BLUE)🚀 Starting Gateway Service...$(NC)"
-	@cargo run --bin gateway-service
+run-realtime: ## Run realtime service
+	@echo -e "$(BLUE)🚀 Starting Realtime Service...$(NC)"
+	@cargo run --bin realtime-service
 
 run-auth: ## Run auth service
 	@echo -e "$(BLUE)🚀 Starting Auth Service...$(NC)"
@@ -218,31 +218,46 @@ run-voice: ## Run voice service
 	@echo -e "$(BLUE)🚀 Starting Voice Service...$(NC)"
 	@cargo run --bin voice-service
 
-run-stream: ## Run stream service
-	@echo -e "$(BLUE)🚀 Starting Stream Service...$(NC)"
-	@cargo run --bin stream-service
-
 run-presence: ## Run presence service
 	@echo -e "$(BLUE)🚀 Starting Presence Service...$(NC)"
 	@cargo run --bin presence-service
 
-run-media: ## Run media server
-	@echo -e "$(BLUE)🚀 Starting Media Server...$(NC)"
-	@cargo run --bin media-server
+run-guild: ## Run guild service
+	@echo -e "$(BLUE)🚀 Starting Guild Service...$(NC)"
+	@cargo run --bin guild-service
+
+run-media: ## Run media service
+	@echo -e "$(BLUE)🚀 Starting Media Service...$(NC)"
+	@cargo run --bin media-service
+
+run-notification: ## Run notification service
+	@echo -e "$(BLUE)🚀 Starting Notification Service...$(NC)"
+	@cargo run --bin notification-service
+
+run-search: ## Run search service
+	@echo -e "$(BLUE)🚀 Starting Search Service...$(NC)"
+	@cargo run --bin search-service
+
+run-ai: ## Run AI service
+	@echo -e "$(BLUE)🚀 Starting AI Service...$(NC)"
+	@cargo run --bin ai-service
 
 dev-all: ## Run all services (requires tmux or separate terminals)
 	@echo -e "$(YELLOW)⚠️  Starting all services requires multiple terminals$(NC)"
 	@echo ""
 	@echo -e "$(BLUE)Run these commands in separate terminals:$(NC)"
-	@echo "  make run-gateway"
 	@echo "  make run-auth"
 	@echo "  make run-user"
+	@echo "  make run-guild"
 	@echo "  make run-channel"
 	@echo "  make run-chat"
 	@echo "  make run-voice"
-	@echo "  make run-stream"
 	@echo "  make run-presence"
+	@echo "  make run-realtime"
 	@echo "  make run-media"
+	@echo "  make run-notification"
+	@echo "  make run-search"
+	@echo "  make run-ai"
 
 ##@ Building & Testing
 
@@ -368,7 +383,7 @@ status: ## Show project status
 
 tmux-dev: ## Start all services in tmux
 	@echo -e "$(BLUE)🚀 Starting all services in tmux...$(NC)"
-	@tmux new-session -d -s hermes 'make run-gateway'
+	@tmux new-session -d -s hermes 'make run-realtime'
 	@tmux split-window -h 'make run-auth'
 	@tmux split-window -v 'make run-chat'
 	@tmux select-pane -t 0

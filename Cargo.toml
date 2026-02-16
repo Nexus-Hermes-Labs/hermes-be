@@ -5,11 +5,16 @@ members = [
     "services/common/common-config",
     "services/auth-service",
     "services/user-service",
+    "services/guild-service",
     "services/channel-service",
     "services/chat-service",
     "services/voice-service",
     "services/presence-service",
-    "services/gateway-service",
+    "services/realtime-service",
+    "services/media-service",
+    "services/notification-service",
+    "services/search-service",
+    "services/ai-service",
 ]
 
 [workspace.package]

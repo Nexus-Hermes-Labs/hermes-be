@@ -1,354 +1,217 @@
-# Hermes 🚀
+# Hermes
 
-A production-ready, Discord-like real-time communication platform built with Rust.
-It uses a modular monolith architecture with service-oriented boundaries, featuring text chat, P2P voice communication,
-and presence tracking. The system is designed to evolve toward full microservices when scale demands it.
+A real-time communication platform with AI-powered translation, built in Rust.
 
-## ✨ Features
+Hermes enables seamless cross-language communication through real-time text translation, voice-to-text transcription, and speech synthesis. Built as a distributed microservices system using Domain-Driven Design, it combines the functionality of modern chat platforms with breakthrough AI translation capabilities.
 
-### Real-time Communication
+## The Innovation: Real-Time AI Translation
 
-- **Text Messaging**: Instant messaging in channels and direct messages with
-  reactions and mentions
-- **Voice Calls**: P2P voice communication using WebRTC (supports 2 users per
-  channel)
-- **Presence Tracking**: Real-time online/offline/idle/dnd status and typing
-  indicators
-- **Event-Driven**: Instant updates across all connected clients using NATS
+Most communication platforms treat language as a barrier users must solve themselves. Hermes integrates translation at the infrastructure level:
 
-### Server Management
+- **Text Translation** -- Messages are translated in real-time as they're sent, with the original preserved alongside translations for each participant's language
+- **Voice Subtitles** -- Speech-to-text transcription with live translation, displayed as subtitles during voice calls
+- **Voice Dubbing** -- Full speech-to-speech translation: speak in your language, others hear it in theirs (future)
 
-- **Servers & Channels**: Create and manage Discord-like servers with text and
-  voice channels
-- **Roles & Permissions**: Bitflag-based permission system with role hierarchy
-- **Member Management**: Invite users, manage members, and moderation tools
+This turns every guild and channel into a multilingual space by default, not as an afterthought.
 
-### User Features
+## Architecture Overview
 
-- **Authentication**: Secure JWT-based auth with Argon2id password hashing
-- **User Profiles**: Customizable profiles with avatars and bios
-- **Friend System**: Add friends, accept requests, and manage relationships
+Hermes uses nginx as the edge proxy for REST routing, TLS termination, and rate limiting. Behind nginx, 12 backend services handle domain logic, and a dedicated realtime-service manages WebSocket connections and event fanout.
 
-## 🏗️ Architecture
+```
+                    Clients
+                       |
+                +------+------+
+                |    nginx    |  (REST routing, TLS, rate limit)
+                +------+------+
+                       |
+       +-------+-------+-------+-------+
+       |       |       |       |       |
+       v       v       v       v       v
+    +------+ +----+ +-----+ +----+ +----+   ...other services
+    | Auth | |User| |Guild| |Chan| |Chat|
+    | 8081 | |8082| |8086 | |8083| |8084|
+    +------+ +----+ +-----+ +----+ +----+
 
-### 7 Microservices
+                    Clients
+                       |
+                  WebSocket
+                       |
+                +------+------+
+                |  Realtime   |  (WebSocket, NATS fanout)
+                |    8080     |
+                +------+------+
+                       |
+                  +----+----+
+                  |  NATS   |
+                  +---------+
+```
 
-| Service      | Port | Responsibility                          |
-|--------------|------|-----------------------------------------|
-| **Gateway**  | 8080 | WebSocket gateway & REST API router     |
-| **Auth**     | 8081 | User authentication & JWT management    |
-| **User**     | 8082 | User profiles & friend system           |
-| **Channel**  | 8083 | Server, channel & permission management |
-| **Chat**     | 8084 | Text messaging & reactions              |
-| **Voice**    | 8085 | WebRTC P2P signaling                    |
-| **Presence** | 8087 | Online status & typing indicators       |
+### Service Table
 
-### Technology Stack
+| Service | Port | Purpose | Phase |
+|---------|------|---------|-------|
+| **nginx** | 80/443 | REST reverse proxy, TLS termination, rate limiting | Infrastructure |
+| **auth-service** | 8081 | Authentication, JWT, sessions | MVP |
+| **user-service** | 8082 | Profiles, relationships, privacy | MVP |
+| **guild-service** | 8086 | Guilds, roles, members, invites, permissions | MVP |
+| **channel-service** | 8083 | Text and voice channels, categories | MVP |
+| **chat-service** | 8084 | Messages, reactions, attachments, history | MVP |
+| **realtime-service** | 8080 | WebSocket connections, NATS event fanout | MVP |
+| **presence-service** | 8087 | Online status, typing indicators | Phase 2 |
+| **media-service** | 8088 | File uploads, image processing, CDN proxy | Phase 2 |
+| **notification-service** | 8089 | Push notifications, unreads, mentions | Phase 2 |
+| **ai-service** | 8091 | Real-time translation (text + voice STT/TTS) | Phase 3 |
+| **search-service** | 8090 | Full-text search (messages, users, guilds) | Phase 4 |
+| **voice-service** | 8085 | WebRTC P2P signaling, voice channels | Phase 4 |
 
-**Backend:**
+### Service Map
 
-- Rust 1.75+ with Axum web framework
-- PostgreSQL 16 for persistent storage
-- Redis 7 for caching and pub/sub
-- NATS for event streaming
-- SQLx for compile-time checked queries
+```
+Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        Phase 4 (Scale)
+ +-----------------+             +------------------+        +--------------+    +----------------+
+ | auth-service    |             | presence-service |        | ai-service   |    | search-service |
+ | user-service    |             | media-service    |        |  - text xlat |    | voice-service  |
+ | guild-service   |             | notification-svc |        |  - STT       |    +----------------+
+ | channel-service |             +------------------+        |  - TTS       |
+ | chat-service    |                                         +--------------+
+ | realtime-service|
+ | nginx (infra)   |
+ +-----------------+
+```
 
-**Real-time:**
+## Tech Stack
 
-- WebSocket for client connections
-- NATS for inter-service events
-- WebRTC for P2P voice calls
+| Layer | Technology |
+|-------|-----------|
+| Language | Rust (stable) |
+| Edge Proxy | nginx (REST routing, TLS, rate limiting, CORS) |
+| Web Framework | Axum 0.7, Tower middleware |
+| gRPC | Tonic 0.11, Protocol Buffers (Prost 0.12) |
+| Database | PostgreSQL 16 (SQLx 0.8, compile-time checked) |
+| Cache | Redis 7 |
+| Messaging | NATS (async-nats 0.33) |
+| Auth | JWT (jsonwebtoken 9.3), Argon2 password hashing |
+| Real-time | WebSocket (Tokio Tungstenite), WebRTC (voice) |
+| API Docs | utoipa 5 (OpenAPI/Swagger) |
+| Observability | Prometheus + Grafana, tracing |
+| Testing | testcontainers, mockall, fake, rstest |
+| Infrastructure | Docker Compose, nginx |
 
-**Infrastructure:**
-
-- Docker & Docker Compose
-- Prometheus + Grafana monitoring
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- **Rust** 1.75 or higher ([install](https://rustup.rs/))
-- **Docker** & Docker Compose
-- **4GB RAM** minimum
+- Rust (stable, 1.75+) -- [install](https://rustup.rs/)
+- Docker and Docker Compose
+- `sqlx-cli` -- `cargo install sqlx-cli --no-default-features --features postgres`
 
-### Installation
+### Setup
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd hermes-clone
-
-# Copy environment variables
+git clone https://github.com/bulutcan99/hermes.git
+cd hermes
 cp .env.example .env
 
-# Start infrastructure (PostgreSQL, Redis, NATS)
-docker-compose up -d
+# Start infrastructure and seed the database
+make setup
 
-# Run database migrations
-sqlx migrate run --source services/common/migrations
-
-# Build the project
+# Build all services
 cargo build --workspace
 
-# Start all services (in separate terminals or use tmux)
-cargo run -p gateway-service    # Terminal 1: http://localhost:8080
-cargo run -p auth-service       # Terminal 2: http://localhost:8081
-cargo run -p user_profile-service       # Terminal 3: http://localhost:8082
-cargo run -p channel-service    # Terminal 4: http://localhost:8083
-cargo run -p chat-service       # Terminal 5: http://localhost:8084
-cargo run -p voice-service      # Terminal 6: http://localhost:8085
-cargo run -p presence-service   # Terminal 7: http://localhost:8087
+# Run a service
+make run-auth
 ```
 
-### Verify Installation
+### Available Make Targets
 
 ```bash
-# Check all services are running
-curl http://localhost:8080/health
-curl http://localhost:8081/health
-curl http://localhost:8082/health
-# ... etc
+make setup          # Initial setup (docker + migrate + seed)
+make dev            # Full dev environment
+make up / make down # Start/stop Docker services
 
-# Run tests
-cargo test --workspace
+make run-auth       # Run individual services (also: run-user, run-guild,
+make run-chat       #   run-channel, run-chat, run-voice, run-presence,
+make run-realtime   #   run-realtime, run-media, run-notification,
+                    #   run-search, run-ai)
+
+cargo check --workspace              # Quick check
+cargo test --workspace               # Run all tests
+cargo clippy --workspace --all-targets --all-features -- -D warnings  # Lint
+make ci                              # Format check + lint + test
 ```
 
-## 📖 Documentation
-
-- **[Architecture Guide](docs/ARCHITECTURE.md)** - Detailed system design and
-  service responsibilities
-- **[Development Roadmap](docs/ROADMAP.md)** - 12-week development plan with
-  weekly tasks
-- **Service READMEs** - Each service has detailed documentation in
-  `services/*/README.md`
-
-## 🎯 API Examples
-
-### Authentication
-
-```bash
-# Register a new user_profile
-curl -X POST http://localhost:8081/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "alice",
-    "email": "alice@example.com",
-    "password": "SecurePass123!"
-  }'
-
-# Login
-curl -X POST http://localhost:8081/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "alice@example.com",
-    "password": "SecurePass123!"
-  }'
-```
-
-### Server & Channel Management
-
-```bash
-# Create a server (requires JWT token)
-curl -X POST http://localhost:8083/servers \
-  -H "Authorization: Bearer <your-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My Server",
-    "icon_url": "https://example.com/icon.jpg"
-  }'
-
-# Create a channel
-curl -X POST http://localhost:8083/servers/<server-id>/channels \
-  -H "Authorization: Bearer <your-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "general",
-    "type": "text"
-  }'
-```
-
-### Messaging
-
-```bash
-# Send a message
-curl -X POST http://localhost:8084/channels/<channel-id>/messages \
-  -H "Authorization: Bearer <your-token>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Hello, world!"
-  }'
-
-# Get message history
-curl http://localhost:8084/channels/<channel-id>/messages \
-  -H "Authorization: Bearer <your-token>"
-```
-
-### WebSocket Connection
-
-```javascript
-// Connect to WebSocket gateway
-const ws = new WebSocket("ws://localhost:8080/ws?token=<your-jwt-token>");
-
-// Listen for messages
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    console.log("Received:", data);
-};
-
-// Send a message
-ws.send(
-    JSON.stringify({
-        op: 2,
-        t: "MESSAGE_CREATE",
-        d: {
-            channel_id: "channel-uuid",
-            content: "Hello from WebSocket!",
-        },
-    }),
-);
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-cargo test --workspace
-
-# Run tests for a specific service
-cargo test -p auth-service
-
-# Run with output
-cargo test --workspace -- --nocapture
-
-# Run linter
-cargo clippy --workspace
-```
-
-## 📦 Project Structure
+## Project Structure
 
 ```
-hermes-clone/
-├── services/
-│   ├── common/              # Shared library (models, errors, utilities)
-│   │   ├── migrations/      # Database migrations
-│   │   └── seeds/           # Test data
-│   ├── auth-service/        # Authentication
-│   ├── user-service/        # User management
-│   ├── channel-service/     # Server & channel management
-│   ├── chat-service/        # Text messaging
-│   ├── voice-service/       # P2P voice signaling
-│   ├── presence-service/    # Online status
-│   └── gateway-service/     # WebSocket gateway & API router
-├── docs/                    # Documentation
-│   ├── ARCHITECTURE.md      # System architecture
-│   └── ROADMAP.md           # Development roadmap
-├── infra/                   # Infrastructure configs
-│   ├── postgres/            # Database init scripts
-│   ├── prometheus/          # Metrics
-│   └── grafana/             # Dashboards
-├── docker-compose.yml       # Infrastructure services
-├── Cargo.toml              # Workspace configuration
-└── README.md               # This file
+hermes/
++-- services/
+|   +-- common/              # Shared library (models, errors, utilities)
+|   |   +-- common-config/   # Configuration loading
+|   |   +-- migrations/      # Database migrations
+|   +-- auth-service/        # Authentication (complete)
+|   +-- user-service/        # User management (in progress)
+|   +-- guild-service/       # Guild management (stub)
+|   +-- channel-service/     # Channel management (stub)
+|   +-- chat-service/        # Messaging (stub)
+|   +-- voice-service/       # Voice signaling (stub)
+|   +-- presence-service/    # Online status (stub)
+|   +-- realtime-service/    # WebSocket + event fanout (stub)
+|   +-- media-service/       # File uploads (stub)
+|   +-- notification-service/# Notifications (stub)
+|   +-- search-service/      # Full-text search (stub)
+|   +-- ai-service/          # AI translation (stub)
++-- proto/                   # Protocol Buffer definitions
++-- infra/
+|   +-- nginx/               # nginx configuration
+|   +-- postgres/             # Database init scripts
+|   +-- prometheus/           # Metrics
+|   +-- grafana/              # Dashboards
++-- docs/
+|   +-- ARCHITECTURE.md      # System architecture
+|   +-- ROADMAP.md           # Development roadmap
++-- docker-compose.yml
++-- Cargo.toml               # Workspace configuration
 ```
 
-## 🎓 Learning Path
+## DDD Layer Pattern
 
-This project is designed to be completed in 12 weeks at 6 hours per week:
-
-| Phase       | Weeks | Focus                                        |
-|-------------|-------|----------------------------------------------|
-| **Phase 1** | 1-4   | Infrastructure, Auth, User, Channel services |
-| **Phase 2** | 5-8   | Chat service, Gateway, WebSocket, Real-time  |
-| **Phase 3** | 9-12  | Presence, P2P Voice, Testing, Polish         |
-
-See [ROADMAP.md](docs/ROADMAP.md) for detailed weekly tasks.
-
-## 🔧 Configuration
-
-Configuration is managed through environment variables:
-
-```bash
-# Database
-DATABASE_URL=postgres://hermes:hermes_dev_password@localhost:5432/hermes
-
-# Redis
-REDIS_URL=redis://:redis_dev_password@localhost:6379
-
-# NATS
-NATS_URL=nats://localhost:4222
-
-# JWT
-JWT_SECRET=your-secret-key-change-in-production
-
-# Service Ports
-AUTH_SERVICE_PORT=8081
-USER_SERVICE_PORT=8082
-CHANNEL_SERVICE_PORT=8083
-CHAT_SERVICE_PORT=8084
-VOICE_SERVICE_PORT=8085
-PRESENCE_SERVICE_PORT=8087
-GATEWAY_SERVICE_PORT=8080
-```
-
-## 📊 Monitoring
-
-### Prometheus Metrics
-
-Access Prometheus at: `http://localhost:9090`
-
-Example queries:
+Each service follows Domain-Driven Design:
 
 ```
-up{job="gateway-service"}
-http_requests_total
-websocket_connections_active
-messages_sent_total
+service/
++-- domain/          # Pure business logic: entities, value objects, repository traits, errors
++-- application/     # Use case orchestration: application services, events
++-- infrastructure/  # External concerns: PostgreSQL repos, gRPC clients, messaging
++-- presentation/    # HTTP handlers (Axum), gRPC service definitions
++-- state/           # Application state
++-- bootstrap/       # Service initialization and wiring
 ```
 
-### Grafana Dashboards
+## Communication Patterns
 
-Access Grafana at: `http://localhost:3000` (admin/admin)
+- **nginx** (edge): REST reverse proxy, TLS termination, rate limiting, CORS, static file serving
+- **HTTP REST** (client-facing): Axum with JSON, JWT bearer auth. Clients hit nginx, which routes to backend services.
+- **gRPC** (service-to-service): Tonic with Protocol Buffers, compile-time codegen via `build.rs`
+- **NATS** (async events): Cross-service notifications, AI translation pipeline
+- **WebSocket** (real-time): Clients connect to realtime-service for live event streaming. NATS events are fanned out to connected clients.
 
-Pre-configured dashboards for:
+## Roadmap
 
-- Service health
-- Request latency
-- Message throughput
-- WebSocket connections
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the full development roadmap.
 
-## 🤝 Contributing
+| Phase | Focus | Status |
+|-------|-------|--------|
+| Phase 1 | MVP Core (auth, users, guilds, channels, chat, realtime, nginx) | In progress |
+| Phase 2 | Real-time and Supporting (presence, media, notifications) | Not started |
+| Phase 3 | AI Innovation (text translation, STT, TTS) | Not started |
+| Phase 4 | Scale and Polish (search, voice, moderation) | Not started |
 
-Contributions are welcome! This is a learning project, so feel free to:
+## Documentation
 
-- Add new features
-- Fix bugs
-- Improve documentation
-- Share your learnings
+- [Architecture Guide](docs/ARCHITECTURE.md) -- System design, service responsibilities, data architecture
+- [Development Roadmap](docs/ROADMAP.md) -- Phased development plan with completion tracking
 
-## 📄 License
+## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by Discord's architecture
-- Built with the amazing Rust ecosystem
-- Thanks to the open-source community
-
-## 📚 Additional Resources
-
-- [Rust Book](https://doc.rust-lang.org/book/)
-- [Axum Documentation](https://docs.rs/axum)
-- [SQLx Documentation](https://docs.rs/sqlx)
-- [WebRTC Guide](https://webrtc.org/)
-- [NATS Documentation](https://docs.nats.io/)
-
----
-
-**Built with 🦀 Rust**
-
-For questions or discussions, open an issue or check out the
-[documentation](docs/).
-
-Happy coding! 🚀
+MIT License -- see [LICENSE](LICENSE) for details.

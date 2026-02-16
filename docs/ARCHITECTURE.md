@@ -1,34 +1,39 @@
-# Discord Clone - System Architecture
+# Hermes - System Architecture
 
-**Version:** 1.0.0-MVP  
-**Last Updated:** Week 3, Day 2
+**Version:** 2.1.0
+**Last Updated:** February 16, 2026
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Architecture Principles](#architecture-principles)
-- [System Architecture](#system-architecture)
+- [Service Architecture](#service-architecture)
+- [nginx Edge Proxy](#nginx-edge-proxy)
 - [Communication Patterns](#communication-patterns)
+- [AI Translation Pipeline](#ai-translation-pipeline)
 - [Data Architecture](#data-architecture)
-- [Authentication & Authorization](#authentication--authorization)
+- [Authentication and Authorization](#authentication-and-authorization)
 - [Technology Stack](#technology-stack)
 - [Deployment Architecture](#deployment-architecture)
 - [Scalability Strategy](#scalability-strategy)
-- [Monitoring & Observability](#monitoring--observability)
+- [Monitoring and Observability](#monitoring-and-observability)
+- [Security Architecture](#security-architecture)
 
 ---
 
 ## Overview
 
-Discord Clone is a microservices-based real-time communication platform built with Rust. The system follows Domain-Driven Design (DDD) principles with a hybrid communication architecture optimized for both synchronous and asynchronous operations.
+Hermes is a microservices-based real-time communication platform built with Rust. The system follows Domain-Driven Design (DDD) principles with a hybrid communication architecture. The key differentiator is AI-powered real-time translation integrated at the infrastructure level.
+
+nginx serves as the edge proxy handling REST routing, TLS termination, and rate limiting. Backend services focus purely on domain logic. A dedicated realtime-service handles WebSocket connections and NATS event fanout.
 
 ### Architecture Goals
 
 1. **Scalability**: Handle millions of concurrent users
-2. **Low Latency**: <100ms p95 response time
+2. **Low Latency**: <100ms p95 for text operations, <200ms for AI translation
 3. **High Availability**: 99.9% uptime SLA
-4. **Maintainability**: Clean separation of concerns
-5. **Developer Experience**: Type-safe contracts, comprehensive testing
+4. **Maintainability**: Clean separation of concerns via DDD
+5. **Multilingual by Default**: Translation as a first-class infrastructure concern
 
 ---
 
@@ -36,38 +41,35 @@ Discord Clone is a microservices-based real-time communication platform built wi
 
 ### 1. Microservices Architecture
 
-Each service owns its domain and can be deployed independently.
-```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│Auth Service │  │User Service │  │Server       │
-│             │  │             │  │Service      │
-│ - Login     │  │ - Profile   │  │ - Servers   │
-│ - Register  │  │ - Friends   │  │ - Channels  │
-│ - JWT       │  │ - Blocks    │  │ - Members   │
-└─────────────┘  └─────────────┘  └─────────────┘
-```
+Each service owns its domain and can be deployed independently. nginx sits at the edge and routes REST traffic.
 
-**Benefits:**
-- Independent scaling
-- Technology diversity (all Rust for now, but flexible)
-- Fault isolation
-- Team autonomy
+```
+                  nginx (edge proxy)
+                        |
+    +--------+----------+----------+---------+
+    |        |          |          |         |
+    v        v          v          v         v
+  auth    user       guild     channel    chat     ...
+  8081    8082       8086      8083       8084
 
----
+          realtime-service (8080)
+            WebSocket + NATS fanout
+```
 
 ### 2. Domain-Driven Design (DDD)
 
 Each service follows DDD layers:
+
 ```
-┌──────────────────────────────────────┐
-│      Presentation Layer              │ ← HTTP/gRPC handlers
-├──────────────────────────────────────┤
-│      Application Layer               │ ← Use cases, DTOs
-├──────────────────────────────────────┤
-│      Domain Layer                    │ ← Business logic, entities
-├──────────────────────────────────────┤
-│      Infrastructure Layer            │ ← Database, gRPC, cache
-└──────────────────────────────────────┘
++--------------------------------------+
+|      Presentation Layer              |  <- HTTP/gRPC handlers
++--------------------------------------+
+|      Application Layer               |  <- Use cases, DTOs
++--------------------------------------+
+|      Domain Layer                    |  <- Business logic, entities
++--------------------------------------+
+|      Infrastructure Layer            |  <- Database, gRPC, cache
++--------------------------------------+
 ```
 
 **Layer Responsibilities:**
@@ -77,849 +79,515 @@ Each service follows DDD layers:
 - **Infrastructure**: Implements repositories, external services
 - **Presentation**: Handles protocol concerns (HTTP, gRPC)
 
----
+Additional per-service directories:
+- **State**: Shared application state (DB pools, clients)
+- **Bootstrap**: Service initialization and dependency wiring
 
 ### 3. Hybrid Communication
 
-Different communication patterns for different needs:
 ```
-┌─────────────────────────────────────────┐
-│ SYNCHRONOUS (gRPC)                      │
-│ - Must wait for response                │
-│ - 1-to-1 communication                  │
-│ - Strong consistency                    │
-├─────────────────────────────────────────┤
-│ ASYNCHRONOUS (NATS - Future)            │
-│ - Fire-and-forget                       │
-│ - 1-to-many communication               │
-│ - Eventual consistency                  │
-└─────────────────────────────────────────┘
++---------------------------------------------+
+| EDGE PROXY (nginx)                          |
+| - REST routing to backend services          |
+| - TLS termination, rate limiting, CORS      |
++---------------------------------------------+
+| SYNCHRONOUS (gRPC)                          |
+| - Service-to-service queries                |
+| - Operations requiring immediate response   |
+| - Strong consistency                        |
++---------------------------------------------+
+| ASYNCHRONOUS (NATS)                         |
+| - Event notifications                       |
+| - AI translation pipeline                   |
+| - Cross-service updates                     |
+| - Eventual consistency                      |
++---------------------------------------------+
+| REAL-TIME (WebSocket via realtime-service)   |
+| - Client event streaming                    |
+| - NATS event fanout to connected clients    |
++---------------------------------------------+
 ```
 
 ---
 
-## System Architecture
+## Service Architecture
 
-### High-Level Architecture (MVP)
+### 12-Service Overview
+
+| Service | Port | Domain | Phase |
+|---------|------|--------|-------|
+| **nginx** | 80/443 | REST reverse proxy, TLS, rate limiting, CORS | Infrastructure |
+| **auth-service** | 8081 | User registration, login, JWT management, sessions | MVP |
+| **user-service** | 8082 | User profiles, friend system, blocks, privacy settings | MVP |
+| **guild-service** | 8086 | Guilds, roles, members, invites, permission management | MVP |
+| **channel-service** | 8083 | Text/voice channels, categories, channel permissions | MVP |
+| **chat-service** | 8084 | Messages, reactions, attachments, message history | MVP |
+| **realtime-service** | 8080 | WebSocket connections, NATS event fanout, connection state | MVP |
+| **presence-service** | 8087 | Online/offline/idle/DND status, typing indicators | Phase 2 |
+| **media-service** | 8088 | File uploads, image processing, CDN proxy, avatars | Phase 2 |
+| **notification-service** | 8089 | Push notifications, unread counts, @mentions | Phase 2 |
+| **ai-service** | 8091 | Real-time text translation, STT, TTS | Phase 3 |
+| **search-service** | 8090 | Full-text search across messages, users, guilds | Phase 4 |
+| **voice-service** | 8085 | WebRTC P2P signaling, voice channel management | Phase 4 |
+
+### MVP Architecture
+
 ```
-┌──────────────────────────────────────────────────┐
-│                                                  │
-│            Client Applications                   │
-│     (Web, iOS, Android, Desktop)                │
-│                                                  │
-└────────────────┬─────────────────────────────────┘
-                 │ HTTPS/WebSocket
-                 ▼
-┌──────────────────────────────────────────────────┐
-│           API Gateway (Future)                   │
-│  - Load balancing                                │
-│  - Rate limiting                                 │
-│  - SSL termination                               │
-└────────┬───────────────────┬─────────────────────┘
-         │ HTTP              │ HTTP
-         ▼                   ▼
-┌─────────────────┐   ┌─────────────────┐
-│  Auth Service   │   │  User Service   │
-│   Port: 8081    │   │   Port: 8082    │
-│                 │   │                 │
-│ REST Endpoints  │   │ REST Endpoints  │
-│                 │   │ gRPC Server     │
-└────────┬────────┘   └────────┬────────┘
-         │                     │
-         │ gRPC (sync)         │
-         └──────────┬──────────┘
-                    │
-                    ▼
-         ┌──────────────────┐
-         │   PostgreSQL     │
-         │  (Shared - MVP)  │
-         └──────────────────┘
++--------------------------------------------------+
+|            Client Applications                   |
+|     (Web, iOS, Android, Desktop)                |
++--------+-----------------------+-----------------+
+         | REST (HTTPS)          | WebSocket
+         v                       v
++------------------+    +------------------+
+|     nginx        |    | realtime-service |
+| (reverse proxy)  |    |     (8080)       |
++--+---+---+---+---+    +--------+---------+
+   |   |   |   |                 |
+   v   v   v   v            +----+----+
+ Auth User Guild Chan Chat  |  NATS   |
+ 8081 8082 8086  8083 8084  +---------+
+   |    |    |    |    |
+   +----+----+----+----+
+              |
+     +--------+--------+
+     |                 |
++----+-----+    +-----+----+
+|PostgreSQL |    |  Redis   |
+| (Shared)  |    | (Cache)  |
++----------+    +----------+
 ```
 
-### Post-MVP Architecture
+### Full Architecture (All Phases)
+
 ```
-┌──────────────────────────────────────────────────┐
-│                Clients                           │
-└────────────────┬─────────────────────────────────┘
-                 │
-                 ▼
-         ┌──────────────┐
-         │ API Gateway  │
-         └──────┬───────┘
-                │
-      ┌─────────┼──────────┐
-      │         │          │
-      ▼         ▼          ▼
-┌──────────┐ ┌──────────┐ ┌──────────┐
-│  Auth    │ │  User    │ │  Server  │
-│ Service  │ │ Service  │ │ Service  │
-└────┬─────┘ └────┬─────┘ └────┬─────┘
-     │            │            │
-     │ gRPC       │ gRPC       │ gRPC
-     └────────────┼────────────┘
-                  │
-         ┌────────┴────────┐
-         ▼                 ▼
-   ┌──────────┐      ┌──────────┐
-   │PostgreSQL│      │   NATS   │
-   └──────────┘      │ JetStream│
-                     └──────────┘
++--------------------------------------------------+
+|                  Clients                          |
++----------+-----------------------+---------------+
+           | REST                  | WebSocket
+           v                       v
+    +------+------+        +-------+--------+
+    |    nginx    |        |   Realtime     |
+    | (80 / 443) |        |    (8080)      |
+    +------+------+        +-------+--------+
+           |                       |
+  +--------+--------+         +----+----+
+  |   |   |   |    |         |  NATS   |
+  v   v   v   v    v         +----+----+
+Auth User Guild Chan Chat         |
+8081 8082 8086 8083 8084   +------+------+------+
+  |    |    |    |    |    |      |      |      |
+  +----+----+----+----+   v      v      v      v
+           |             Pres  Media  Notif   AI
+     +-----+-----+      8087  8088   8089   8091
+     | PostgreSQL |
+     +-----------+        +--------+--------+
+           |              |        |
+     +-----+-----+       v        v
+     |   Redis   |     Search   Voice
+     +-----------+     8090     8085
+```
+
+---
+
+## nginx Edge Proxy
+
+nginx replaces a custom API gateway service, handling all edge concerns:
+
+### Responsibilities
+
+- **REST Routing**: Routes `/v1/auth/*` to auth-service, `/v1/users/*` to user-service, etc.
+- **TLS Termination**: HTTPS at the edge, HTTP internally between nginx and services
+- **Rate Limiting**: `limit_req` zones per endpoint category (auth endpoints stricter)
+- **CORS**: Centralized cross-origin configuration
+- **Compression**: gzip for JSON responses
+- **Static Files**: Serve OpenAPI/Swagger docs
+- **Health Checks**: Upstream health monitoring
+
+### What nginx Does NOT Handle
+
+- **WebSocket connections**: Clients connect directly to realtime-service (nginx can optionally proxy the upgrade, but realtime-service owns the connection lifecycle)
+- **Event fanout**: NATS subscription and per-client event delivery is realtime-service's job
+- **Authentication logic**: JWT validation happens in each backend service
+- **gRPC routing**: Service-to-service gRPC calls go direct, not through nginx
+
+### Example Routing Configuration
+
+```nginx
+upstream auth_service {
+    server 127.0.0.1:8081;
+}
+upstream user_service {
+    server 127.0.0.1:8082;
+}
+upstream guild_service {
+    server 127.0.0.1:8086;
+}
+upstream channel_service {
+    server 127.0.0.1:8083;
+}
+upstream chat_service {
+    server 127.0.0.1:8084;
+}
+upstream realtime_service {
+    server 127.0.0.1:8080;
+}
+
+server {
+    listen 80;
+
+    location /v1/auth/ {
+        proxy_pass http://auth_service;
+    }
+    location /v1/users/ {
+        proxy_pass http://user_service;
+    }
+    location /v1/guilds/ {
+        proxy_pass http://guild_service;
+    }
+    location /v1/channels/ {
+        proxy_pass http://channel_service;
+    }
+    location /v1/messages/ {
+        proxy_pass http://chat_service;
+    }
+    location /ws {
+        proxy_pass http://realtime_service;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
 ```
 
 ---
 
 ## Communication Patterns
 
-### 1. Synchronous Communication (gRPC)
+### 1. Client to Backend (via nginx)
 
-**Use Cases:**
-- Service-to-service queries
-- Operations requiring immediate response
-- Data validation
-- Permission checks
+All REST API calls from clients go through nginx. nginx routes based on URL prefix to the correct backend service. Each service validates the JWT independently.
 
-**Example Flow:**
 ```
-Auth Service                User Service
-     │                           │
-     │ GenerateDiscriminator     │
-     ├──────────────────────────►│
-     │                           │
-     │      discriminator        │
-     │◄──────────────────────────┤
-     │                           │
+Client --HTTPS--> nginx --HTTP--> auth-service (8081)
+                       |--------> user-service (8082)
+                       |--------> guild-service (8086)
+                       |--------> channel-service (8083)
+                       +--------> chat-service (8084)
 ```
 
-**Implementation:**
-```rust
-// Auth Service (Client)
-let discriminator = user_client
-    .generate_discriminator(GenerateDiscriminatorRequest {
-        username: username.to_string(),
-    })
-    .await?
-    .into_inner()
-    .discriminator;
+### 2. Client to Realtime (WebSocket)
 
-// User Service (Server)
-async fn generate_discriminator(
-    &self,
-    request: Request<GenerateDiscriminatorRequest>,
-) -> Result<Response<GenerateDiscriminatorResponse>, Status> {
-    let discriminator = self.discriminator_service
-        .generate_discriminator(&request.into_inner().username)
-        .await
-        .map_err(|e| Status::internal(e.to_string()))?;
-    
-    Ok(Response::new(GenerateDiscriminatorResponse {
-        discriminator,
-    }))
-}
+Clients establish a WebSocket connection to realtime-service. The service authenticates the connection (JWT on upgrade), subscribes to relevant NATS subjects, and pushes events to the client.
+
+```
+Client --WebSocket--> realtime-service (8080) --subscribe--> NATS
+                             |
+                      push events to client
 ```
 
-**Benefits:**
-- Type-safe contracts (Protocol Buffers)
-- Low latency (~5-10ms on local network)
-- HTTP/2 multiplexing
-- Bidirectional streaming
-- Auto-generated client code
+### 3. Synchronous Communication (gRPC)
+
+Used for service-to-service queries that require an immediate response. These go direct between services, not through nginx.
+
+**Current gRPC flows:**
+- Auth Service -> User Service: discriminator generation, username availability checks
+- Guild Service -> User Service: user lookups for member management
+- Channel Service -> Guild Service: permission verification
+
+**Proto definitions** live in `proto/` and are compiled at build time via `build.rs` in each service.
+
+### 4. Asynchronous Communication (NATS)
+
+Used for event-driven workflows and the AI translation pipeline.
+
+**Event categories:**
+- **User events**: `user.created`, `user.updated`, `user.deleted`
+- **Relationship events**: `friend.request.sent`, `friend.request.accepted`
+- **Guild events**: `guild.created`, `member.joined`, `member.left`
+- **Message events**: `message.created`, `message.updated`, `message.deleted`
+- **AI events**: `translation.requested`, `translation.completed`
+
+realtime-service subscribes to events relevant to each connected client and fans them out over WebSocket.
 
 ---
 
-### 2. Asynchronous Communication (NATS - Post-MVP)
+## AI Translation Pipeline
 
-**Use Cases:**
-- Event notifications
-- Cross-service updates
-- Analytics tracking
-- Audit logging
+The AI service integrates into the message flow via NATS:
 
-**Example Flow:**
 ```
-User Service              NATS              Notification    Analytics
-     │                     │                Service         Service
-     │ UserCreatedEvent    │                    │              │
-     ├────────────────────►│                    │              │
-     │                     │ Distribute         │              │
-     │                     ├───────────────────►│              │
-     │                     ├──────────────────────────────────►│
-     │                     │                    │              │
-```
-
-**Implementation:**
-```rust
-// Publisher (User Service)
-self.event_bus.publish(UserCreatedEvent {
-    event_id: Uuid::new_v4(),
-    user_id: user.id,
-    username: user.username,
-    email: user.email,
-    created_at: user.created_at,
-}).await?;
-
-// Subscriber (Notification Service)
-let subscription = nats_client
-    .subscribe("user_profile.created")
-    .await?;
-
-while let Some(msg) = subscription.next().await {
-    let event: UserCreatedEvent = serde_json::from_slice(&msg.data)?;
-    send_welcome_email(event).await?;
-}
+User sends message
+       |
+       v
+  chat-service
+  (stores original)
+       |
+       | NATS: message.created
+       v
+  ai-service
+  (detects language, translates)
+       |
+       | NATS: translation.completed
+       v
+  realtime-service
+  (delivers translated message
+   to recipients based on their
+   language preferences)
 ```
 
-**Benefits:**
-- Decoupled services
-- Multiple subscribers
-- Message persistence (JetStream)
-- At-least-once delivery
-- Automatic reconnection
+### Translation Phases
 
----
+**Phase 3a -- Text Translation:**
+- Language detection on incoming messages
+- Translation to target languages based on guild/user preferences
+- Original message preserved, translations stored alongside
 
-### 3. Client Communication (HTTP REST)
+**Phase 3b -- Voice STT (Speech-to-Text):**
+- Audio stream from voice-service piped to ai-service
+- Real-time transcription with language detection
+- Translated subtitles pushed to clients via realtime-service
 
-**Use Cases:**
-- Client-to-service API calls
-- CRUD operations
-- File uploads
-- Public APIs
-
-**Characteristics:**
-- RESTful design
-- JSON payloads
-- JWT authentication
-- Rate limiting
-- CORS support
+**Phase 3c -- Voice TTS (Text-to-Speech):**
+- Transcribed and translated text synthesized to speech
+- Audio output streamed to target users in their language
+- Latency target: <500ms end-to-end for speech-to-speech
 
 ---
 
 ## Data Architecture
 
-### Database Strategy
+### MVP: Shared Database
 
-#### MVP: Shared Database
 ```
-┌──────────────────────────────────────┐
-│          PostgreSQL 16               │
-├──────────────────────────────────────┤
-│                                      │
-│  ┌────────────┐    ┌──────────────┐ │
-│  │   users    │    │ user_        │ │
-│  │            │    │ relationships│ │
-│  └────────────┘    └──────────────┘ │
-│                                      │
-│  Auth & User Services share DB      │
-│  (Simplicity for MVP)                │
-└──────────────────────────────────────┘
-```
-
-**Rationale:**
-- Simple for MVP
-- No distributed transactions
-- ACID guarantees
-- Easy local development
-
-**Trade-offs:**
-- Tight coupling
-- Single point of failure
-- Scaling limitations
-
----
-
-#### Post-MVP: Database per Service
-```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│ Auth DB     │  │ User DB     │  │ Server DB   │
-│             │  │             │  │             │
-│ - sessions  │  │ - users     │  │ - servers   │
-│ - tokens    │  │ - friends   │  │ - channels  │
-│             │  │ - blocks    │  │ - members   │
-└─────────────┘  └─────────────┘  └─────────────┘
++--------------------------------------+
+|          PostgreSQL 16               |
++--------------------------------------+
+|                                      |
+|  +------------+    +--------------+  |
+|  |   users    |    | user_        |  |
+|  |            |    | relationships|  |
+|  +------------+    +--------------+  |
+|                                      |
+|  +------------+    +--------------+  |
+|  |   guilds   |    |  channels    |  |
+|  +------------+    +--------------+  |
+|                                      |
+|  +------------+    +--------------+  |
+|  |  messages  |    | translations |  |
+|  +------------+    +--------------+  |
+|                                      |
+|  All services share one DB (MVP)    |
++--------------------------------------+
 ```
 
-**Benefits:**
-- Independent scaling
-- Technology flexibility
-- Fault isolation
-- Clear ownership
+**Rationale:** Simple for MVP, no distributed transactions, ACID guarantees, easy local development.
 
-**Challenges:**
-- Distributed transactions (Saga pattern)
-- Data consistency (eventual)
-- Cross-service queries (API composition)
+**Trade-offs:** Tight coupling, single point of failure, scaling limitations. Post-MVP will migrate to database-per-service.
 
----
+### Post-MVP: Database per Service
+
+```
++-------------+  +-------------+  +-------------+  +-------------+
+| Auth DB     |  | User DB     |  | Guild DB    |  | Chat DB     |
+| - sessions  |  | - users     |  | - guilds    |  | - messages  |
+| - tokens    |  | - friends   |  | - members   |  | - reactions |
+|             |  | - blocks    |  | - roles     |  | - attaches  |
++-------------+  +-------------+  +-------------+  +-------------+
+```
+
+### Caching Strategy
+
+Redis is used for:
+- **Session cache** (15min TTL): JWT claims, active sessions
+- **User profile cache** (1hr TTL): Frequently accessed user data
+- **Relationship cache** (5min TTL): `are_friends(A, B)`, `is_blocked(A, B)` lookups
+- **Presence data**: Online status, last seen timestamps
+- **Message cache**: Last 50 messages per channel for fast retrieval
+- **Connection state**: realtime-service tracks connected users in Redis
 
 ### Database Design Principles
 
-#### 1. Single-Table Design for Bidirectional Relationships
-```sql
--- User relationships (friends, blocks, pending)
-CREATE TABLE user_relationships (
-    id UUID PRIMARY KEY,
-    user_id UUID NOT NULL,           -- Perspective owner
-    target_user_id UUID NOT NULL,    -- Target user_profile
-    type relationship_type NOT NULL,  -- friend, blocked, pending_*
-    message TEXT,                     -- For friend requests
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL,
-    
-    UNIQUE(user_id, target_user_id)
-);
-
--- Bidirectional sync trigger
-CREATE TRIGGER trg_sync_bidirectional_relationship
-    AFTER INSERT OR UPDATE OR DELETE ON user_relationships
-    FOR EACH ROW
-    EXECUTE FUNCTION sync_bidirectional_relationship();
-```
-
-**Benefits:**
-- Automatic consistency (triggers)
-- Single source of truth
-- Efficient queries
+- **Bidirectional relationship sync**: PostgreSQL triggers maintain consistency for friend/block relationships
+- **Covering indexes**: Optimized for common query patterns (friends list, pending requests)
+- **Compile-time query checking**: SQLx verifies all queries at build time
 
 ---
 
-#### 2. Indexing Strategy
-```sql
--- Covering index for friends list
-CREATE INDEX idx_relationships_friends 
-ON user_relationships(user_id, created_at DESC) 
-WHERE type = 'friend';
-
--- Covering index for pending incoming
-CREATE INDEX idx_relationships_pending_incoming 
-ON user_relationships(user_id, created_at DESC) 
-WHERE type = 'pending_incoming';
-
--- Fast existence checks
-CREATE INDEX idx_relationships_user_target 
-ON user_relationships(user_id, target_user_id);
-```
-
-**Query Performance:**
-- Friends list: O(log n) with index seek
-- Existence check: O(1) hash lookup
-- Count queries: Index-only scan
-
----
-
-### Caching Strategy (Post-MVP)
-```
-┌──────────────────────────────────────┐
-│            Redis Cluster             │
-├──────────────────────────────────────┤
-│                                      │
-│  Cache Layers:                       │
-│  ┌────────────────────────────────┐  │
-│  │ L1: Session Cache (15min)     │  │
-│  │ - JWT claims                   │  │
-│  │ - User sessions                │  │
-│  └────────────────────────────────┘  │
-│                                      │
-│  ┌────────────────────────────────┐  │
-│  │ L2: User Profile Cache (1hr)  │  │
-│  │ - User data                    │  │
-│  │ - Friend counts                │  │
-│  └────────────────────────────────┘  │
-│                                      │
-│  ┌────────────────────────────────┐  │
-│  │ L3: Relationship Cache (5min) │  │
-│  │ - are_friends(A, B) → bool    │  │
-│  │ - is_blocked(A, B) → bool     │  │
-│  └────────────────────────────────┘  │
-└──────────────────────────────────────┘
-```
-
-**Cache Invalidation:**
-- Write-through: Update cache on DB write
-- TTL-based: Auto-expire after duration
-- Event-based: Invalidate on domain events
-
-**Cache Keys Pattern:**
-```
-user:{user_id}:profile
-user:{user_id}:friends:count
-relationship:{user_id}:{target_id}:status
-session:{session_id}
-```
-
----
-
-## Authentication & Authorization
+## Authentication and Authorization
 
 ### JWT-Based Authentication
+
 ```
-┌──────────────────────────────────────────────────┐
-│                 Auth Flow                        │
-└──────────────────────────────────────────────────┘
-
-1. Login Request
-   ├─ POST /v1/auth/login
-   └─ {email, password}
-
-2. Auth Service validates credentials
-   ├─ Hash password with Argon2
-   └─ Compare with stored hash
-
-3. Generate JWT tokens
-   ├─ Access Token (15 min)
-   └─ Refresh Token (7 days)
-
-4. Return tokens to client
-   └─ Client stores in secure storage
-
-5. Subsequent Requests
-   ├─ Authorization: Bearer <access_token>
-   └─ Service validates JWT signature
-
-6. Token Refresh
-   ├─ POST /v1/auth/refresh
-   ├─ {refresh_token}
-   └─ New access + refresh tokens
+1. Client -> nginx -> auth-service: POST /v1/auth/login {email, password}
+2. Auth Service validates credentials (Argon2 hash comparison)
+3. Generate JWT tokens: access (15 min) + refresh (7 days)
+4. Client stores tokens, sends Authorization: Bearer <token>
+5. nginx passes the header through; each backend service validates JWT independently
+6. Client -> nginx -> auth-service: POST /v1/auth/refresh for token renewal
 ```
 
-### JWT Structure
-```json
-{
-  "header": {
-    "alg": "HS256",
-    "typ": "JWT"
-  },
-  "payload": {
-    "sub": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "alice",
-    "discriminator": "0042",
-    "email": "alice@example.com",
-    "exp": 1735689600,
-    "iat": 1735603200,
-    "jti": "unique-token-id"
-  },
-  "signature": "..."
-}
-```
+For WebSocket: JWT is validated during the connection upgrade in realtime-service.
 
 ### Authorization Patterns
 
-#### 1. Resource Ownership
-```rust
-// Only user_profile can update their own profile
-async fn update_profile(
-    user_id: Uuid,           // From JWT
-    profile_id: Uuid,        // From URL
-    updates: UpdateProfile,
-) -> Result<User> {
-    if user_id != profile_id {
-        return Err(Error::Forbidden);
-    }
-    // ... update logic
-}
-```
-
-#### 2. Relationship-Based
-```rust
-// Only friends can see online status
-async fn get_user_status(
-    requester_id: Uuid,
-    target_id: Uuid,
-) -> Result<UserStatus> {
-    let target = repo.find_by_id(target_id).await?;
-    
-    if !target.privacy.show_online_status {
-        let are_friends = repo.are_friends(requester_id, target_id).await?;
-        if !are_friends {
-            return Ok(UserStatus::Offline); // Hide status
-        }
-    }
-    
-    Ok(target.status)
-}
-```
-
-#### 3. Role-Based (Future)
-```rust
-// Server admin can delete channels
-async fn delete_channel(
-    user_id: Uuid,
-    server_id: Uuid,
-    channel_id: Uuid,
-) -> Result<()> {
-    let member = repo.get_server_member(user_id, server_id).await?;
-    
-    if !member.has_permission(Permission::ManageChannels) {
-        return Err(Error::Forbidden);
-    }
-    
-    // ... delete logic
-}
-```
+- **Resource ownership**: Users can only modify their own profiles
+- **Relationship-based**: Friends-only visibility for online status
+- **Role-based (guild-service)**: Bitflag permission system with role hierarchy. Guild owners, admins, and custom roles with granular permissions (manage channels, kick members, etc.)
 
 ---
 
 ## Technology Stack
 
 ### Backend Services
-```yaml
-Language: Rust 1.75+
-  - Type safety
-  - Memory safety
-  - Zero-cost abstractions
-  - Fearless concurrency
 
-Web Framework: Axum 0.7
-  - Async/await native
-  - Tower middleware
-  - Type-safe extractors
-  - WebSocket support
-
-gRPC: Tonic 0.12
-  - Async gRPC
-  - Protocol Buffers
-  - HTTP/2
-  - Streaming support
-
-Database: PostgreSQL 16
-  - ACID compliance
-  - JSON support
-  - Full-text search
-  - Triggers & functions
-
-ORM: SQLx 0.8
-  - Compile-time query checking
-  - Async prepared statements
-  - Type-safe SQL
-  - Migration management
-
-Authentication: jsonwebtoken 9.0
-  - HS256/RS256 algorithms
-  - Claims validation
-  - Token expiry
-
-Messaging (Future): NATS 2.10
-  - JetStream for persistence
-  - At-least-once delivery
-  - Consumer groups
-  - Request-reply
-
-Caching (Future): Redis 7.2
-  - In-memory key-value
-  - Pub/sub
-  - Streams
-  - Cluster mode
+```
+Language:        Rust (stable, 1.75+)
+Edge Proxy:      nginx (REST routing, TLS, rate limiting, CORS)
+Web Framework:   Axum 0.7 (async, Tower middleware)
+gRPC:            Tonic 0.11 (Protocol Buffers, HTTP/2, streaming)
+Database:        PostgreSQL 16 (SQLx 0.8, compile-time checked)
+Cache:           Redis 7 (session, presence, message cache, connection state)
+Messaging:       NATS (JetStream for persistence, at-least-once delivery)
+Auth:            jsonwebtoken 9.3, Argon2 password hashing
+Real-time:       WebSocket (tokio-tungstenite) via realtime-service, WebRTC (voice)
+API Docs:        utoipa 5 (OpenAPI/Swagger)
 ```
 
 ### Observability
-```yaml
-Logging: tracing + tracing-subscriber
-  - Structured logging
-  - Span tracking
-  - Log levels
-  - JSON output
 
-Metrics: Prometheus + Grafana
-  - Request duration
-  - Error rates
-  - Throughput
-  - Custom business metrics
-
-Tracing (Future): Jaeger
-  - Distributed tracing
-  - Span visualization
-  - Performance profiling
-
-Health Checks: Custom endpoints
-  - /health/live (liveness)
-  - /health/ready (readiness)
-  - Dependency checks
+```
+Logging:   tracing + tracing-subscriber (structured, JSON output)
+Metrics:   Prometheus + Grafana (request duration, error rates, throughput)
+Health:    /health/live (liveness), /health/ready (readiness)
+nginx:     Access logs, upstream response time tracking
 ```
 
 ### Infrastructure
-```yaml
-Containerization: Docker 24+
-  - Multi-stage builds
-  - Layer caching
-  - Security scanning
 
-Orchestration (Future): Kubernetes
-  - Pod autoscaling
-  - Service discovery
-  - Load balancing
-  - Rolling updates
-
-CI/CD: GitHub Actions
-  - Automated testing
-  - Docker builds
-  - Deployment pipelines
+```
+Edge Proxy:    nginx (reverse proxy, TLS, rate limiting)
+Containers:    Docker + Docker Compose (development)
+CI/CD:         GitHub Actions (test, lint, build)
+Future:        Kubernetes (autoscaling, service discovery, rolling updates)
 ```
 
 ---
 
 ## Deployment Architecture
 
-### MVP Deployment (Docker Compose)
-```yaml
-version: '3.8'
+### Development (Docker Compose)
 
-services:
-  postgres:
-    image: postgres:16
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    
-  auth-service:
-    build: ./services/auth-service
-    ports:
-      - "8081:8081"
-    depends_on:
-      - postgres
-    environment:
-      DATABASE_URL: postgres://...
-      JWT_SECRET: ${JWT_SECRET}
-    
-  user-service:
-    build: ./services/user_profile-service
-    ports:
-      - "8082:8082"
-      - "50051:50051"  # gRPC
-    depends_on:
-      - postgres
-    environment:
-      DATABASE_URL: postgres://...
-      GRPC_PORT: 50051
+```
+docker-compose.yml provides:
+  - nginx (port 80)
+  - PostgreSQL 16 (port 5432)
+  - Redis 7 (port 6379)
+  - NATS (port 4222, monitoring 8222)
+  - Prometheus (port 9090)
+  - Grafana (port 3000)
+
+Rust services run natively via cargo:
+  make run-auth, make run-user, make run-realtime, etc.
 ```
 
-### Production Deployment (Future - Kubernetes)
-```yaml
-apiVersion: apps/auth
-kind: Deployment
-metadata:
-  name: user_profile-service
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: user_profile-service
-  template:
-    metadata:
-      labels:
-        app: user_profile-service
-    spec:
-      containers:
-      - name: user_profile-service
-        image: discord-clone/user_profile-service:auth.0.0
-        ports:
-        - containerPort: 8082
-        - containerPort: 50051
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: db-credentials
-              key: url
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 8082
-          initialDelaySeconds: 10
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8082
-          initialDelaySeconds: 5
-          periodSeconds: 10
-```
+### Production (Future -- Kubernetes)
+
+- nginx Ingress Controller at the edge (or replace with cloud load balancer)
+- Pod autoscaling per service based on CPU/request metrics
+- Service discovery via Kubernetes DNS
+- Rolling updates with health check gates
+- Secrets management via Kubernetes Secrets / Vault
 
 ---
 
 ## Scalability Strategy
 
 ### Horizontal Scaling
-```
-┌─────────────────────────────────────────┐
-│         Load Balancer                   │
-└────────┬───────────┬────────────────────┘
-         │           │
-    ┌────▼────┐ ┌───▼─────┐ ┌──────────┐
-    │User Svc │ │User Svc │ │User Svc  │
-    │Pod 1    │ │Pod 2    │ │Pod 3     │
-    └────┬────┘ └───┬─────┘ └────┬─────┘
-         │          │            │
-         └──────────┼────────────┘
-                    │
-              ┌─────▼─────┐
-              │PostgreSQL │
-              │Read Replicas
-              └───────────┘
-```
 
-**Stateless Services:**
-- No session state in memory
-- JWT for authentication
-- Shared database/cache
+All services are stateless:
+- No session state in memory (JWT for auth, Redis for state)
 - Any pod can handle any request
+- Independent scaling per service based on load
+- nginx distributes load across service replicas
 
-**Database Scaling:**
-1. Read replicas for query distribution
-2. Connection pooling (PgBouncer)
-3. Sharding (future - by user_id hash)
+realtime-service scales horizontally with Redis-backed connection state: any instance can look up which users are connected where.
 
----
+### Database Scaling Path
 
-### Vertical Scaling
+1. **MVP**: Shared PostgreSQL, connection pooling
+2. **Post-MVP**: Database per service, read replicas
+3. **Scale**: PgBouncer, sharding by guild_id or user_id
 
-**Resource Optimization:**
-```rust
-// Connection pooling
-let pool = PgPoolOptions::new()
-    .max_connections(20)      // Limit connections
-    .acquire_timeout(Duration::from_secs(3))
-    .connect(&database_url)
-    .await?;
+### Performance Targets
 
-// Async task limits
-let semaphore = Arc::new(Semaphore::new(100));  // Max concurrent tasks
-```
-
-**Performance Targets:**
-
-| Metric | Target | Current |
-|--------|--------|---------|
-| p50 Response Time | <50ms | TBD |
-| p95 Response Time | <100ms | TBD |
-| p99 Response Time | <200ms | TBD |
-| Throughput | 10k req/s per pod | TBD |
-| Database Connections | <100 per pod | 20 |
+| Metric | Target |
+|--------|--------|
+| p50 response time | <50ms |
+| p95 response time | <100ms |
+| p99 response time | <200ms |
+| AI translation latency | <200ms (text), <500ms (voice) |
+| Throughput per pod | 10k req/s |
 
 ---
 
-## Monitoring & Observability
-
-### Metrics Collection
-```rust
-use prometheus::{register_histogram, register_counter};
-
-lazy_static! {
-    static ref HTTP_DURATION: Histogram = register_histogram!(
-        "http_request_duration_seconds",
-        "HTTP request duration"
-    ).unwrap();
-    
-    static ref HTTP_REQUESTS: Counter = register_counter!(
-        "http_requests_total",
-        "Total HTTP requests"
-    ).unwrap();
-}
-
-async fn handle_request() {
-    let timer = HTTP_DURATION.start_timer();
-    HTTP_REQUESTS.inc();
-    
-    // ... handle request
-    
-    timer.observe_duration();
-}
-```
+## Monitoring and Observability
 
 ### Key Metrics
-```yaml
+
+```
 Service Health:
   - http_requests_total{method, status, service}
   - http_request_duration_seconds{method, path, service}
   - grpc_requests_total{method, status, service}
-  - grpc_request_duration_seconds{method, service}
+  - websocket_connections_active (realtime-service)
 
 Business Metrics:
   - user_registrations_total
-  - friend_requests_sent_total
-  - friend_requests_accepted_total
+  - messages_sent_total
+  - translations_completed_total
   - active_users_total
 
 Infrastructure:
   - db_connections_active
-  - db_query_duration_seconds
-  - cache_hits_total
-  - cache_misses_total
+  - cache_hits_total / cache_misses_total
+  - nats_messages_published / nats_messages_consumed
+  - nginx_requests_total, nginx_upstream_response_time
 ```
 
 ### Logging Standards
-```rust
-#[instrument(skip(self), fields(user_id = %user_id))]
-async fn send_friend_request(
-    &self,
-    user_id: Uuid,
-    target_username: &str,
-) -> Result<FriendRequest> {
-    info!("Sending friend request");
-    
-    // ... logic
-    
-    if error {
-        warn!("Friend request failed: {}", error);
-        return Err(error);
-    }
-    
-    info!("Friend request sent successfully");
-    Ok(request)
-}
-```
 
-**Log Levels:**
-- **ERROR**: Requires immediate action
-- **WARN**: Potentially harmful situations
-- **INFO**: Informational messages
-- **DEBUG**: Detailed debugging information
-- **TRACE**: Very detailed tracing
+- Structured logging with `tracing`
+- Request ID propagation across services (nginx generates, passes via header)
+- Log levels: ERROR (immediate action), WARN (potentially harmful), INFO (operational), DEBUG/TRACE (development)
 
 ---
 
 ## Security Architecture
 
 ### Defense in Depth
+
 ```
-┌──────────────────────────────────────────┐
-│  Layer 1: Network (Firewall, DDoS)      │
-├──────────────────────────────────────────┤
-│  Layer 2: API Gateway (Rate limit, WAF) │
-├──────────────────────────────────────────┤
-│  Layer 3: Authentication (JWT)          │
-├──────────────────────────────────────────┤
-│  Layer 4: Authorization (RBAC)          │
-├──────────────────────────────────────────┤
-│  Layer 5: Data (Encryption, Validation) │
-└──────────────────────────────────────────┘
++------------------------------------------+
+| Layer 1: Network (Firewall, DDoS)       |
++------------------------------------------+
+| Layer 2: nginx (TLS, rate limit, CORS)  |
++------------------------------------------+
+| Layer 3: Authentication (JWT)           |
++------------------------------------------+
+| Layer 4: Authorization (RBAC)           |
++------------------------------------------+
+| Layer 5: Data (Encryption, Validation)  |
++------------------------------------------+
 ```
 
 ### Security Measures
 
-**Authentication:**
-- Argon2 password hashing
-- JWT with short expiry
-- Refresh token rotation
-- Rate limiting on auth endpoints
-
-**Data Protection:**
-- SQL injection prevention (parameterized queries)
-- XSS prevention (sanitized input)
-- CORS configuration
-- HTTPS only (TLS 1.3)
-
-**Secrets Management:**
-- Environment variables
-- Vault (production)
-- No secrets in code/git
-
----
-
-**End of Architecture Documentation**
+- **nginx**: TLS 1.3 termination, rate limiting (`limit_req`), CORS headers, request size limits
+- **Argon2** password hashing with salt
+- **JWT** with short expiry (15min access, 7-day refresh with rotation)
+- **SQL injection prevention**: SQLx compile-time checked parameterized queries
+- **Input validation**: `validator` crate on all request DTOs
+- **Rate limiting**: nginx `limit_req` at the edge, Governor crate on auth endpoints as defense-in-depth
+- **Lint policy**: `unsafe_code` is forbidden, `unwrap_used`/`expect_used`/`panic` are denied at workspace level
+- **Internal network**: Backend services only accessible from nginx and each other, not exposed to the internet directly

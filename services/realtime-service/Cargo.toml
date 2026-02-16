@@ -1,15 +1,15 @@
-# Gateway Service - Cargo.toml
-# Handles WebSocket connections, API proxying, and event broadcasting
+# Realtime Service - Cargo.toml
+# Handles WebSocket connections, NATS event fanout, and connection state
 
 [package]
-name = "gateway-service"
+name = "realtime-service"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
 [[bin]]
-name = "gateway-service"
+name = "realtime-service"
 path = "src/main.rs"
 
 [dependencies]
@@ -70,17 +70,12 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 
 # ============================================================================
-# HTTP CLIENT (for proxying requests to backend services)
-# ============================================================================
-reqwest = { workspace = true }
-
-# ============================================================================
-# REDIS (for connection state and rate limiting)
+# REDIS (for connection state)
 # ============================================================================
 redis = { workspace = true }
 
 # ============================================================================
-# NATS (subscribe to ALL events and broadcast to WebSocket clients)
+# NATS (subscribe to events and broadcast to WebSocket clients)
 # ============================================================================
 async-nats = { workspace = true }
 
@@ -88,17 +83,6 @@ async-nats = { workspace = true }
 # WEBSOCKET
 # ============================================================================
 tokio-tungstenite = { workspace = true }
-
-# ============================================================================
-# RATE LIMITING
-# ============================================================================
-governor = { workspace = true }
-
-# ============================================================================
-# API DOCUMENTATION
-# ============================================================================
-utoipa = { workspace = true }
-utoipa-swagger-ui = { workspace = true }
 
 # ============================================================================
 # TESTING
@@ -117,9 +101,8 @@ default = []
 # ============================================================================
 # NOTES
 # ============================================================================
-# - NO PostgreSQL (stateless gateway)
+# - NO PostgreSQL (stateless service)
 # - WebSocket connections for real-time events
-# - Proxies HTTP requests to backend services
-# - Rate limiting per user_profile
-# - Subscribes to all NATS events and broadcasts to clients
-# - Connection state in Redis
+# - Subscribes to NATS events and broadcasts to connected clients
+# - Connection state tracked in Redis
+# - nginx handles REST routing, TLS, rate limiting
