@@ -5,13 +5,16 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
+use crate::domain::auth_credential::EmailService;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
 };
 use common::domain::event::IntoEventEnvelope;
-use common::infrastructure::messaging::EventPublisher;
+use common::infrastructure::messaging::{EventPublisher, EventPublisherExt};
 use common::infrastructure::security::jwt_manager::JwtManager;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use std::sync::Arc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
@@ -22,6 +25,7 @@ use uuid::Uuid;
 
 const ACCESS_TOKEN_EXPIRY_HOURS: i64 = 6;
 const REFRESH_TOKEN_EXPIRY_DAYS: i64 = 30;
+const VERIFICATION_TOKEN_EXPIRY_HOURS: i64 = 24;
 
 // ============================================
 // AUTHENTICATION SERVICE
@@ -30,49 +34,34 @@ const REFRESH_TOKEN_EXPIRY_DAYS: i64 = 30;
 /// Orchestrates authentication workflows using:
 /// - Domain entities (AuthCredential, AuthSession)
 /// - Repositories (AuthCredentialRepository, AuthSessionRepository)
-/// - Domain services (PasswordService)
+/// - Domain services (PasswordService, EmailService)
 /// - Infrastructure services (JwtManager, EventPublisher, UserProfileClient)
-pub struct AuthService<CR, SR, PS, TH, EP, UPC>
-where
-    CR: AuthCredentialRepository,
-    SR: AuthSessionRepository,
-    PS: PasswordService,
-    TH: TokenHasher,
-    EP: EventPublisher,
-    UPC: UserProfileClient + Clone,
-    UPC::Error: std::fmt::Debug,
-{
+pub struct AuthService {
     service_name: String,
-    credential_repo: Arc<CR>,
-    session_repo: Arc<SR>,
-    password_service: Arc<PS>,
-    token_hasher: Arc<TH>,
-    event_publisher: Arc<EP>,
+    credential_repo: Arc<dyn AuthCredentialRepository>,
+    session_repo: Arc<dyn AuthSessionRepository>,
+    password_service: Arc<dyn PasswordService>,
+    token_hasher: Arc<dyn TokenHasher>,
+    event_publisher: Arc<dyn EventPublisher>,
     jwt_manager: Arc<JwtManager>,
-    user_profile_client: Arc<UPC>,
+    user_profile_client: Arc<dyn UserProfileClient>,
+    email_service: Arc<dyn EmailService>,
 }
 
 // ============================================
 
-impl<CR, SR, PS, TH, EP, UPC> AuthService<CR, SR, PS, TH, EP, UPC>
-where
-    CR: AuthCredentialRepository,
-    SR: AuthSessionRepository,
-    PS: PasswordService,
-    TH: TokenHasher,
-    EP: EventPublisher,
-    UPC: UserProfileClient + Clone,
-    UPC::Error: std::fmt::Debug,
-{
+impl AuthService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         service_name: impl Into<String>,
-        credential_repo: Arc<CR>,
-        session_repo: Arc<SR>,
-        password_service: Arc<PS>,
-        token_hasher: Arc<TH>,
-        event_publisher: Arc<EP>,
+        credential_repo: Arc<dyn AuthCredentialRepository>,
+        session_repo: Arc<dyn AuthSessionRepository>,
+        password_service: Arc<dyn PasswordService>,
+        token_hasher: Arc<dyn TokenHasher>,
+        event_publisher: Arc<dyn EventPublisher>,
         jwt_manager: Arc<JwtManager>,
-        user_profile_client: Arc<UPC>,
+        user_profile_client: Arc<dyn UserProfileClient>,
+        email_service: Arc<dyn EmailService>,
     ) -> Self {
         Self {
             service_name: service_name.into(),
@@ -83,7 +72,16 @@ where
             event_publisher,
             jwt_manager,
             user_profile_client,
+            email_service,
         }
+    }
+
+    fn generate_verification_token(&self) -> String {
+        thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect()
     }
 
     // ============================================
@@ -97,10 +95,11 @@ where
     /// 2. Hash password
     /// 3. Create auth credential
     /// 4. Call user-service via gRPC to create profile (SYNC)
-    /// 5. Generate JWT tokens
-    /// 6. Create session
-    /// 7. Publish user.created event (ASYNC, non-blocking)
-    /// 8. Return tokens + user profile
+    /// 5. Generate verification token and send email
+    /// 6. Generate JWT tokens
+    /// 7. Create session
+    /// 8. Publish user.created event (ASYNC, non-blocking)
+    /// 9. Return tokens + user profile
     pub async fn register(
         &self,
         request: RegisterRequest,
@@ -172,7 +171,27 @@ where
         );
 
         // ═══════════════════════════════════════════════════
-        // STEP 5: Generate Tokens
+        // STEP 5: Generate verification token and send email
+        // ═══════════════════════════════════════════════════
+        let verification_token = self.generate_verification_token();
+        self.credential_repo
+            .set_verification_token(
+                credential.id(),
+                &verification_token,
+                VERIFICATION_TOKEN_EXPIRY_HOURS,
+            )
+            .await?;
+
+        if let Err(e) = self
+            .email_service
+            .send_verification_email(credential.email().as_str(), &verification_token)
+            .await
+        {
+            error!(error = %e, user_id = %credential.id(), "Failed to send verification email (non-critical)");
+        }
+
+        // ═══════════════════════════════════════════════════
+        // STEP 6: Generate Tokens
         // ═══════════════════════════════════════════════════
         let access_token = self
             .jwt_manager
@@ -193,7 +212,7 @@ where
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
 
         // ═══════════════════════════════════════════════════
-        // STEP 6: Create Session
+        // STEP 7: Create Session
         // ═══════════════════════════════════════════════════
         let token_hash = self
             .token_hasher
@@ -208,7 +227,7 @@ where
         );
 
         self.session_repo.save(&session).await.map_err(|e| {
-            error!(error = %e, "STEP 6 FAILED: session_repo.save");
+            error!(error = %e, "STEP 7 FAILED: session_repo.save");
             e
         })?;
 
@@ -219,7 +238,7 @@ where
         );
 
         // ═══════════════════════════════════════════════════
-        // STEP 7: Publish Event (ASYNC, Non-blocking)
+        // STEP 8: Publish Event (ASYNC, Non-blocking)
         // ═══════════════════════════════════════════════════
         let event = UserCreatedEvent::new(
             credential.user_id(),
@@ -245,7 +264,7 @@ where
         }
 
         // ═══════════════════════════════════════════════════
-        // STEP 8: Return Response
+        // STEP 9: Return Response
         // ═══════════════════════════════════════════════════
         info!(
             user_id = %credential.id(),
@@ -263,6 +282,31 @@ where
     }
 
     // ============================================
+    // EMAIL VERIFICATION
+    // ============================================
+
+    /// Verify user's email address
+    pub async fn verify_email(&self, token: &str) -> Result<(), AuthApplicationError> {
+        info!(token = %token, "Email verification attempt");
+
+        let mut credential = self
+            .credential_repo
+            .find_by_verification_token(token)
+            .await?
+            .ok_or(AuthApplicationError::InvalidToken)?;
+
+        credential
+            .verify_email(token)
+            .map_err(|e| AuthApplicationError::Internal(e.to_string()))?;
+
+        self.credential_repo.update(&credential).await?;
+
+        info!(user_id = %credential.user_id(), "Email verified successfully");
+
+        Ok(())
+    }
+
+    // ============================================
     // LOGIN
     // ============================================
 
@@ -270,7 +314,7 @@ where
     ///
     /// Workflow:
     /// 1. Find credential by email
-    /// 2. Check account status (locked/suspended/deleted)
+    /// 2. Check account status (locked/suspended/deleted/verified)
     /// 3. Verify password
     /// 4. Record login attempt
     /// 5. Generate tokens
@@ -301,6 +345,11 @@ where
         // ═══════════════════════════════════════════════════
         // STEP 2: Check Account Status
         // ═══════════════════════════════════════════════════
+        if !credential.is_email_verified() {
+            warn!(user_id = %credential.id(), "Login failed: email not verified");
+            return Err(AuthApplicationError::EmailNotVerified);
+        }
+        
         if credential.is_locked() {
             warn!(
                 user_id = %credential.id(),

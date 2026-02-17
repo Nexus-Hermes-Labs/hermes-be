@@ -120,12 +120,21 @@ impl From<AuthApplicationError> for ApiError {
                     code: "USER_SERVICE_ERROR".to_string(),
                 }
             },
-            AuthApplicationError::UserServiceError(ref msg) => {
+            AuthApplicationError::UserServiceError(ref msg)
+            | AuthApplicationError::UserServiceTransportError(ref msg) => {
                 tracing::error!("User service communication error: {}", msg);
                 ApiError {
                     status: StatusCode::BAD_GATEWAY,
                     message: "User service is unavailable. Please try again later.".to_string(),
                     code: "USER_SERVICE_UNAVAILABLE".to_string(),
+                }
+            },
+            AuthApplicationError::UserServiceInvalidResponse(ref msg) => {
+                tracing::error!("User service invalid response: {}", msg);
+                ApiError {
+                    status: StatusCode::BAD_GATEWAY,
+                    message: "Received invalid response from user service.".to_string(),
+                    code: "USER_SERVICE_INVALID_RESPONSE".to_string(),
                 }
             },
 

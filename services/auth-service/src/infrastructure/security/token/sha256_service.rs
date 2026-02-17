@@ -1,6 +1,5 @@
 use sha2::{Digest, Sha256};
-use crate::domain::auth_session::{RefreshTokenHash, TokenHasher};
-use crate::infrastructure::security::token::error::TokenHasherError;
+use crate::domain::auth_session::{RefreshTokenHash, TokenHasher, AuthSessionError};
 // ============================================
 // SHA256 TOKEN HASHER
 // ============================================
@@ -30,11 +29,9 @@ impl Default for Sha256TokenHasher {
 }
 
 impl TokenHasher for Sha256TokenHasher {
-    type Error = TokenHasherError;
-
-    fn hash(&self, token: &str) -> Result<RefreshTokenHash, Self::Error> {
+    fn hash(&self, token: &str) -> Result<RefreshTokenHash, AuthSessionError> {
         if token.is_empty() {
-            return Err(TokenHasherError::EmptyToken);
+            return Err(AuthSessionError::HashingFailed("Token is empty".to_string()));
         }
 
         let mut hasher = Sha256::new();

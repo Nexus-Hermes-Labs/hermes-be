@@ -31,7 +31,7 @@ use uuid::Uuid;
 /// 🎯 DOMAIN-SPECIFIC METHODS
 /// --------------------------------------------------
 #[async_trait]
-pub trait AuthSessionRepository: Repository<AuthSession, Uuid, Error = RepositoryError> {
+pub trait AuthSessionRepository: Repository<AuthSession, Uuid, Error = RepositoryError> + Send + Sync {
     // ============================================
     // SESSION LOOKUPS
     // ============================================

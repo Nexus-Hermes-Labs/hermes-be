@@ -20,6 +20,7 @@ mod logout;
 mod refresh;
 mod register;
 mod shared;
+mod verify;
 
 // ============================================
 // PUBLIC EXPORTS
@@ -39,3 +40,6 @@ pub use refresh::{RefreshTokenRequest, RefreshTokenResponse};
 
 // Register endpoint
 pub use register::{RegisterRequest, RegisterResponse};
+
+// Verify Email endpoint
+pub use verify::{VerifyEmailRequest, VerifyEmailResponse};

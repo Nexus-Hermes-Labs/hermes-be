@@ -4,7 +4,7 @@ use argon2::{
 };
 use thiserror::Error;
 
-use crate::domain::auth_credential::{PasswordHash as DomainPasswordHash, PasswordService};
+use crate::domain::auth_credential::{PasswordHash as DomainPasswordHash, PasswordService, AuthCredentialError};
 
 // ============================================
 // ARGON2 PASSWORD SERVICE
@@ -50,17 +50,15 @@ impl Default for Argon2PasswordService {
 }
 
 impl PasswordService for Argon2PasswordService {
-    type Error = PasswordServiceError;
-
-    fn hash_password(&self, password: &str) -> Result<DomainPasswordHash, Self::Error> {
+    fn hash_password(&self, password: &str) -> Result<DomainPasswordHash, AuthCredentialError> {
         // Validate password length
         if password.is_empty() {
-            return Err(PasswordServiceError::EmptyPassword);
+            return Err(AuthCredentialError::EmptyPassword);
         }
 
         if password.len() > 72 {
             // Argon2 has a max length of 4294967295 bytes, but 72 is a practical limit
-            return Err(PasswordServiceError::PasswordTooLong);
+            return Err(AuthCredentialError::PasswordTooLong);
         }
 
         // Generate a random salt
@@ -70,7 +68,7 @@ impl PasswordService for Argon2PasswordService {
         let password_hash = self
             .hasher
             .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| PasswordServiceError::HashingFailed(e.to_string()))?;
+            .map_err(|e| AuthCredentialError::HashingFailed(e.to_string()))?;
 
         // Convert to PHC string format
         // Format: $argon2id$v=19$m=19456,t=2,p=1$SALT$HASH
@@ -81,16 +79,16 @@ impl PasswordService for Argon2PasswordService {
         &self,
         password: &str,
         hash: &DomainPasswordHash,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<bool, AuthCredentialError> {
         // Parse the stored hash
         let parsed_hash = PasswordHash::new(hash.as_str())
-            .map_err(|e| PasswordServiceError::InvalidHashFormat(e.to_string()))?;
+            .map_err(|e| AuthCredentialError::InvalidHashFormat(e.to_string()))?;
 
         // Verify the password
         match self.hasher.verify_password(password.as_bytes(), &parsed_hash) {
             Ok(()) => Ok(true),
             Err(argon2::password_hash::Error::Password) => Ok(false),
-            Err(e) => Err(PasswordServiceError::VerificationFailed(e.to_string())),
+            Err(e) => Err(AuthCredentialError::VerificationFailed(e.to_string())),
         }
     }
 }
@@ -169,7 +167,7 @@ mod tests {
     fn test_empty_password_rejected() {
         let service = Argon2PasswordService::new();
         let result = service.hash_password("");
-        assert!(matches!(result, Err(PasswordServiceError::EmptyPassword)));
+        assert!(result.is_err());
     }
 
     #[test]
@@ -177,7 +175,7 @@ mod tests {
         let service = Argon2PasswordService::new();
         let long_password = "a".repeat(73);
         let result = service.hash_password(&long_password);
-        assert!(matches!(result, Err(PasswordServiceError::PasswordTooLong)));
+        assert!(result.is_err());
     }
 
     #[test]

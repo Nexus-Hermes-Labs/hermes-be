@@ -82,6 +82,15 @@ pub enum AuthApplicationError {
 
     #[error("Account is deleted")]
     AccountDeleted,
+
+    // =====================================================
+    // USER SERVICE CLIENT ERRORS
+    // =====================================================
+    #[error("User service transport error: {0}")]
+    UserServiceTransportError(String),
+
+    #[error("User service invalid response: {0}")]
+    UserServiceInvalidResponse(String),
 }
 
 impl From<RepositoryError> for AuthApplicationError {

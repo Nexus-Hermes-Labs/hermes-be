@@ -81,16 +81,18 @@ impl TryFrom<UserProfileResponse> for UserProfileInfo {
     }
 }
 
+use crate::application::services::authentication::error::AuthApplicationError;
+
+// ... (skipping some code)
+
 #[async_trait]
 impl UserProfileClient for UserGrpcClient {
-    type Error = UserGrpcError;
-
     async fn create_profile(
         &self,
         username: String,
         display_name: String,
         email: String,
-    ) -> Result<UserProfileInfo, Self::Error> {
+    ) -> Result<UserProfileInfo, AuthApplicationError> {
         let mut client = self.create_client();
 
         let request = tonic::Request::new(CreateUserProfileRequest {
@@ -106,22 +108,30 @@ impl UserProfileClient for UserGrpcClient {
                 message = %e.message(),
                 "gRPC create_user_profile failed"
             );
-            e
+            AuthApplicationError::UserServiceError(e.to_string())
         })?.into_inner();
 
-        response.try_into()
+        let info: UserProfileInfo = response.try_into().map_err(|e: UserGrpcError| {
+            AuthApplicationError::UserServiceInvalidResponse(e.to_string())
+        })?;
+        Ok(info)
     }
 
-    async fn get_profile(&self, user_id: Uuid) -> Result<UserProfileInfo, Self::Error> {
+    async fn get_profile(&self, user_id: Uuid) -> Result<UserProfileInfo, AuthApplicationError> {
         let mut client = self.create_client();
 
         let request = tonic::Request::new(GetUserProfileRequest {
             user_id: user_id.to_string(),
         });
 
-        let response = client.get_user_profile(request).await?.into_inner();
+        let response = client.get_user_profile(request).await.map_err(|e| {
+            AuthApplicationError::UserServiceError(e.to_string())
+        })?.into_inner();
 
-        response.try_into()
+        let info: UserProfileInfo = response.try_into().map_err(|e: UserGrpcError| {
+            AuthApplicationError::UserServiceInvalidResponse(e.to_string())
+        })?;
+        Ok(info)
     }
 }
 
@@ -132,7 +142,7 @@ mod tests {
     #[test]
     fn test_client_creation() {
         // Test endpoint parsing
-        let addr = "http://localhost:50052".to_string();
+        let _addr = "http://localhost:50052".to_string();
         // Actual test would be async
     }
 

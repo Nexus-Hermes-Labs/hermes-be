@@ -84,6 +84,25 @@ fn get_or_init_metrics() -> Metrics {
 }
 
 // ============================================
+// MOCK EMAIL SERVICE
+// ============================================
+
+#[derive(Debug, Clone)]
+pub struct MockEmailService;
+
+#[async_trait::async_trait]
+impl auth_service::domain::auth_credential::EmailService for MockEmailService {
+    async fn send_verification_email(
+        &self,
+        to: &str,
+        token: &str,
+    ) -> Result<(), auth_service::application::services::authentication::error::AuthApplicationError> {
+        tracing::info!("MockEmailService: Sending verification email to {} with token {}", to, token);
+        Ok(())
+    }
+}
+
+// ============================================
 // MOCK gRPC USER SERVICE
 // ============================================
 
@@ -194,6 +213,7 @@ async fn start_mock_grpc_server() -> String {
 /// Containers are dropped (and stopped) when `TestHarness` is dropped.
 pub struct TestHarness {
     pub router: Router,
+    pub pool: PgPool,
     // Keep containers alive for the test duration
     _pg_container: ContainerAsync<Postgres>,
     _redis_container: ContainerAsync<GenericImage>,
@@ -319,6 +339,7 @@ impl TestHarness {
         let session_repo = Arc::new(PostgresAuthSessionRepository::new(pool.clone()));
         let password_service = Arc::new(Argon2PasswordService::new());
         let token_hasher = Arc::new(Sha256TokenHasher::new());
+        let email_service = Arc::new(MockEmailService);
 
         let auth_service = Arc::new(AuthService::new(
             "test-auth-service",
@@ -329,6 +350,7 @@ impl TestHarness {
             event_publisher,
             jwt_manager.clone(),
             user_profile_client,
+            email_service.clone(),
         ));
 
         let auth_state = AuthState::new(
@@ -341,9 +363,10 @@ impl TestHarness {
         let metrics = get_or_init_metrics();
 
         let shared_state = SharedState {
-            db: pool,
+            db: pool.clone(),
             redis: redis_conn,
             metrics,
+            email_service: email_service.clone(),
         };
 
         let app_state = AppState {
@@ -366,6 +389,7 @@ impl TestHarness {
 
         Self {
             router,
+            pool,
             _pg_container: pg_container,
             _redis_container: redis_container,
             _nats_container: nats_container,

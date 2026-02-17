@@ -10,6 +10,8 @@ use tower_http::{
 };
 use tracing::info;
 
+use crate::presentation::error::PresentationError;
+
 #[derive(Clone)]
 pub struct Server {
     app_state: AppState,
@@ -20,14 +22,14 @@ impl Server {
     pub async fn new(
         app_state: AppState,
         health_check: Arc<HealthCheck>,
-    ) -> Result<Self, anyhow::Error> {
+    ) -> Result<Self, PresentationError> {
         Ok(Self {
             app_state,
             health_check,
         })
     }
 
-    pub async fn run(self) -> Result<(), anyhow::Error> {
+    pub async fn run(self) -> Result<(), PresentationError> {
         let app = self.build_router();
         let addr = self.server_address();
 
@@ -36,7 +38,8 @@ impl Server {
         let listener = tokio::net::TcpListener::bind(addr).await?;
         axum::serve(listener, app)
             .with_graceful_shutdown(shutdown_signal())
-            .await?;
+            .await
+            .map_err(|e| PresentationError::HttpServer(e.to_string()))?;
 
         Ok(())
     }

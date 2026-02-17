@@ -16,4 +16,7 @@ pub enum AuthSessionError {
 
     #[error("Session not found")]
     SessionNotFound,
+
+    #[error("Token hashing failed: {0}")]
+    HashingFailed(String),
 }

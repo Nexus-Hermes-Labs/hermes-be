@@ -46,24 +46,15 @@ impl NatsEventPublisher {
 
 #[async_trait]
 impl EventPublisher for NatsEventPublisher {
-    async fn publish<T>(
+    async fn publish_bytes(
         &self,
         subject: &str,
-        event: &EventEnvelope<T>,
-    ) -> Result<(), MessagingError>
-    where
-        T: Serialize + Send + Sync,
-    {
+        payload: Vec<u8>,
+    ) -> Result<(), MessagingError> {
         debug!(
             subject = %subject,
-            event_id = %event.event_id,
-            event_type = %event.event_type,
-            "Publishing event to NATS"
+            "Publishing raw bytes to NATS"
         );
-
-        let payload = event
-            .to_json_bytes()
-            .map_err(|e| MessagingError::SerializationFailed(e.to_string()))?;
 
         self.client
             .publish(subject.to_string(), payload.into())
@@ -72,18 +63,10 @@ impl EventPublisher for NatsEventPublisher {
                 error!(
                     error = %e,
                     subject = %subject,
-                    event_id = %event.event_id,
                     "Failed to publish event"
                 );
                 MessagingError::PublishFailed(e.to_string())
             })?;
-
-        info!(
-            subject = %subject,
-            event_id = %event.event_id,
-            event_type = %event.event_type,
-            "Event published successfully"
-        );
 
         Ok(())
     }

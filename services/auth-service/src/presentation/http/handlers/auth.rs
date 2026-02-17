@@ -1,5 +1,6 @@
 use crate::presentation::http::dto::{
     ClientInfo, LoginRequest, LogoutRequest, RefreshTokenRequest, RegisterRequest,
+    VerifyEmailRequest,
 };
 use crate::presentation::http::error::ApiError;
 use crate::application::services::authentication::error::AuthApplicationError;
@@ -179,6 +180,38 @@ pub async fn logout_handler(
         .logout(user_id, session_id, request.all_devices)
         .await
         .map_err(ApiError::from)?;
+
+    Ok((StatusCode::OK, Json(response)).into_response())
+}
+
+/// GET /api/auth/verify-email?token={token}
+///
+/// Verify user's email address.
+///
+/// # Query Parameters
+/// - `token` (string, required): The verification token sent to the user's email.
+///
+/// # Response
+/// - `200 OK` - Email verified successfully
+/// - `400 Bad Request` - Validation error (e.g., missing token)
+/// - `401 Unauthorized` - Invalid or expired token
+/// - `500 Internal Server Error` - Server error
+pub async fn verify_email_handler(
+    State(state): State<AppState>,
+    axum::extract::Query(request): axum::extract::Query<VerifyEmailRequest>,
+) -> Result<Response, ApiError> {
+    request.validate()?;
+
+    state
+        .auth
+        .service
+        .verify_email(&request.token)
+        .await
+        .map_err(ApiError::from)?;
+
+    let response = crate::presentation::http::dto::VerifyEmailResponse {
+        message: "Email verified successfully".to_string(),
+    };
 
     Ok((StatusCode::OK, Json(response)).into_response())
 }

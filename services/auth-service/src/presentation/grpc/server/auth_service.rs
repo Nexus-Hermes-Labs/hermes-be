@@ -13,6 +13,7 @@ use crate::presentation::grpc::proto::auth::v1::{
     ValidateTokenRequest, ValidateTokenResponse,
 };
 use common::infrastructure::security::jwt_manager::JwtManager;
+ // Add EmailService import
 
 /// gRPC server implementation for AuthService
 ///
@@ -20,26 +21,18 @@ use common::infrastructure::security::jwt_manager::JwtManager;
 /// - Token validation for other services
 /// - Session management
 /// - Permission checks
-pub struct AuthServiceGrpc<CR, SR>
-where
-    CR: AuthCredentialRepository,
-    SR: AuthSessionRepository,
-{
+pub struct AuthServiceGrpc {
     jwt_manager: Arc<JwtManager>,
     #[allow(dead_code)]
-    credential_repo: Arc<CR>,
-    session_repo: Arc<SR>,
+    credential_repo: Arc<dyn AuthCredentialRepository>,
+    session_repo: Arc<dyn AuthSessionRepository>,
 }
 
-impl<CR, SR> AuthServiceGrpc<CR, SR>
-where
-    CR: AuthCredentialRepository,
-    SR: AuthSessionRepository,
-{
+impl AuthServiceGrpc {
     pub fn new(
         jwt_manager: Arc<JwtManager>,
-        credential_repo: Arc<CR>,
-        session_repo: Arc<SR>,
+        credential_repo: Arc<dyn AuthCredentialRepository>,
+        session_repo: Arc<dyn AuthSessionRepository>,
     ) -> Self {
         Self {
             jwt_manager,
@@ -50,11 +43,7 @@ where
 }
 
 #[tonic::async_trait]
-impl<CR, SR> AuthService for AuthServiceGrpc<CR, SR>
-where
-    CR: AuthCredentialRepository + Send + Sync + 'static,
-    SR: AuthSessionRepository + Send + Sync + 'static,
-{
+impl AuthService for AuthServiceGrpc {
     async fn validate_token(
         &self,
         request: Request<ValidateTokenRequest>,

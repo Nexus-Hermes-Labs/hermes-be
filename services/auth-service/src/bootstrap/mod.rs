@@ -1,19 +1,23 @@
 mod app_builder;
+pub mod error;
 
-use anyhow::{Context, Result};
+use crate::bootstrap::error::BootstrapError;
+use crate::infrastructure::email::LettreEmailService;
 use common_config::config;
 use common::observability;
 use tracing::info;
+use std::sync::Arc;
 
 pub use app_builder::AppBuilder;
+use crate::background_tasks::run_email_verification_cleanup_task;
 
 /// Bootstrap and run the application
-pub async fn run(service_name: &'static str) -> Result<()> {
+pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // ========================================
     // 1. INITIALIZE METRICS
     // ========================================
     let metrics = observability::metrics::Metrics::init()
-        .context("Failed to initialize metrics")?;
+        .map_err(|e| BootstrapError::Initialization(format!("Failed to initialize metrics: {}", e)))?;
 
     info!("✅ Metrics initialized");
 
@@ -25,7 +29,7 @@ pub async fn run(service_name: &'static str) -> Result<()> {
         &config().database
     )
     .await
-    .context("Failed to connect to database")?;
+    .map_err(BootstrapError::Database)?;
 
     info!("✅ Database connected");
 
@@ -34,10 +38,10 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     // ========================================
     info!("🔴 Connecting to Redis...");
     let redis_client = redis::Client::open(config().redis.get_url().clone())
-        .context("Failed to create Redis client")?;
+        .map_err(BootstrapError::Redis)?;
     let redis_manager = redis::aio::ConnectionManager::new(redis_client)
         .await
-        .context("Failed to connect to Redis")?;
+        .map_err(BootstrapError::Redis)?;
 
     info!("✅ Redis connected");
 
@@ -46,19 +50,36 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     // ========================================
     info!("🔧 Building application...");
 
-    let (server, grpc_router) = AppBuilder::new()
+    let email_service = Arc::new(
+        LettreEmailService::new(
+            &config().smtp.host,
+            config().smtp.port,
+            config().smtp.username.clone(),
+            config().smtp.password.clone(),
+            &config().smtp.from_address,
+        )
+        .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create email service: {}", e)))?,
+    );
+
+    let (server, grpc_router, credential_repo) = AppBuilder::new()
         .with_service_name(service_name)
         .with_database(db_pool)
         .with_redis(redis_manager)
         .with_metrics(metrics)
-        .build()
-        .await
-        .context("Failed to build application")?;
+        .build(email_service)
+        .await?;
 
     info!("🎯 Application ready!");
+    
+    // ========================================
+    // 5. RUN BACKGROUND TASKS
+    // ========================================
+    tokio::spawn(run_email_verification_cleanup_task(credential_repo.clone()));
+    info!("✅ Email verification cleanup task spawned");
+
 
     // ========================================
-    // 5. RUN SERVERS (HTTP + gRPC concurrently)
+    // 6. RUN SERVERS (HTTP + gRPC concurrently)
     // ========================================
     info!(
         "🌐 Starting HTTP server on {}:{}",
@@ -72,7 +93,7 @@ pub async fn run(service_name: &'static str) -> Result<()> {
     );
 
     let http_handle = tokio::spawn(async move {
-        server.run().await.context("HTTP server error")
+        server.run().await.map_err(BootstrapError::Presentation)
     });
 
     let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
@@ -81,16 +102,18 @@ pub async fn run(service_name: &'static str) -> Result<()> {
             .add_service(grpc_router)
             .serve(grpc_addr)
             .await
-            .context("gRPC server error")
+            .map_err(|e| BootstrapError::Infrastructure(format!("gRPC server error: {}", e)))
     });
 
     // Wait for either server to finish (or fail)
     tokio::select! {
         result = http_handle => {
-            result.context("HTTP server task panicked")??;
+            let res: Result<(), BootstrapError> = result.map_err(|e| BootstrapError::Internal(format!("HTTP server task panicked: {}", e)))?;
+            res?;
         }
         result = grpc_handle => {
-            result.context("gRPC server task panicked")??;
+            let res: Result<(), BootstrapError> = result.map_err(|e| BootstrapError::Internal(format!("gRPC server task panicked: {}", e)))?;
+            res?;
         }
     }
 

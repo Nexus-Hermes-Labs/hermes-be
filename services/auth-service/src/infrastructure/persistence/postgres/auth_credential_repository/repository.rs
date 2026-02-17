@@ -208,6 +208,32 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
 
 #[async_trait]
 impl AuthCredentialRepository for PostgresAuthCredentialRepository {
+    async fn set_verification_token(
+        &self,
+        credential_id: Uuid,
+        token: &str,
+        expires_in_hours: i64,
+    ) -> Result<(), Self::Error> {
+        debug!(credential_id = %credential_id, "Setting verification token");
+
+        sqlx::query(
+            r#"
+            UPDATE auth_credentials
+            SET
+                email_verification_token = $1,
+                email_verification_expires_at = NOW() + ($2 * INTERVAL '1 hour')
+            WHERE id = $3
+            "#,
+        )
+        .bind(token)
+        .bind(expires_in_hours)
+        .bind(credential_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     async fn find_by_user_id(&self, user_id: Uuid) -> Result<Option<AuthCredential>, Self::Error> {
         debug!(user_id = %user_id, "Finding auth credential by user ID");
 
@@ -310,6 +336,25 @@ impl AuthCredentialRepository for PostgresAuthCredentialRepository {
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
+
+    async fn clear_expired_verification_tokens(&self) -> Result<u64, Self::Error> {
+        debug!("Clearing expired email verification tokens");
+
+        let result = sqlx::query(
+            r#"
+            UPDATE auth_credentials
+            SET
+                email_verification_token = NULL,
+                email_verification_expires_at = NULL
+            WHERE email_verification_expires_at IS NOT NULL
+              AND email_verification_expires_at < NOW()
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected())
+    }
 }
 
 #[cfg(test)]
@@ -388,5 +433,106 @@ mod tests {
 
         let page2 = repo.find_all_paginated(2, 2).await.unwrap();
         assert_eq!(page2.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_set_and_find_verification_token() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresAuthCredentialRepository::new(db.pool().clone());
+
+        let email = Email::new("verify@example.com").unwrap();
+        let password_hash = PasswordHash::from_hash("$argon2id$...");
+        let user_id = Uuid::new_v4();
+        let credential = AuthCredential::new(user_id, email.clone(), password_hash);
+        repo.save(&credential).await.unwrap();
+
+        let token = "test_verification_token_123";
+        let expires_in_hours = 1; // 1 hour from now
+
+        // Set token
+        repo.set_verification_token(credential.id(), token, expires_in_hours)
+            .await
+            .unwrap();
+
+        // Fetch updated credential
+        let updated_credential = repo.find_by_id(credential.id()).await.unwrap().unwrap();
+        assert_eq!(updated_credential.email_verification_token(), Some(token));
+        assert!(updated_credential.email_verification_expires_at().is_some());
+        assert!(!updated_credential.is_email_verified()); // Should still be false until verified
+
+        // Find by verification token (should succeed)
+        let found_by_token = repo.find_by_verification_token(token).await.unwrap();
+        assert!(found_by_token.is_some());
+        assert_eq!(found_by_token.unwrap().email(), &email);
+
+        // Find by non-existent token (should fail)
+        let found_by_non_existent = repo.find_by_verification_token("non_existent").await.unwrap();
+        assert!(found_by_non_existent.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_find_verification_token_expired() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresAuthCredentialRepository::new(db.pool().clone());
+
+        let email = Email::new("expired@example.com").unwrap();
+        let password_hash = PasswordHash::from_hash("$argon2id$...");
+        let user_id = Uuid::new_v4();
+        let credential = AuthCredential::new(user_id, email.clone(), password_hash);
+        repo.save(&credential).await.unwrap();
+
+        let token = "expired_token_456";
+        let expires_in_hours = -1; // -1 hour, already expired
+
+        // Set token (already expired)
+        repo.set_verification_token(credential.id(), token, expires_in_hours)
+            .await
+            .unwrap();
+
+        // Try to find by verification token (should fail because it's expired)
+        let found_expired = repo.find_by_verification_token(token).await.unwrap();
+        assert!(found_expired.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_clear_expired_verification_tokens() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresAuthCredentialRepository::new(db.pool().clone());
+
+        // Credential with expired token
+        let email1 = Email::new("cleanme1@example.com").unwrap();
+        let credential1 = AuthCredential::new(Uuid::new_v4(), email1.clone(), PasswordHash::from_hash("$argon2id$..."));
+        repo.save(&credential1).await.unwrap();
+        repo.set_verification_token(credential1.id(), "token1", -1).await.unwrap(); // Expired
+
+        // Credential with valid token
+        let email2 = Email::new("cleanme2@example.com").unwrap();
+        let credential2 = AuthCredential::new(Uuid::new_v4(), email2.clone(), PasswordHash::from_hash("$argon2id$..."));
+        repo.save(&credential2).await.unwrap();
+        repo.set_verification_token(credential2.id(), "token2", 1).await.unwrap(); // Valid
+
+        // Credential without token
+        let email3 = Email::new("cleanme3@example.com").unwrap();
+        let credential3 = AuthCredential::new(Uuid::new_v4(), email3.clone(), PasswordHash::from_hash("$argon2id$..."));
+        repo.save(&credential3).await.unwrap();
+
+        // Clear expired tokens
+        let cleared_count = repo.clear_expired_verification_tokens().await.unwrap();
+        assert_eq!(cleared_count, 1); // Only credential1 should be cleared
+
+        // Check credential1: token should be null
+        let cred1_after_clear = repo.find_by_id(credential1.id()).await.unwrap().unwrap();
+        assert!(cred1_after_clear.email_verification_token().is_none());
+        assert!(cred1_after_clear.email_verification_expires_at().is_none());
+        assert!(!cred1_after_clear.is_email_verified()); // Still false
+
+        // Check credential2: token should still be valid
+        let cred2_after_clear = repo.find_by_id(credential2.id()).await.unwrap().unwrap();
+        assert_eq!(cred2_after_clear.email_verification_token(), Some("token2"));
+        assert!(cred2_after_clear.email_verification_expires_at().is_some());
+
+        // Check credential3: no change
+        let cred3_after_clear = repo.find_by_id(credential3.id()).await.unwrap().unwrap();
+        assert!(cred3_after_clear.email_verification_token().is_none());
     }
 }

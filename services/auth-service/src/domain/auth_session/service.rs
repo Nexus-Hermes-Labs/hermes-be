@@ -1,9 +1,6 @@
-use async_trait::async_trait;
 use crate::domain::auth_session::valueobject::RefreshTokenHash;
+use crate::domain::auth_session::error::AuthSessionError;
 
-#[async_trait]
-pub trait TokenHasher {
-    type Error;
-
-    fn hash(&self, token: &str) -> Result<RefreshTokenHash, Self::Error>;
+pub trait TokenHasher: Send + Sync {
+    fn hash(&self, token: &str) -> Result<RefreshTokenHash, AuthSessionError>;
 }

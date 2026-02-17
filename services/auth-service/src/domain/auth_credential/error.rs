@@ -46,4 +46,20 @@ pub enum AuthCredentialError {
     // Invalid enum
     #[error("Invalid account status: {0}")]
     InvalidAccountStatus(String),
+
+    // Password service errors
+    #[error("Password cannot be empty")]
+    EmptyPassword,
+
+    #[error("Password too long")]
+    PasswordTooLong,
+
+    #[error("Password hashing failed: {0}")]
+    HashingFailed(String),
+
+    #[error("Password verification failed: {0}")]
+    VerificationFailed(String),
+
+    #[error("Invalid password hash format: {0}")]
+    InvalidHashFormat(String),
 }

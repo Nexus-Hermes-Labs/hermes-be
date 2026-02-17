@@ -32,7 +32,7 @@ use uuid::Uuid;
 /// --------------------------------------------------
 #[async_trait]
 pub trait AuthCredentialRepository:
-    Repository<AuthCredential, Uuid, Error = RepositoryError>
+    Repository<AuthCredential, Uuid, Error = RepositoryError> + Send + Sync
 {
     // ============================================
     // DOMAIN QUERIES
@@ -47,6 +47,14 @@ pub trait AuthCredentialRepository:
     // ============================================
     // TOKEN-BASED QUERIES
     // ============================================
+
+    /// Sets the verification token and its expiry for a credential.
+    async fn set_verification_token(
+        &self,
+        credential_id: Uuid,
+        token: &str,
+        expires_in_hours: i64,
+    ) -> Result<(), Self::Error>;
 
     async fn find_by_verification_token(
         &self,
@@ -67,6 +75,10 @@ pub trait AuthCredentialRepository:
     // ============================================
     // ADMIN
     // ============================================
+
+    /// Clears expired email verification tokens and sets email_verified to false.
+    /// Returns the number of affected rows.
+    async fn clear_expired_verification_tokens(&self) -> Result<u64, Self::Error>;
 
     async fn find_all_paginated(
         &self,

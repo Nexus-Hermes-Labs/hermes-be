@@ -46,6 +46,28 @@ async fn login_user(
     .await
 }
 
+async fn verify_email(harness: &TestHarness, email: &str) {
+    // 1. Get verification token from DB
+    let row: (Option<String>,) = sqlx::query_as("SELECT email_verification_token FROM auth_credentials WHERE email = $1")
+        .bind(email)
+        .fetch_one(&harness.pool)
+        .await
+        .expect("failed to fetch verification token");
+    
+    let token = row.0.expect("verification token not found in DB");
+
+    // 2. Call verify-email endpoint
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/auth/verify-email?token={}", token),
+        None,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "email verification failed: {body}");
+}
+
 // ============================================
 // REGISTRATION TESTS
 // ============================================
@@ -69,6 +91,33 @@ async fn test_register_success() {
     assert_eq!(body["token_type"], "Bearer");
     assert!(body["expires_in"].is_number());
     assert!(body["user"]["username"].is_string());
+}
+
+#[tokio::test]
+async fn test_email_verification_success() {
+    let harness = TestHarness::new().await;
+
+    // 1. Register
+    register_user(
+        &harness,
+        "verify@example.com",
+        "verifyuser",
+        "Verify User",
+        "strongpassword123",
+    )
+    .await;
+
+    // 2. Try login (should fail because not verified)
+    let (status, body) = login_user(&harness, "verify@example.com", "strongpassword123").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(body["code"], "EMAIL_NOT_VERIFIED");
+
+    // 3. Verify email
+    verify_email(&harness, "verify@example.com").await;
+
+    // 4. Try login again (should succeed)
+    let (status, _) = login_user(&harness, "verify@example.com", "strongpassword123").await;
+    assert_eq!(status, StatusCode::OK);
 }
 
 #[tokio::test]
@@ -190,6 +239,9 @@ async fn test_login_success() {
     )
     .await;
 
+    // Must verify email before login
+    verify_email(&harness, "login@example.com").await;
+
     let (status, body) = login_user(&harness, "login@example.com", "strongpassword123").await;
 
     assert_eq!(status, StatusCode::OK, "body: {body}");
@@ -210,6 +262,9 @@ async fn test_login_wrong_password() {
         "strongpassword123",
     )
     .await;
+
+    // Must verify email before login attempts are evaluated for password
+    verify_email(&harness, "wrongpw@example.com").await;
 
     let (status, _) = login_user(&harness, "wrongpw@example.com", "wrongpassword").await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
@@ -336,7 +391,7 @@ async fn test_logout_all_devices() {
     let harness = TestHarness::new().await;
 
     // Register
-    let (_, reg_body) = register_user(
+    let (_, _reg_body) = register_user(
         &harness,
         "logoutall@example.com",
         "logoutall",
@@ -344,6 +399,12 @@ async fn test_logout_all_devices() {
         "strongpassword123",
     )
     .await;
+
+    // Must verify email before login
+    verify_email(&harness, "logoutall@example.com").await;
+
+    // Login a first time to get tokens
+    let (_, reg_body) = login_user(&harness, "logoutall@example.com", "strongpassword123").await;
 
     // Login a second time (simulating another device)
     let (_, _login_body) =
@@ -404,6 +465,9 @@ async fn test_full_auth_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "register failed: {reg_body}");
+
+    // 1b. Verify email
+    verify_email(&harness, "flow@example.com").await;
 
     // 2. Login
     let (status, login_body) =

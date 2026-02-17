@@ -2,6 +2,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+use crate::application::services::authentication::error::AuthApplicationError;
+
 /// Response from user profile creation
 #[derive(Debug, Clone)]
 pub struct UserProfileInfo {
@@ -20,14 +22,13 @@ pub struct UserProfileInfo {
 /// following DDD's dependency inversion principle.
 /// The application layer defines the interface; infrastructure implements it.
 #[async_trait]
-pub trait UserProfileClient {
-    type Error;
+pub trait UserProfileClient: Send + Sync {
     async fn create_profile(
         &self,
         username: String,
         display_name: String,
         email: String
-    ) -> Result<UserProfileInfo, Self::Error>;
+    ) -> Result<UserProfileInfo, AuthApplicationError>;
 
-    async fn get_profile(&self, user_id: Uuid) -> Result<UserProfileInfo, Self::Error>;
+    async fn get_profile(&self, user_id: Uuid) -> Result<UserProfileInfo, AuthApplicationError>;
 }

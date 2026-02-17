@@ -6,6 +6,7 @@ pub mod logging;
 pub mod messaging;
 pub mod secrets;
 pub mod service;
+pub mod smtp;
 pub mod error;
 
 pub use cache::CacheConfig;
@@ -15,6 +16,7 @@ pub use logging::LoggingConfig;
 pub use messaging::MessagingConfig;
 pub use secrets::SecretsConfig;
 pub use service::ServiceConfig;
+pub use smtp::SmtpConfig;
 
 use figment::{providers::Env, Figment};
 use once_cell::sync::OnceCell;
@@ -34,6 +36,8 @@ pub struct Config {
     pub redis: CacheConfig,
     #[serde(default)]
     pub nats: MessagingConfig,
+    #[serde(default)]
+    pub smtp: SmtpConfig,
     pub secrets: SecretsConfig,
     #[serde(default)]
     pub grpc_endpoints: GrpcEndpointsConfig,
@@ -111,6 +115,15 @@ impl Config {
         // Validate NATS config
         if self.nats.servers.is_empty() {
             return Err(ConfigError::Validation("NATS servers cannot be empty".into()));
+        }
+        
+        // Validate SMTP config
+        if self.smtp.host.is_empty() {
+            return Err(ConfigError::Validation("SMTP host cannot be empty".into()));
+        }
+        
+        if self.smtp.from_address.is_empty() {
+            return Err(ConfigError::Validation("SMTP from_address cannot be empty".into()));
         }
 
         // Delegate nested secrets validations
