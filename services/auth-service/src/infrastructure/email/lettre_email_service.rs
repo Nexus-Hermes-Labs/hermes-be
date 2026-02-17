@@ -22,13 +22,25 @@ impl LettreEmailService {
         smtp_user: Option<String>,
         smtp_pass: Option<String>,
         from_address: &str,
+        use_tls: bool,
     ) -> Result<Self, AppError> {
-        let mut mailer_builder = if smtp_port == 587 {
-            AsyncSmtpTransport::<lettre::Tokio1Executor>::starttls_relay(smtp_host)
-                .map_err(|e| AppError::Internal(e.to_string()))?
+        use lettre::transport::smtp::client::Tls;
+
+        let mut mailer_builder = if use_tls {
+            if smtp_port == 465 {
+                // Implicit TLS
+                AsyncSmtpTransport::<lettre::Tokio1Executor>::relay(smtp_host)
+                    .map_err(|e| AppError::Internal(e.to_string()))?
+            } else {
+                // STARTTLS (usually port 587)
+                AsyncSmtpTransport::<lettre::Tokio1Executor>::starttls_relay(smtp_host)
+                    .map_err(|e| AppError::Internal(e.to_string()))?
+            }
         } else {
+            // Plain SMTP (usually port 1025 for development)
             AsyncSmtpTransport::<lettre::Tokio1Executor>::relay(smtp_host)
                 .map_err(|e| AppError::Internal(e.to_string()))?
+                .tls(Tls::None)
         };
 
         if let (Some(user), Some(pass)) = (smtp_user, smtp_pass) {

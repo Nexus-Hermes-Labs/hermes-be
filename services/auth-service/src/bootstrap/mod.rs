@@ -9,7 +9,6 @@ use tracing::info;
 use std::sync::Arc;
 
 pub use app_builder::AppBuilder;
-use crate::background_tasks::run_email_verification_cleanup_task;
 
 /// Bootstrap and run the application
 pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
@@ -57,6 +56,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
             config().smtp.username.clone(),
             config().smtp.password.clone(),
             &config().smtp.from_address,
+            config().smtp.use_tls,
         )
         .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create email service: {}", e)))?,
     );
@@ -72,14 +72,21 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     info!("🎯 Application ready!");
     
     // ========================================
-    // 5. RUN BACKGROUND TASKS
+    // 5. INITIALIZE SHUTDOWN SIGNAL
     // ========================================
-    tokio::spawn(run_email_verification_cleanup_task(credential_repo.clone()));
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+    // ========================================
+    // 6. RUN BACKGROUND TASKS
+    // ========================================
+    let use_case = crate::application::services::authentication::ClearExpiredVerificationTokens::new(credential_repo.clone());
+    let task = crate::application::background::email_verification_cleanup::EmailVerificationCleanupTask::new(Arc::new(use_case));
+    tokio::spawn(common::infrastructure::background::run_periodic_task(task, shutdown_rx.clone()));
     info!("✅ Email verification cleanup task spawned");
 
 
     // ========================================
-    // 6. RUN SERVERS (HTTP + gRPC concurrently)
+    // 7. RUN SERVERS (HTTP + gRPC concurrently)
     // ========================================
     info!(
         "🌐 Starting HTTP server on {}:{}",
@@ -92,20 +99,31 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
         config().service.grpc_port.unwrap_or(0)
     );
 
+    let mut sig_term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        .map_err(|e| BootstrapError::Initialization(format!("Failed to setup signal handler: {}", e)))?;
+
+    let http_shutdown_rx = shutdown_rx.clone();
     let http_handle = tokio::spawn(async move {
-        server.run().await.map_err(BootstrapError::Presentation)
+        server.run(async move {
+            let mut rx = http_shutdown_rx;
+            let _ = rx.changed().await;
+        }).await.map_err(BootstrapError::Presentation)
     });
 
     let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
+    let grpc_shutdown_rx = shutdown_rx.clone();
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()
             .add_service(grpc_router)
-            .serve(grpc_addr)
+            .serve_with_shutdown(grpc_addr, async move {
+                let mut rx = grpc_shutdown_rx;
+                let _ = rx.changed().await;
+            })
             .await
             .map_err(|e| BootstrapError::Infrastructure(format!("gRPC server error: {}", e)))
     });
 
-    // Wait for either server to finish (or fail)
+    // Wait for either server to finish (or fail), or a shutdown signal
     tokio::select! {
         result = http_handle => {
             let res: Result<(), BootstrapError> = result.map_err(|e| BootstrapError::Internal(format!("HTTP server task panicked: {}", e)))?;
@@ -115,7 +133,16 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
             let res: Result<(), BootstrapError> = result.map_err(|e| BootstrapError::Internal(format!("gRPC server task panicked: {}", e)))?;
             res?;
         }
+        _ = tokio::signal::ctrl_c() => {
+            info!("Received Ctrl+C, shutting down...");
+        }
+        _ = sig_term.recv() => {
+            info!("Received SIGTERM, shutting down...");
+        }
     }
+
+    // Trigger shutdown for background tasks
+    let _ = shutdown_tx.send(true);
 
     Ok(())
 }

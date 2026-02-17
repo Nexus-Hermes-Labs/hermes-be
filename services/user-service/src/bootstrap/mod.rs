@@ -58,7 +58,12 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     info!("🎯 Application ready!");
 
     // ========================================
-    // 5. RUN SERVERS (HTTP + gRPC concurrently)
+    // 5. INITIALIZE SHUTDOWN SIGNAL
+    // ========================================
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+    // ========================================
+    // 6. RUN SERVERS (HTTP + gRPC concurrently)
     // ========================================
     info!(
         "🌐 Starting HTTP server on {}:{}",
@@ -71,20 +76,32 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
         config().service.grpc_port.unwrap_or(0)
     );
 
+    let http_shutdown_rx = shutdown_rx.clone();
     let http_handle = tokio::spawn(async move {
-        server.run().await.map_err(BootstrapError::Presentation)
+        server.run(async move {
+            let mut rx = http_shutdown_rx;
+            let _ = rx.changed().await;
+        }).await.map_err(BootstrapError::Presentation)
     });
 
     let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
+    let grpc_shutdown_rx = shutdown_rx.clone();
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()
             .add_service(grpc_router)
-            .serve(grpc_addr)
+            .serve_with_shutdown(grpc_addr, async move {
+                let mut rx = grpc_shutdown_rx;
+                let _ = rx.changed().await;
+            })
             .await
             .map_err(|e| BootstrapError::Infrastructure(format!("gRPC server error: {}", e)))
     });
 
-    // Wait for either server to finish (or fail)
+    // Handle signals for graceful shutdown
+    let mut sig_term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        .map_err(|e| BootstrapError::Initialization(format!("Failed to setup signal handler: {}", e)))?;
+
+    // Wait for either server to finish (or fail), or a shutdown signal
     tokio::select! {
         result = http_handle => {
             let res: Result<(), BootstrapError> = result.map_err(|e| BootstrapError::Internal(format!("HTTP server task panicked: {}", e)))?;
@@ -94,7 +111,16 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
             let res: Result<(), BootstrapError> = result.map_err(|e| BootstrapError::Internal(format!("gRPC server task panicked: {}", e)))?;
             res?;
         }
+        _ = tokio::signal::ctrl_c() => {
+            info!("Received Ctrl+C, shutting down...");
+        }
+        _ = sig_term.recv() => {
+            info!("Received SIGTERM, shutting down...");
+        }
     }
+
+    // Trigger shutdown for background tasks (if any)
+    let _ = shutdown_tx.send(true);
 
     Ok(())
 }

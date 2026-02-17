@@ -9,4 +9,6 @@ pub struct SmtpConfig {
     pub username: Option<String>,
     pub password: Option<String>,
     pub from_address: String,
+    #[serde(default)]
+    pub use_tls: bool,
 }

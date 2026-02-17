@@ -19,11 +19,14 @@ pub fn create_router(
     let user_routes = Router::new()
         .merge(user_profile::user_profile_routes())
         .merge(user_privacy::user_privacy_routes())
-        .merge(user_relationship::user_relationship_routes())
+        .merge(user_relationship::user_relationship_routes());
+
+    let api_router = Router::new()
+        .nest("/users", user_routes)
         .with_state(app_state);
 
     Router::new()
-        .nest("/api/users", user_routes)
+        .nest("/api/v1", api_router)
         .layer(cors)
         .layer(trace_layer)
 }

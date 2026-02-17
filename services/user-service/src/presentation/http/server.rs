@@ -29,7 +29,7 @@ impl Server {
         })
     }
 
-    pub async fn run(self) -> Result<(), PresentationError> {
+    pub async fn run(self, shutdown: impl std::future::Future<Output = ()> + Send + 'static) -> Result<(), PresentationError> {
         let app = self.build_router();
         let addr = self.server_address();
 
@@ -37,7 +37,7 @@ impl Server {
 
         let listener = tokio::net::TcpListener::bind(addr).await?;
         axum::serve(listener, app)
-            .with_graceful_shutdown(shutdown_signal())
+            .with_graceful_shutdown(shutdown)
             .await
             .map_err(|e| PresentationError::HttpServer(e.to_string()))?;
 
@@ -93,30 +93,4 @@ impl Server {
     fn server_address(&self) -> SocketAddr {
         SocketAddr::from(([0, 0, 0, 0], config().service.port))
     }
-}
-
-async fn shutdown_signal() {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install Ctrl+C handler");
-    };
-
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
-
-    #[cfg(not(unix))]
-    let terminate = std::future::pending::<()>();
-
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
-
-    info!("⏹️  Shutdown signal received, starting graceful shutdown");
 }

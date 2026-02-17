@@ -1,0 +1,483 @@
+{
+	"info": {
+		"name": "Hermes API",
+		"description": "Comprehensive collection for Hermes services with API versioning",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth Service",
+			"item": [
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"username\": \"testuser\",\n    \"display_name\": \"Test User\",\n    \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": "http://localhost:8081/api/v1/auth/register"
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"SecurePass123!\"\n}"
+						},
+						"url": "http://localhost:8081/api/v1/auth/login"
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": "http://localhost:8081/api/v1/auth/refresh"
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\",\n    \"all_devices\": false\n}"
+						},
+						"url": "http://localhost:8081/api/v1/auth/logout"
+					}
+				},
+				{
+					"name": "Verify Email",
+					"request": {
+						"method": "GET",
+						"url": "http://localhost:8081/api/v1/auth/verify-email?token={{verification_token}}"
+					}
+				}
+			]
+		},
+		{
+			"name": "User Service",
+			"item": [
+				{
+					"name": "Profile",
+					"item": [
+						{
+							"name": "Get Profile",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}"
+							}
+						},
+						{
+							"name": "Get Profile by Username",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/username/{{username}}"
+							}
+						},
+						{
+							"name": "Update Profile",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"display_name\": \"Updated Name\",\n    \"bio\": \"New bio here\",\n    \"avatar_url\": \"https://example.com/avatar.png\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}"
+							}
+						},
+						{
+							"name": "Change Username",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"new_username\": \"newusername\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/username"
+							}
+						},
+						{
+							"name": "Delete Profile",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}"
+							}
+						},
+						{
+							"name": "Search Users",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/search?query=test&limit=10&offset=0"
+							}
+						},
+						{
+							"name": "Get Online Users",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/online?limit=10&offset=0"
+							}
+						},
+						{
+							"name": "Check Username Availability",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/check-username/{{username}}"
+							}
+						}
+					]
+				},
+				{
+					"name": "Privacy",
+					"item": [
+						{
+							"name": "Get Privacy Settings",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy"
+							}
+						},
+						{
+							"name": "Update DM Privacy",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"privacy\": \"friends_only\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/dm"
+							}
+						},
+						{
+							"name": "Update Friend Request Privacy",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"privacy\": \"everyone\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/friend-requests"
+							}
+						},
+						{
+							"name": "Update Visibility",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"show_online_status\": true,\n    \"show_current_activity\": false\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/visibility"
+							}
+						},
+						{
+							"name": "Apply Privacy Preset",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"preset\": \"private\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/preset"
+							}
+						}
+					]
+				},
+				{
+					"name": "Relationships",
+					"item": [
+						{
+							"name": "Send Friend Request",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\",\n    \"message\": \"Hey, let's be friends!\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/request"
+							}
+						},
+						{
+							"name": "Accept Friend Request",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/request/accept"
+							}
+						},
+						{
+							"name": "Decline Friend Request",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/request/decline"
+							}
+						},
+						{
+							"name": "Get Friends",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/friends"
+							}
+						},
+						{
+							"name": "Block User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block"
+							}
+						},
+						{
+							"name": "Get Relationship",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/{{target_user_id}}"
+							}
+						}
+					]
+				},
+				{
+					"name": "Presence",
+					"item": [
+						{
+							"name": "Update Status",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"status\": \"online\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/status"
+							}
+						},
+						{
+							"name": "Set Custom Status",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"text\": \"Coding...\",\n    \"emoji\": \"👨‍💻\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/custom-status"
+							}
+						}
+					]
+				}
+			]
+		}
+	]
+}

@@ -1,8 +1,8 @@
 use std::sync::Arc;
-use tokio::time::{self, Duration, MissedTickBehavior};
-use tokio::sync::watch;
-use tracing::{error, info, instrument};
+use std::time::Duration;
 use async_trait::async_trait;
+use common::infrastructure::background::BackgroundTask;
+use tracing::info;
 
 use crate::application::services::authentication::error::AuthApplicationError;
 
@@ -21,38 +21,19 @@ impl EmailVerificationCleanupTask {
     pub fn new(use_case: Arc<dyn ClearExpiredVerificationTokensTrait>) -> Self {
         Self { use_case }
     }
+}
 
-    #[instrument(skip(self, shutdown_rx))]
-    pub async fn run(
-        self,
-        mut shutdown_rx: watch::Receiver<bool>,
-    ) {
-        let mut interval = time::interval(CLEANUP_INTERVAL);
-
-        // Prevent burst execution if ticks are missed
-        interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
-
-        info!("Email verification cleanup task started.");
-
-        loop {
-            tokio::select! {
-                _ = interval.tick() => {
-                    self.execute_once().await;
-                }
-
-                _ = shutdown_rx.changed() => {
-                    if *shutdown_rx.borrow() {
-                        info!("Shutting down email verification cleanup task.");
-                        break;
-                    }
-                }
-            }
-        }
+#[async_trait]
+impl BackgroundTask for EmailVerificationCleanupTask {
+    fn name(&self) -> &str {
+        "EmailVerificationCleanup"
     }
 
-    async fn execute_once(&self) {
-        info!("Running email verification cleanup...");
+    fn interval(&self) -> Duration {
+        CLEANUP_INTERVAL
+    }
 
+    async fn execute(&self) -> Result<(), anyhow::Error> {
         match self.use_case.execute().await {
             Ok(count) if count > 0 => {
                 info!(deleted = count, "Expired verification tokens cleaned.");
@@ -61,8 +42,9 @@ impl EmailVerificationCleanupTask {
                 info!("No expired verification tokens found.");
             }
             Err(e) => {
-                error!(error = ?e, "Failed to clean up expired verification tokens.");
+                return Err(anyhow::anyhow!(e));
             }
         }
+        Ok(())
     }
 }
