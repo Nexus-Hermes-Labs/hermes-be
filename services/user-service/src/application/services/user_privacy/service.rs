@@ -11,18 +11,12 @@ use super::error::UserPrivacyServiceError;
 /// User Privacy Application Service
 ///
 /// Orchestrates privacy settings operations and authorization checks.
-pub struct UserPrivacyService<R>
-where
-    R: UserPrivacyRepository,
-{
-    repository: Arc<R>,
+pub struct UserPrivacyService {
+    repository: Arc<dyn UserPrivacyRepository>,
 }
 
-impl<R> UserPrivacyService<R>
-where
-    R: UserPrivacyRepository,
-{
-    pub fn new(repository: Arc<R>) -> Self {
+impl UserPrivacyService {
+    pub fn new(repository: Arc<dyn UserPrivacyRepository>) -> Self {
         Self { repository }
     }
 

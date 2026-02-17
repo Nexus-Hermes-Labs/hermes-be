@@ -8,18 +8,12 @@ use super::error::UserProfileServiceError;
 /// User Profile Application Service
 ///
 /// Orchestrates user profile operations and enforces business rules.
-pub struct UserProfileService<R>
-where
-    R: UserProfileRepository,
-{
-    repository: Arc<R>,
+pub struct UserProfileService {
+    repository: Arc<dyn UserProfileRepository>,
 }
 
-impl<R> UserProfileService<R>
-where
-    R: UserProfileRepository,
-{
-    pub fn new(repository: Arc<R>) -> Self {
+impl UserProfileService {
+    pub fn new(repository: Arc<dyn UserProfileRepository>) -> Self {
         Self { repository }
     }
 

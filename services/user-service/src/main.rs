@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     info!("📍 Environment: {}", common_config::config().service.environment);
 
     // Bootstrap and run application
-    let result = user_service::bootstrap::run(service_name).await;
+    let result = user_service::bootstrap::run(service_name).await.map_err(anyhow::Error::from);
 
     // Cleanup
     info!("👋 {} stopped", service_name);

@@ -83,7 +83,8 @@ Implemented endpoints:
 - `POST /v1/auth/login` -- JWT token pair generation
 - `POST /v1/auth/refresh` -- Token refresh with rotation
 - `POST /v1/auth/logout` -- Session invalidation
--
+- `POST /v1/auth/verify-email` -- Verification email
+
 ### user-service (port 8082) -- IN PROGRESS (~60%)
 
 | Layer | Status |

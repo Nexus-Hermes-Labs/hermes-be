@@ -1,36 +1,22 @@
 use crate::application::{UserPrivacyService, UserProfileService, UserRelationshipService};
-use crate::infrastructure::persistence::{
-    PostgresUserPrivacyRepository, PostgresUserProfileRepository, PostgresUserRelationshipRepository,
-};
 use std::sync::Arc;
 
 /// User domain state
 ///
-/// Contains pre-composed authentication service and its dependencies.
-/// Generic over trait implementations to maintain dependency inversion.
+/// Contains pre-composed user service and its dependencies.
 #[derive(Clone)]
 pub struct UserState {
     // Services
-    pub user_profile_service: Arc<UserProfileService<PostgresUserProfileRepository>>,
-    pub user_privacy_service: Arc<UserPrivacyService<PostgresUserPrivacyRepository>>,
-    pub relationship_service: Arc<
-        UserRelationshipService<
-            PostgresUserRelationshipRepository,
-            PostgresUserPrivacyRepository,
-        >,
-    >,
+    pub user_profile_service: Arc<UserProfileService>,
+    pub user_privacy_service: Arc<UserPrivacyService>,
+    pub relationship_service: Arc<UserRelationshipService>,
 }
 
 impl UserState {
     pub fn new(
-        user_profile_service: Arc<UserProfileService<PostgresUserProfileRepository>>,
-        user_privacy_service: Arc<UserPrivacyService<PostgresUserPrivacyRepository>>,
-        relationship_service: Arc<
-            UserRelationshipService<
-                PostgresUserRelationshipRepository,
-                PostgresUserPrivacyRepository,
-            >,
-        >,
+        user_profile_service: Arc<UserProfileService>,
+        user_privacy_service: Arc<UserPrivacyService>,
+        relationship_service: Arc<UserRelationshipService>,
     ) -> Self {
         Self {
             user_profile_service,

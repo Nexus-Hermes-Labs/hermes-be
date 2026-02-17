@@ -22,21 +22,16 @@ use super::error::UserRelationshipServiceError;
 /// - **Blocks are one-directional** — the trigger does NOT create a reverse for blocks.
 ///
 /// This means the service only needs to operate on one side; the trigger handles the rest.
-pub struct UserRelationshipService<R, VR>
-where
-    R: UserRelationshipRepository,
-    VR: UserPrivacyRepository,
-{
-    repository: Arc<R>,
-    privacy_service: Arc<UserPrivacyService<VR>>,
+pub struct UserRelationshipService {
+    repository: Arc<dyn UserRelationshipRepository>,
+    privacy_service: Arc<UserPrivacyService>,
 }
 
-impl<R, VR> UserRelationshipService<R, VR>
-where
-    R: UserRelationshipRepository,
-    VR: UserPrivacyRepository,
-{
-    pub fn new(repository: Arc<R>, privacy_service: Arc<UserPrivacyService<VR>>) -> Self {
+impl UserRelationshipService {
+    pub fn new(
+        repository: Arc<dyn UserRelationshipRepository>,
+        privacy_service: Arc<UserPrivacyService>,
+    ) -> Self {
         Self {
             repository,
             privacy_service,
