@@ -5,7 +5,9 @@ use axum::{
 };
 use serde::Serialize;
 
-use crate::application::services::{UserPrivacyServiceError, UserProfileServiceError};
+use crate::application::services::{
+    UserPrivacyServiceError, UserProfileServiceError, UserRelationshipServiceError,
+};
 
 /// API Error response
 #[derive(Debug, Serialize)]
@@ -126,6 +128,36 @@ impl From<UserPrivacyServiceError> for ApiError {
             ),
             UserPrivacyServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
             UserPrivacyServiceError::RepositoryError(e) => {
+                tracing::error!("Repository error: {}", e);
+                ApiError::internal("An error occurred while processing your request")
+            }
+        }
+    }
+}
+
+impl From<UserRelationshipServiceError> for ApiError {
+    fn from(err: UserRelationshipServiceError) -> Self {
+        match err {
+            UserRelationshipServiceError::RelationshipNotFound => {
+                ApiError::not_found("Relationship not found")
+            }
+            UserRelationshipServiceError::UserNotFound { user_id } => {
+                ApiError::not_found(format!("User not found: {}", user_id))
+            }
+            UserRelationshipServiceError::RelationshipAlreadyExists => {
+                ApiError::conflict("A relationship already exists between these users")
+            }
+            UserRelationshipServiceError::BlockedByTarget => {
+                ApiError::forbidden("Cannot send friend request: target user has blocked you")
+            }
+            UserRelationshipServiceError::BlockedTarget => {
+                ApiError::forbidden("Cannot send friend request: you have blocked the target user")
+            }
+            UserRelationshipServiceError::CannotSendFriendRequest => {
+                ApiError::forbidden("Cannot send friend request due to privacy settings")
+            }
+            UserRelationshipServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
+            UserRelationshipServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);
                 ApiError::internal("An error occurred while processing your request")
             }

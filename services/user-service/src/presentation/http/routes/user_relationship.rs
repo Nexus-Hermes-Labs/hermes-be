@@ -19,11 +19,13 @@ pub fn user_relationship_routes() -> Router<AppState> {
             "/:user_id/relationships/request/decline",
             put(UserRelationshipHandler::decline_friend_request),
         )
+        
         // Friends
         .route(
             "/:user_id/relationships/friend/:target_user_id",
             delete(UserRelationshipHandler::remove_friend),
         )
+        
         // Blocks
         .route(
             "/:user_id/relationships/block",
@@ -33,11 +35,8 @@ pub fn user_relationship_routes() -> Router<AppState> {
             "/:user_id/relationships/block/:target_user_id",
             delete(UserRelationshipHandler::unblock_user),
         )
-        // Queries
-        .route(
-            "/:user_id/relationships/:target_user_id",
-            get(UserRelationshipHandler::get_relationship),
-        )
+        
+        // Specific queries first
         .route(
             "/:user_id/relationships/friends",
             get(UserRelationshipHandler::get_friends),
@@ -53,5 +52,11 @@ pub fn user_relationship_routes() -> Router<AppState> {
         .route(
             "/:user_id/relationships/blocked",
             get(UserRelationshipHandler::get_blocked_users),
+        )
+        
+        // Generic query last
+        .route(
+            "/:user_id/relationships/:target_user_id",
+            get(UserRelationshipHandler::get_relationship),
         )
 }

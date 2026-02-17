@@ -34,7 +34,13 @@ pub async fn make_json_request(
     let value: serde_json::Value = if bytes.is_empty() {
         serde_json::Value::Null
     } else {
-        serde_json::from_slice(&bytes).expect("parse response body as JSON")
+        match serde_json::from_slice(&bytes) {
+            Ok(v) => v,
+            Err(e) => {
+                let body_str = String::from_utf8_lossy(&bytes);
+                panic!("Failed to parse response body as JSON. Error: {}, Body: {}", e, body_str);
+            }
+        }
     };
 
     (status, value)

@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 use crate::presentation::dto::user_relationship::{RelationshipRequest, RelationshipResponse, Pagination};
+use crate::presentation::http::handlers::error::ApiError;
 
 // ============================================
 // Handler
@@ -13,18 +14,17 @@ use crate::presentation::dto::user_relationship::{RelationshipRequest, Relations
 pub struct UserRelationshipHandler;
 
 impl UserRelationshipHandler {
-    // POST /api/users/users/{user_id}/relationships/request
+    // POST /api/v1/users/{user_id}/relationships/request
     pub async fn send_friend_request(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(payload): Json<RelationshipRequest>,
-    ) -> Result<Json<RelationshipResponse>, StatusCode> {
+    ) -> Result<Json<RelationshipResponse>, ApiError> {
         let relationship = state
             .user
             .relationship_service
             .send_friend_request(user_id, payload.target_user_id, payload.message)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         Ok(Json(RelationshipResponse {
             user_id: relationship.user_id(),
@@ -34,18 +34,17 @@ impl UserRelationshipHandler {
         }))
     }
 
-    // PUT /api/users/users/{user_id}/relationships/request/accept
+    // PUT /api/v1/users/{user_id}/relationships/request/accept
     pub async fn accept_friend_request(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(payload): Json<RelationshipRequest>,
-    ) -> Result<Json<RelationshipResponse>, StatusCode> {
+    ) -> Result<Json<RelationshipResponse>, ApiError> {
         let relationship = state
             .user
             .relationship_service
             .accept_friend_request(user_id, payload.target_user_id)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         Ok(Json(RelationshipResponse {
             user_id: relationship.user_id(),
@@ -55,49 +54,46 @@ impl UserRelationshipHandler {
         }))
     }
 
-    // PUT /api/users/users/{user_id}/relationships/request/decline
+    // PUT /api/v1/users/{user_id}/relationships/request/decline
     pub async fn decline_friend_request(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(payload): Json<RelationshipRequest>,
-    ) -> Result<StatusCode, StatusCode> {
+    ) -> Result<StatusCode, ApiError> {
         state
             .user
             .relationship_service
             .decline_friend_request(user_id, payload.target_user_id)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         Ok(StatusCode::NO_CONTENT)
     }
 
-    // DELETE /api/users/users/{user_id}/relationships/friend/{target_user_id}
+    // DELETE /api/v1/users/{user_id}/relationships/friend/{target_user_id}
     pub async fn remove_friend(
         State(state): State<AppState>,
         Path((user_id, target_user_id)): Path<(Uuid, Uuid)>,
-    ) -> Result<StatusCode, StatusCode> {
+    ) -> Result<StatusCode, ApiError> {
         state
             .user
             .relationship_service
             .remove_friend(user_id, target_user_id)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         Ok(StatusCode::NO_CONTENT)
     }
 
-    // POST /api/users/users/{user_id}/relationships/block
+    // POST /api/v1/users/{user_id}/relationships/block
     pub async fn block_user(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Json(payload): Json<RelationshipRequest>,
-    ) -> Result<Json<RelationshipResponse>, StatusCode> {
+    ) -> Result<Json<RelationshipResponse>, ApiError> {
         let relationship = state
             .user
             .relationship_service
             .block_user(user_id, payload.target_user_id)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         Ok(Json(RelationshipResponse {
             user_id: relationship.user_id(),
@@ -107,33 +103,31 @@ impl UserRelationshipHandler {
         }))
     }
 
-    // DELETE /api/users/users/{user_id}/relationships/block/{target_user_id}
+    // DELETE /api/v1/users/{user_id}/relationships/block/{target_user_id}
     pub async fn unblock_user(
         State(state): State<AppState>,
         Path((user_id, target_user_id)): Path<(Uuid, Uuid)>,
-    ) -> Result<StatusCode, StatusCode> {
+    ) -> Result<StatusCode, ApiError> {
         state
             .user
             .relationship_service
             .unblock_user(user_id, target_user_id)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         Ok(StatusCode::NO_CONTENT)
     }
 
-    // GET /api/users/users/{user_id}/relationships/{target_user_id}
+    // GET /api/v1/users/{user_id}/relationships/{target_user_id}
     pub async fn get_relationship(
         State(state): State<AppState>,
         Path((user_id, target_user_id)): Path<(Uuid, Uuid)>,
-    ) -> Result<Json<RelationshipResponse>, StatusCode> {
+    ) -> Result<Json<RelationshipResponse>, ApiError> {
         let relationship = state
             .user
             .relationship_service
             .get_relationship(user_id, target_user_id)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-            .ok_or(StatusCode::NOT_FOUND)?;
+            .await?
+            .ok_or_else(|| ApiError::not_found("Relationship not found"))?;
 
         Ok(Json(RelationshipResponse {
             user_id: relationship.user_id(),
@@ -143,18 +137,17 @@ impl UserRelationshipHandler {
         }))
     }
 
-    // GET /api/users/users/{user_id}/relationships/friends
+    // GET /api/v1/users/{user_id}/relationships/friends
     pub async fn get_friends(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Query(pagination): Query<Pagination>,
-    ) -> Result<Json<Vec<RelationshipResponse>>, StatusCode> {
+    ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
         let relationships = state
             .user
             .relationship_service
             .get_friends(user_id, pagination.limit, pagination.offset)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         let response = relationships
             .iter()
@@ -169,18 +162,17 @@ impl UserRelationshipHandler {
         Ok(Json(response))
     }
 
-    // GET /api/users/users/{user_id}/relationships/incoming
+    // GET /api/v1/users/{user_id}/relationships/incoming
     pub async fn get_incoming_requests(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Query(pagination): Query<Pagination>,
-    ) -> Result<Json<Vec<RelationshipResponse>>, StatusCode> {
+    ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
         let relationships = state
             .user
             .relationship_service
             .get_incoming_requests(user_id, pagination.limit, pagination.offset)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         let response = relationships
             .iter()
@@ -195,18 +187,17 @@ impl UserRelationshipHandler {
         Ok(Json(response))
     }
 
-    // GET /api/users/users/{user_id}/relationships/outgoing
+    // GET /api/v1/users/{user_id}/relationships/outgoing
     pub async fn get_outgoing_requests(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Query(pagination): Query<Pagination>,
-    ) -> Result<Json<Vec<RelationshipResponse>>, StatusCode> {
+    ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
         let relationships = state
             .user
             .relationship_service
             .get_outgoing_requests(user_id, pagination.limit, pagination.offset)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         let response = relationships
             .iter()
@@ -221,18 +212,17 @@ impl UserRelationshipHandler {
         Ok(Json(response))
     }
 
-    // GET /api/users/users/{user_id}/relationships/blocked
+    // GET /api/v1/users/{user_id}/relationships/blocked
     pub async fn get_blocked_users(
         State(state): State<AppState>,
         Path(user_id): Path<Uuid>,
         Query(pagination): Query<Pagination>,
-    ) -> Result<Json<Vec<RelationshipResponse>>, StatusCode> {
+    ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
         let relationships = state
             .user
             .relationship_service
             .get_blocked_users(user_id, pagination.limit, pagination.offset)
-            .await
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+            .await?;
 
         let response = relationships
             .iter()

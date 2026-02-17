@@ -13,13 +13,10 @@ async fn create_profile(
     username: &str,
     display_name: &str,
 ) -> (StatusCode, serde_json::Value) {
-    // The route is POST /api/users/users/:user_id but the handler
-    // ignores the path param; the ID is auto-generated.
-    let dummy_id = uuid::Uuid::new_v4();
     make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{dummy_id}"),
+        "/api/v1/users",
         Some(json!({
             "username": username,
             "display_name": display_name
@@ -82,7 +79,7 @@ async fn test_get_profile_success() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_id}"),
+        &format!("/api/v1/users/{user_id}"),
         None,
     )
     .await;
@@ -100,7 +97,7 @@ async fn test_get_profile_not_found() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{random_id}"),
+        &format!("/api/v1/users/{random_id}"),
         None,
     )
     .await;
@@ -117,7 +114,7 @@ async fn test_get_profile_by_username() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        "/api/users/users/username/byname",
+        "/api/v1/users/username/byname",
         None,
     )
     .await;
@@ -140,7 +137,7 @@ async fn test_update_profile_success() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::PATCH,
-        &format!("/api/users/users/{user_id}"),
+        &format!("/api/v1/users/{user_id}"),
         Some(json!({
             "display_name": "Updated Name",
             "bio": "A new bio"
@@ -161,7 +158,7 @@ async fn test_update_profile_not_found() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::PATCH,
-        &format!("/api/users/users/{random_id}"),
+        &format!("/api/v1/users/{random_id}"),
         Some(json!({ "display_name": "Ghost" })),
     )
     .await;
@@ -183,7 +180,7 @@ async fn test_change_username_success() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_id}/username"),
+        &format!("/api/v1/users/{user_id}/username"),
         Some(json!({ "new_username": "newname" })),
     )
     .await;
@@ -203,7 +200,7 @@ async fn test_change_username_already_taken() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_id}/username"),
+        &format!("/api/v1/users/{user_id}/username"),
         Some(json!({ "new_username": "taken_name" })),
     )
     .await;
@@ -225,7 +222,7 @@ async fn test_delete_profile_success() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::DELETE,
-        &format!("/api/users/users/{user_id}"),
+        &format!("/api/v1/users/{user_id}"),
         None,
     )
     .await;
@@ -244,7 +241,7 @@ async fn test_delete_then_get() {
     make_json_request(
         harness.router.clone(),
         Method::DELETE,
-        &format!("/api/users/users/{user_id}"),
+        &format!("/api/v1/users/{user_id}"),
         None,
     )
     .await;
@@ -253,7 +250,7 @@ async fn test_delete_then_get() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_id}"),
+        &format!("/api/v1/users/{user_id}"),
         None,
     )
     .await;
@@ -276,7 +273,7 @@ async fn test_update_status() {
         let (status, body) = make_json_request(
             harness.router.clone(),
             Method::PUT,
-            &format!("/api/users/users/{user_id}/status"),
+            &format!("/api/v1/users/{user_id}/status"),
             Some(json!({ "status": status_val })),
         )
         .await;
@@ -296,7 +293,7 @@ async fn test_set_custom_status() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_id}/custom-status"),
+        &format!("/api/v1/users/{user_id}/custom-status"),
         Some(json!({
             "text": "Working hard",
             "emoji": "hammer"
@@ -320,7 +317,7 @@ async fn test_clear_custom_status() {
     make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_id}/custom-status"),
+        &format!("/api/v1/users/{user_id}/custom-status"),
         Some(json!({ "text": "Temporary" })),
     )
     .await;
@@ -329,7 +326,7 @@ async fn test_clear_custom_status() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::DELETE,
-        &format!("/api/users/users/{user_id}/custom-status"),
+        &format!("/api/v1/users/{user_id}/custom-status"),
         None,
     )
     .await;
@@ -349,7 +346,7 @@ async fn test_check_username_availability() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        "/api/users/users/check-username/available_name",
+        "/api/v1/users/check-username/available_name",
         None,
     )
     .await;
@@ -364,7 +361,7 @@ async fn test_check_username_availability() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        "/api/users/users/check-username/available_name",
+        "/api/v1/users/check-username/available_name",
         None,
     )
     .await;
@@ -383,7 +380,7 @@ async fn test_search_users() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        "/api/users/users/search?query=searchable&limit=10&offset=0",
+        "/api/v1/users/search?query=searchable&limit=10&offset=0",
         None,
     )
     .await;
@@ -416,7 +413,7 @@ async fn test_block_user_preserves_reverse_block() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_b_id}/relationships/block"),
+        &format!("/api/v1/users/{user_b_id}/relationships/block"),
         Some(json!({ "target_user_id": user_a_id })),
     )
     .await;
@@ -426,7 +423,7 @@ async fn test_block_user_preserves_reverse_block() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_a_id}/relationships/block"),
+        &format!("/api/v1/users/{user_a_id}/relationships/block"),
         Some(json!({ "target_user_id": user_b_id })),
     )
     .await;
@@ -436,7 +433,7 @@ async fn test_block_user_preserves_reverse_block() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        &format!("/api/v1/users/{user_b_id}/relationships/{user_a_id}"),
         None,
     )
     .await;
@@ -460,7 +457,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_a_id}/relationships/request"),
+        &format!("/api/v1/users/{user_a_id}/relationships/request"),
         Some(json!({ "target_user_id": user_b_id, "message": "hello" })),
     )
     .await;
@@ -470,7 +467,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_a_id}/relationships/{user_b_id}"),
+        &format!("/api/v1/users/{user_a_id}/relationships/{user_b_id}"),
         None,
     )
     .await;
@@ -480,7 +477,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        &format!("/api/v1/users/{user_b_id}/relationships/{user_a_id}"),
         None,
     )
     .await;
@@ -491,7 +488,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_b_id}/relationships/request/accept"),
+        &format!("/api/v1/users/{user_b_id}/relationships/request/accept"),
         Some(json!({ "target_user_id": user_a_id })),
     )
     .await;
@@ -501,7 +498,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_a_id}/relationships/{user_b_id}"),
+        &format!("/api/v1/users/{user_a_id}/relationships/{user_b_id}"),
         None,
     )
     .await;
@@ -511,7 +508,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        &format!("/api/v1/users/{user_b_id}/relationships/{user_a_id}"),
         None,
     )
     .await;
@@ -522,7 +519,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::DELETE,
-        &format!("/api/users/users/{user_a_id}/relationships/friend/{user_b_id}"),
+        &format!("/api/v1/users/{user_a_id}/relationships/friend/{user_b_id}"),
         None,
     )
     .await;
@@ -532,7 +529,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_a_id}/relationships/{user_b_id}"),
+        &format!("/api/v1/users/{user_a_id}/relationships/{user_b_id}"),
         None,
     )
     .await;
@@ -541,7 +538,7 @@ async fn test_friend_request_accept_and_remove() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_b_id}/relationships/{user_a_id}"),
+        &format!("/api/v1/users/{user_b_id}/relationships/{user_a_id}"),
         None,
     )
     .await;
@@ -563,7 +560,7 @@ async fn test_friend_request_decline() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_c_id}/relationships/request"),
+        &format!("/api/v1/users/{user_c_id}/relationships/request"),
         Some(json!({ "target_user_id": user_d_id, "message": "hello" })),
     )
     .await;
@@ -573,7 +570,7 @@ async fn test_friend_request_decline() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_d_id}/relationships/request/decline"),
+        &format!("/api/v1/users/{user_d_id}/relationships/request/decline"),
         Some(json!({ "target_user_id": user_c_id })),
     )
     .await;
@@ -583,7 +580,7 @@ async fn test_friend_request_decline() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_c_id}/relationships/{user_d_id}"),
+        &format!("/api/v1/users/{user_c_id}/relationships/{user_d_id}"),
         None,
     )
     .await;
@@ -592,7 +589,7 @@ async fn test_friend_request_decline() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_d_id}/relationships/{user_c_id}"),
+        &format!("/api/v1/users/{user_d_id}/relationships/{user_c_id}"),
         None,
     )
     .await;
@@ -614,7 +611,7 @@ async fn test_unblock_user() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_c_id}/relationships/block"),
+        &format!("/api/v1/users/{user_c_id}/relationships/block"),
         Some(json!({ "target_user_id": user_d_id })),
     )
     .await;
@@ -624,7 +621,7 @@ async fn test_unblock_user() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::DELETE,
-        &format!("/api/users/users/{user_c_id}/relationships/block/{user_d_id}"),
+        &format!("/api/v1/users/{user_c_id}/relationships/block/{user_d_id}"),
         None,
     )
     .await;
@@ -634,7 +631,7 @@ async fn test_unblock_user() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_c_id}/relationships/{user_d_id}"),
+        &format!("/api/v1/users/{user_c_id}/relationships/{user_d_id}"),
         None,
     )
     .await;
@@ -656,7 +653,7 @@ async fn test_friend_request_to_blocked_user() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_e_id}/relationships/block"),
+        &format!("/api/v1/users/{user_e_id}/relationships/block"),
         Some(json!({ "target_user_id": user_f_id })),
     )
     .await;
@@ -666,21 +663,21 @@ async fn test_friend_request_to_blocked_user() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_e_id}/relationships/request"),
+        &format!("/api/v1/users/{user_e_id}/relationships/request"),
         Some(json!({ "target_user_id": user_f_id, "message": "hello" })),
     )
     .await;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(status, StatusCode::FORBIDDEN);
 
     // 4. User F (blocked) tries to send a friend request to User E (blocker) -> Fails
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_f_id}/relationships/request"),
+        &format!("/api/v1/users/{user_f_id}/relationships/request"),
         Some(json!({ "target_user_id": user_e_id, "message": "hello" })),
     )
     .await;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(status, StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
@@ -698,7 +695,7 @@ async fn test_friend_request_privacy_none() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_b_id}/privacy/friend-requests"),
+        &format!("/api/v1/users/{user_b_id}/privacy/friend-requests"),
         Some(json!({ "allow_friend_requests_from": "none" })),
     )
     .await;
@@ -708,11 +705,11 @@ async fn test_friend_request_privacy_none() {
     let (status, _) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_a_id}/relationships/request"),
+        &format!("/api/v1/users/{user_a_id}/relationships/request"),
         Some(json!({ "target_user_id": user_b_id, "message": "hello" })),
     )
     .await;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(status, StatusCode::FORBIDDEN);
 }
 
 // ============================================
@@ -729,7 +726,7 @@ async fn test_get_privacy_defaults() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::GET,
-        &format!("/api/users/users/{user_id}/privacy"),
+        &format!("/api/v1/users/{user_id}/privacy"),
         None,
     )
     .await;
@@ -755,7 +752,7 @@ async fn test_update_dm_privacy() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_id}/privacy/dm"),
+        &format!("/api/v1/users/{user_id}/privacy/dm"),
         Some(json!({ "allow_dms_from": "none" })),
     )
     .await;
@@ -774,7 +771,7 @@ async fn test_update_friend_request_privacy() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::PUT,
-        &format!("/api/users/users/{user_id}/privacy/friend-requests"),
+        &format!("/api/v1/users/{user_id}/privacy/friend-requests"),
         Some(json!({ "allow_friend_requests_from": "none" })),
     )
     .await;
@@ -793,7 +790,7 @@ async fn test_apply_privacy_preset() {
     let (status, body) = make_json_request(
         harness.router.clone(),
         Method::POST,
-        &format!("/api/users/users/{user_id}/privacy/preset"),
+        &format!("/api/v1/users/{user_id}/privacy/preset"),
         Some(json!({ "preset": "private" })),
     )
     .await;
@@ -805,4 +802,94 @@ async fn test_apply_privacy_preset() {
     assert_eq!(body["show_online_status"], false);
     assert_eq!(body["show_current_activity"], false);
     assert_eq!(body["show_profile_to_non_friends"], false);
+}
+
+// ============================================
+// COMPLEX INTERACTION TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_complex_privacy_and_relationship_flow() {
+    let harness = TestHarness::new().await;
+
+    // 1. Create 3 users: Alice, Bob, Charlie
+    let (_, alice_body) = create_profile(&harness, "alice", "Alice").await;
+    let alice_id = alice_body["user_id"].as_str().unwrap();
+
+    let (_, bob_body) = create_profile(&harness, "bob", "Bob").await;
+    let bob_id = bob_body["user_id"].as_str().unwrap();
+
+    let (_, charlie_body) = create_profile(&harness, "charlie", "Charlie").await;
+    let charlie_id = charlie_body["user_id"].as_str().unwrap();
+
+    // 2. Alice and Bob become friends
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/users/{alice_id}/relationships/request"),
+        Some(json!({ "target_user_id": bob_id, "message": "Hey Bob!" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/v1/users/{bob_id}/relationships/request/accept"),
+        Some(json!({ "target_user_id": alice_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. Alice sets friend request privacy to "none"
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/v1/users/{alice_id}/privacy/friend-requests"),
+        Some(json!({ "allow_friend_requests_from": "none" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 4. Charlie tries to send friend request to Alice -> Fails due to Alice's privacy
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/users/{charlie_id}/relationships/request"),
+        Some(json!({ "target_user_id": alice_id, "message": "Hi Alice" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // 5. Alice blocks Charlie
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/users/{alice_id}/relationships/block"),
+        Some(json!({ "target_user_id": charlie_id })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 6. Charlie tries to get Alice's profile -> Should still work for basic info
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/{alice_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 7. Verify Alice blocked Charlie
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/{charlie_id}/relationships/{alice_id}"),
+        None,
+    )
+    .await;
+    // Since blocks are one-way, Charlie has no relationship record for Alice
+    // TODO: bu kismi bi dusunelim. blocklamalar tek tarafli mi yoksa cift tarafli mi olmali?
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }

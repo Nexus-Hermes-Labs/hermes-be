@@ -1,7 +1,7 @@
 {
 	"info": {
 		"name": "Hermes API",
-		"description": "Comprehensive collection for Hermes services with API versioning",
+		"description": "Comprehensive collection for Hermes services with consolidated API versioning and fixed routing.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -91,6 +91,23 @@
 				{
 					"name": "Profile",
 					"item": [
+						{
+							"name": "Create Profile",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"newuser\",\n    \"display_name\": \"New User\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users"
+							}
+						},
 						{
 							"name": "Get Profile",
 							"request": {
@@ -245,7 +262,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"privacy\": \"friends_only\"\n}"
+									"raw": "{\n    \"allow_dms_from\": \"friends\"\n}"
 								},
 								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/dm"
 							}
@@ -266,7 +283,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"privacy\": \"everyone\"\n}"
+									"raw": "{\n    \"allow_friend_requests_from\": \"everyone\"\n}"
 								},
 								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/friend-requests"
 							}
