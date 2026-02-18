@@ -186,7 +186,7 @@ impl AppBuilder {
         // JWT Manager
         let jwt_manager = Arc::new(
             JwtManager::new(
-                service_name,
+                &config().secrets.jwt.issuer,
                 &config().secrets.jwt.access_secret,
                 &config().secrets.jwt.refresh_secret,
             )

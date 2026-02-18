@@ -12,12 +12,18 @@ pub struct SecretsConfig {
 /// JWT-related secrets
 #[derive(Debug, Clone, Deserialize)]
 pub struct JwtSecrets {
+    #[serde(default = "default_jwt_issuer")]
+    pub issuer: String,
     pub access_secret: String,
     pub refresh_secret: String,
     #[serde(default = "default_jwt_expiration")]
     pub expiration_hours: i64,
     #[serde(default = "default_jwt_refresh_expiration")]
     pub refresh_expiration_days: i64,
+}
+
+fn default_jwt_issuer() -> String {
+    "hermes".to_string()
 }
 
 fn default_jwt_expiration() -> i64 {

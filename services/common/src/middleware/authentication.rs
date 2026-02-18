@@ -26,9 +26,11 @@ where
         .and_then(|h| h.to_str().ok())
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    let token = auth_header
-        .strip_prefix("Bearer ")
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+    let token = if auth_header.to_lowercase().starts_with("bearer ") {
+        &auth_header[7..]
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
 
     let claims = jwt_manager
         .verify_access_token(token)
