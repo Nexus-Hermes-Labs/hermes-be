@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::domain::user_profile::UserProfile;
@@ -8,7 +9,7 @@ use crate::domain::user_profile::UserProfile;
 // PROFILE RESPONSE
 // ============================================
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ProfileResponse {
     pub user_id: Uuid,
     pub username: String,
@@ -53,7 +54,7 @@ impl From<UserProfile> for ProfileResponse {
 // CUSTOM STATUS RESPONSE
 // ============================================
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CustomStatusResponse {
     pub text: Option<String>,
     pub emoji: Option<String>,
@@ -64,7 +65,7 @@ pub struct CustomStatusResponse {
 // PROFILE LIST RESPONSE
 // ============================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ProfileListResponse {
     pub profiles: Vec<ProfileResponse>,
     pub total: i64,
@@ -76,7 +77,7 @@ pub struct ProfileListResponse {
 // USERNAME AVAILABILITY RESPONSE
 // ============================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UsernameAvailabilityResponse {
     pub username: String,
     pub available: bool,
@@ -86,7 +87,7 @@ pub struct UsernameAvailabilityResponse {
 // ONLINE USERS RESPONSE
 // ============================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct OnlineUsersResponse {
     pub users: Vec<ProfileResponse>,
     pub total: i64,

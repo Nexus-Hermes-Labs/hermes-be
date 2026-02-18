@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use validator::Validate;
 
 // ============================================
@@ -9,7 +10,7 @@ use validator::Validate;
 // ============================================
 
 /// Request body for logout
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Validate, ToSchema)]
 pub struct LogoutRequest {
     /// Refresh token to revoke (required)
     #[validate(length(min = 1, message = "Refresh token is required"))]
@@ -23,7 +24,7 @@ pub struct LogoutRequest {
 }
 
 /// Response body for successful logout
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct LogoutResponse {
     /// Success message
     pub message: String,

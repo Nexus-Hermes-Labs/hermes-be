@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 // ============================================
@@ -9,7 +10,7 @@ use validator::Validate;
 static USERNAME_REGEX: Lazy<regex::Regex> =
     Lazy::new(|| regex::Regex::new(r"^[a-z0-9_]+$").unwrap());
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateProfileRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
     #[validate(regex(path = "*USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
@@ -23,7 +24,7 @@ pub struct CreateProfileRequest {
 // UPDATE PROFILE REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateProfileRequest {
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     pub display_name: Option<String>,
@@ -42,7 +43,7 @@ pub struct UpdateProfileRequest {
 // CHANGE USERNAME REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct ChangeUsernameRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
     #[validate(regex(path = "*USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
@@ -53,7 +54,7 @@ pub struct ChangeUsernameRequest {
 // UPDATE STATUS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateStatusRequest {
     pub status: String, // "online", "offline", "idle", "dnd"
 }
@@ -62,7 +63,7 @@ pub struct UpdateStatusRequest {
 // SET CUSTOM STATUS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct SetCustomStatusRequest {
     #[validate(length(max = 128, message = "Custom status text must be max 128 characters"))]
     pub text: Option<String>,
@@ -77,7 +78,7 @@ pub struct SetCustomStatusRequest {
 // SEARCH USERS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema, utoipa::IntoParams)]
 pub struct SearchUsersRequest {
     pub query: String,
 
@@ -96,7 +97,7 @@ fn default_limit() -> i64 {
 // CHECK USERNAME AVAILABILITY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CheckUsernameRequest {
     #[validate(length(min = 3, max = 32))]
     pub username: String,

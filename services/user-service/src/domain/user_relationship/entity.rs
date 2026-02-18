@@ -203,7 +203,6 @@ impl UserRelationship {
         Ok(())
     }
 
-    // TODO: will handle this on application layer with transaction!
     /// Validates that this relationship can be declined.
     /// This can only be done on a `PendingIncoming` relationship.
     pub fn decline(&mut self) -> Result<(), UserRelationshipError> {

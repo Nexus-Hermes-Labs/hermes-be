@@ -694,7 +694,7 @@ async fn test_friend_request_to_blocked_user() {
         Some(json!({ "target_user_id": user_e_id, "message": "hello" })),
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -1570,7 +1570,7 @@ async fn test_me_block_prevents_friend_request() {
         &bob_token,
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(status, StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
@@ -1741,7 +1741,7 @@ async fn test_me_three_user_social_graph() {
         &charlie_token,
     )
     .await;
-    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(status, StatusCode::NOT_FOUND);
 
     // Alice removes Bob, then her friend count drops to 1
     let (status, _) = make_authenticated_request(

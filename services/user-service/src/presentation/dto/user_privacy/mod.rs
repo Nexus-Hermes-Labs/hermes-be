@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::domain::user_privacy::UserPrivacySettings;
 
@@ -6,7 +7,7 @@ use crate::domain::user_privacy::UserPrivacySettings;
 // UPDATE DM PRIVACY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateDmPrivacyRequest {
     pub allow_dms_from: String, // "everyone", "friends", "server_members", "none"
 }
@@ -15,7 +16,7 @@ pub struct UpdateDmPrivacyRequest {
 // UPDATE FRIEND REQUEST PRIVACY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateFriendRequestPrivacyRequest {
     pub allow_friend_requests_from: String, // "everyone", "friends_of_friends", "none"
 }
@@ -24,7 +25,7 @@ pub struct UpdateFriendRequestPrivacyRequest {
 // UPDATE VISIBILITY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateVisibilityRequest {
     pub show_online_status: Option<bool>,
     pub show_current_activity: Option<bool>,
@@ -35,7 +36,7 @@ pub struct UpdateVisibilityRequest {
 // UPDATE CONTENT SETTINGS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateContentSettingsRequest {
     pub allow_nsfw_content: Option<bool>,
     pub content_filter_level: Option<i16>, // 0: Off, 1: Medium, 2: Strict
@@ -45,7 +46,7 @@ pub struct UpdateContentSettingsRequest {
 // APPLY PRESET REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ApplyPresetRequest {
     pub preset: String, // "public", "friends_only", "private"
 }
@@ -54,7 +55,7 @@ pub struct ApplyPresetRequest {
 // PRIVACY SETTINGS RESPONSE
 // ============================================
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PrivacySettingsResponse {
     pub allow_dms_from: String,
     pub allow_friend_requests_from: String,

@@ -73,6 +73,12 @@ BEGIN
                 reverse_type := 'friend';
                 reverse_message := NULL;
             WHEN 'blocked' THEN
+                -- If we are blocking, we should delete the reverse relationship if it exists
+                -- BUT we should keep it if it's also a block (bidirectional block)
+                DELETE FROM user_relationships
+                WHERE user_id = NEW.target_user_id
+                  AND target_user_id = NEW.user_id
+                  AND type != 'blocked';
                 RETURN NEW;
             ELSE
                 RETURN NEW;
@@ -97,6 +103,12 @@ BEGIN
                 reverse_type := 'friend';
                 reverse_message := NULL;
             WHEN 'blocked' THEN
+                -- If we are blocking, we should delete the reverse relationship if it exists
+                -- BUT we should keep it if it's also a block (bidirectional block)
+                DELETE FROM user_relationships
+                WHERE user_id = NEW.target_user_id
+                  AND target_user_id = NEW.user_id
+                  AND type != 'blocked';
                 RETURN NEW;
             ELSE
                 RETURN NEW;

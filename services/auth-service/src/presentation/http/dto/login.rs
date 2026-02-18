@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 // ============================================
@@ -8,7 +9,7 @@ use validator::Validate;
 // ============================================
 
 /// Request body for user_profile login
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Validate, ToSchema)]
 pub struct LoginRequest {
     /// User's email address
     #[validate(email(message = "Invalid email address"))]

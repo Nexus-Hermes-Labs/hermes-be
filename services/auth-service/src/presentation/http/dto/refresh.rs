@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 // ============================================
@@ -9,7 +10,7 @@ use validator::Validate;
 // ============================================
 
 /// Request body for token refresh
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Validate, ToSchema)]
 pub struct RefreshTokenRequest {
     /// Valid refresh token received from login/register
     #[validate(length(min = 1, message = "Refresh token is required"))]

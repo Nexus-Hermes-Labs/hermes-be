@@ -148,7 +148,7 @@ impl From<UserRelationshipServiceError> for ApiError {
                 ApiError::conflict("A relationship already exists between these users")
             }
             UserRelationshipServiceError::BlockedByTarget => {
-                ApiError::forbidden("Cannot send friend request: target user has blocked you")
+                ApiError::not_found("User profile not found")
             }
             UserRelationshipServiceError::BlockedTarget => {
                 ApiError::forbidden("Cannot send friend request: you have blocked the target user")

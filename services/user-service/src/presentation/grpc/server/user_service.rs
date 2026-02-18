@@ -80,9 +80,15 @@ impl UserService for UserServiceGrpc {
         let user_id = Uuid::parse_str(&req.user_id)
             .map_err(|_| Status::invalid_argument("Invalid user_id format"))?;
 
+        let requester_id = req
+            .requester_id
+            .map(|id| Uuid::parse_str(&id))
+            .transpose()
+            .map_err(|_| Status::invalid_argument("Invalid requester_id format"))?;
+
         let profile = self
             .profile_service
-            .get_profile(user_id)
+            .get_profile(user_id, requester_id)
             .await
             .map_err(|e| Status::not_found(e.to_string()))?;
 
@@ -149,9 +155,15 @@ impl UserService for UserServiceGrpc {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| Status::invalid_argument("One or more invalid user_id formats"))?;
 
+        let requester_id = req
+            .requester_id
+            .map(|id| Uuid::parse_str(&id))
+            .transpose()
+            .map_err(|_| Status::invalid_argument("Invalid requester_id format"))?;
+
         let profiles = self
             .profile_service
-            .get_profiles_by_ids(user_ids)
+            .get_profiles_by_ids(user_ids, requester_id)
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -177,9 +189,15 @@ impl UserService for UserServiceGrpc {
             (20_i64, 0_i64)
         };
 
+        let requester_id = req
+            .requester_id
+            .map(|id| Uuid::parse_str(&id))
+            .transpose()
+            .map_err(|_| Status::invalid_argument("Invalid requester_id format"))?;
+
         let profiles = self
             .profile_service
-            .search_users(req.query, limit, offset)
+            .search_users(req.query, limit, offset, requester_id)
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 

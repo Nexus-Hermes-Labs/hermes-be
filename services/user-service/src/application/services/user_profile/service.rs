@@ -2,6 +2,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::domain::user_profile::{UserProfile, UserProfileRepository, Username, UserStatus};
+use crate::domain::user_relationship::UserRelationshipRepository;
 
 use super::error::UserProfileServiceError;
 
@@ -10,11 +11,18 @@ use super::error::UserProfileServiceError;
 /// Orchestrates user profile operations and enforces business rules.
 pub struct UserProfileService {
     repository: Arc<dyn UserProfileRepository>,
+    relationship_repository: Arc<dyn UserRelationshipRepository>,
 }
 
 impl UserProfileService {
-    pub fn new(repository: Arc<dyn UserProfileRepository>) -> Self {
-        Self { repository }
+    pub fn new(
+        repository: Arc<dyn UserProfileRepository>,
+        relationship_repository: Arc<dyn UserRelationshipRepository>,
+    ) -> Self {
+        Self {
+            repository,
+            relationship_repository,
+        }
     }
 
     // ============================================
@@ -50,7 +58,25 @@ impl UserProfileService {
     }
 
     /// Get user profile by ID
-    pub async fn get_profile(&self, user_id: Uuid) -> Result<UserProfile, UserProfileServiceError> {
+    pub async fn get_profile(
+        &self,
+        user_id: Uuid,
+        requester_id: Option<Uuid>,
+    ) -> Result<UserProfile, UserProfileServiceError> {
+        // Check if the target user has blocked the requester
+        if let Some(req_id) = requester_id {
+            if let Some(rel) = self
+                .relationship_repository
+                .find_by_user_and_target(user_id, req_id)
+                .await
+                .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?
+            {
+                if rel.is_blocked() {
+                    return Err(UserProfileServiceError::ProfileNotFound);
+                }
+            }
+        }
+
         self.repository
             .find_by_id(user_id)
             .await
@@ -62,15 +88,33 @@ impl UserProfileService {
     pub async fn get_profile_by_username(
         &self,
         username: String,
+        requester_id: Option<Uuid>,
     ) -> Result<UserProfile, UserProfileServiceError> {
-        let username = Username::new(&username)
+        let username_vo = Username::new(&username)
             .map_err(|e| UserProfileServiceError::InvalidUsername(e.to_string()))?;
 
-        self.repository
-            .find_by_username(&username)
+        let profile = self
+            .repository
+            .find_by_username(&username_vo)
             .await
             .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?
-            .ok_or(UserProfileServiceError::ProfileNotFound)
+            .ok_or(UserProfileServiceError::ProfileNotFound)?;
+
+        // Check if the target user has blocked the requester
+        if let Some(req_id) = requester_id {
+            if let Some(rel) = self
+                .relationship_repository
+                .find_by_user_and_target(profile.id(), req_id)
+                .await
+                .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?
+            {
+                if rel.is_blocked() {
+                    return Err(UserProfileServiceError::ProfileNotFound);
+                }
+            }
+        }
+
+        Ok(profile)
     }
 
     /// Update user profile
@@ -82,7 +126,7 @@ impl UserProfileService {
         avatar_url: Option<String>,
         banner_url: Option<String>,
     ) -> Result<UserProfile, UserProfileServiceError> {
-        let mut profile = self.get_profile(user_id).await?;
+        let mut profile = self.get_profile(user_id, None).await?;
 
         profile
             .update_profile(display_name, bio, avatar_url, banner_url)
@@ -109,7 +153,7 @@ impl UserProfileService {
             return Err(UserProfileServiceError::UsernameAlreadyTaken);
         }
 
-        let mut profile = self.get_profile(user_id).await?;
+        let mut profile = self.get_profile(user_id, None).await?;
 
         profile
             .change_username(new_username)
@@ -125,7 +169,7 @@ impl UserProfileService {
 
     /// Delete user profile (soft delete)
     pub async fn delete_profile(&self, user_id: Uuid) -> Result<(), UserProfileServiceError> {
-        let mut profile = self.get_profile(user_id).await?;
+        let mut profile = self.get_profile(user_id, None).await?;
 
         profile.delete();
 
@@ -147,7 +191,7 @@ impl UserProfileService {
         user_id: Uuid,
         status: UserStatus,
     ) -> Result<UserProfile, UserProfileServiceError> {
-        let mut profile = self.get_profile(user_id).await?;
+        let mut profile = self.get_profile(user_id, None).await?;
 
         profile.update_status(status);
 
@@ -167,7 +211,7 @@ impl UserProfileService {
         emoji: Option<String>,
         expires_at: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Result<UserProfile, UserProfileServiceError> {
-        let mut profile = self.get_profile(user_id).await?;
+        let mut profile = self.get_profile(user_id, None).await?;
 
         profile
             .set_custom_status(text, emoji, expires_at)
@@ -186,7 +230,7 @@ impl UserProfileService {
         &self,
         user_id: Uuid,
     ) -> Result<UserProfile, UserProfileServiceError> {
-        let mut profile = self.get_profile(user_id).await?;
+        let mut profile = self.get_profile(user_id, None).await?;
 
         profile.clear_custom_status();
 
@@ -208,22 +252,60 @@ impl UserProfileService {
         query: String,
         limit: i64,
         offset: i64,
+        requester_id: Option<Uuid>,
     ) -> Result<Vec<UserProfile>, UserProfileServiceError> {
-        self.repository
+        let profiles = self
+            .repository
             .search(&query, limit, offset)
             .await
-            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))
+            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?;
+
+        if let Some(req_id) = requester_id {
+            let mut filtered = Vec::new();
+            for profile in profiles {
+                if !self
+                    .relationship_repository
+                    .is_blocked_bidirectional(req_id, profile.id())
+                    .await
+                    .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?
+                {
+                    filtered.push(profile);
+                }
+            }
+            Ok(filtered)
+        } else {
+            Ok(profiles)
+        }
     }
 
     /// Get multiple profiles by IDs (batch)
     pub async fn get_profiles_by_ids(
         &self,
         user_ids: Vec<Uuid>,
+        requester_id: Option<Uuid>,
     ) -> Result<Vec<UserProfile>, UserProfileServiceError> {
-        self.repository
+        let profiles = self
+            .repository
             .find_by_ids(user_ids)
             .await
-            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))
+            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?;
+
+        if let Some(req_id) = requester_id {
+            let mut filtered = Vec::new();
+            for profile in profiles {
+                if !self
+                    .relationship_repository
+                    .is_blocked_bidirectional(req_id, profile.id())
+                    .await
+                    .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?
+                {
+                    filtered.push(profile);
+                }
+            }
+            Ok(filtered)
+        } else {
+            Ok(profiles)
+        }
     }
 
     /// Get online users
@@ -231,11 +313,30 @@ impl UserProfileService {
         &self,
         limit: i64,
         offset: i64,
+        requester_id: Option<Uuid>,
     ) -> Result<Vec<UserProfile>, UserProfileServiceError> {
-        self.repository
+        let profiles = self
+            .repository
             .find_online_users(limit, offset)
             .await
-            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))
+            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?;
+
+        if let Some(req_id) = requester_id {
+            let mut filtered = Vec::new();
+            for profile in profiles {
+                if !self
+                    .relationship_repository
+                    .is_blocked_bidirectional(req_id, profile.id())
+                    .await
+                    .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?
+                {
+                    filtered.push(profile);
+                }
+            }
+            Ok(filtered)
+        } else {
+            Ok(profiles)
+        }
     }
 
     /// Check username availability

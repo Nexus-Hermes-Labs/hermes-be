@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 use serde::Deserialize;
+use utoipa::ToSchema;
 use validator::Validate;
 
 // ============================================
@@ -9,7 +10,7 @@ use validator::Validate;
 // ============================================
 
 /// Request body for user_profile registration
-#[derive(Debug, Clone, Deserialize, Validate)]
+#[derive(Debug, Clone, Deserialize, Validate, ToSchema)]
 pub struct RegisterRequest {
     /// User's email address (must be unique)
     #[validate(email(message = "Invalid email address"))]

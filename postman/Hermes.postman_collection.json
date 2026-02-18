@@ -89,6 +89,105 @@
 			"name": "User Service",
 			"item": [
 				{
+					"name": "Me",
+					"item": [
+						{
+							"name": "Get My Profile",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/@me"
+							}
+						},
+						{
+							"name": "Update My Profile",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"display_name\": \"My New Name\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/@me"
+							}
+						},
+						{
+							"name": "Get My Privacy Settings",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/@me/privacy"
+							}
+						},
+						{
+							"name": "Get My Friends",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/@me/relationships/friends"
+							}
+						},
+						{
+							"name": "Get My Blocked Users",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/@me/relationships/blocked"
+							}
+						},
+						{
+							"name": "Send Friend Request",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\",\n    \"message\": \"Hey!\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/@me/relationships/request"
+							}
+						}
+					]
+				},
+				{
 					"name": "Profile",
 					"item": [
 						{
@@ -310,6 +409,27 @@
 							}
 						},
 						{
+							"name": "Update Content Settings",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"allow_nsfw_content\": true,\n    \"content_filter_level\": 2\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/content"
+							}
+						},
+						{
 							"name": "Apply Privacy Preset",
 							"request": {
 								"method": "POST",
@@ -433,6 +553,71 @@
 							}
 						},
 						{
+							"name": "Unblock User",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block/{{target_user_id}}"
+							}
+						},
+						{
+							"name": "Remove Friend",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/friend/{{target_user_id}}"
+							}
+						},
+						{
+							"name": "Get Incoming Requests",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/incoming"
+							}
+						},
+						{
+							"name": "Get Outgoing Requests",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/outgoing"
+							}
+						},
+						{
+							"name": "Get Blocked Users",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/blocked"
+							}
+						},
+						{
 							"name": "Get Relationship",
 							"request": {
 								"method": "GET",
@@ -489,6 +674,19 @@
 									"mode": "raw",
 									"raw": "{\n    \"text\": \"Coding...\",\n    \"emoji\": \"👨‍💻\"\n}"
 								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/custom-status"
+							}
+						},
+						{
+							"name": "Clear Custom Status",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
 								"url": "http://localhost:8082/api/v1/users/{{user_id}}/custom-status"
 							}
 						}

@@ -1,14 +1,15 @@
 use serde::{Deserialize, Serialize};
+use utoipa::{ToSchema, IntoParams};
 use uuid::Uuid;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct RelationshipRequest {
     pub target_user_id: Uuid,
     #[serde(default)]
     pub message: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct RelationshipResponse {
     pub user_id: Uuid,
     pub target_user_id: Uuid,
@@ -16,7 +17,7 @@ pub struct RelationshipResponse {
     pub message: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema, IntoParams)]
 pub struct Pagination {
     #[serde(default = "default_limit")]
     pub limit: i64,

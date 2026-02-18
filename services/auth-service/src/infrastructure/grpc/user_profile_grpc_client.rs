@@ -122,6 +122,7 @@ impl UserProfileClient for UserGrpcClient {
 
         let request = tonic::Request::new(GetUserProfileRequest {
             user_id: user_id.to_string(),
+            requester_id: None,
         });
 
         let response = client.get_user_profile(request).await.map_err(|e| {

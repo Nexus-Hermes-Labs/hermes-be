@@ -6,6 +6,9 @@ use axum::Router;
 use common::observability::HealthCheck;
 use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+use crate::presentation::http::docs::ApiDoc;
 
 pub fn create_router(
     app_state: AppState,
@@ -23,6 +26,7 @@ pub fn create_router(
 
     // Complete router
     Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/health", health::routes().with_state(health_check))
         .nest("/api/v1", api_routes)
         .layer(cors)

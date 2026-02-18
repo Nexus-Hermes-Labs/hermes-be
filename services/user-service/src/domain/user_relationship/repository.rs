@@ -38,6 +38,13 @@ pub trait UserRelationshipRepository:
         target_user_id: Uuid,
     ) -> Result<bool, Self::Error>;
 
+    /// Check whether either user has blocked the other.
+    async fn is_blocked_bidirectional(
+        &self,
+        user_a: Uuid,
+        user_b: Uuid,
+    ) -> Result<bool, Self::Error>;
+
     /// Delete the relationship record owned by `user_id` targeting `target_user_id`.
     ///
     /// The `sync_bidirectional_relationship` trigger automatically removes

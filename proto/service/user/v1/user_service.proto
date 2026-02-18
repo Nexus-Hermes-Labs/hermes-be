@@ -62,6 +62,7 @@ message CreateUserProfileRequest {
 
 message GetUserProfileRequest {
   string user_id = 1;
+  optional string requester_id = 2;
 }
 
 // ──────────────────────────────────────────
@@ -91,6 +92,7 @@ message DeleteUserProfileRequest {
 
 message BatchGetUserProfilesRequest {
   repeated string user_ids = 1;  // Max 100 IDs
+  optional string requester_id = 2;
 }
 
 message BatchGetUserProfilesResponse {
@@ -104,6 +106,7 @@ message BatchGetUserProfilesResponse {
 message SearchUsersRequest {
   string query = 1;                         // Search query
   common.v1.PaginationRequest pagination = 2;
+  optional string requester_id = 3;
 }
 
 message SearchUsersResponse {

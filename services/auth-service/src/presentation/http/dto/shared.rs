@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 use axum::{
     async_trait,
@@ -17,7 +18,7 @@ use std::net::SocketAddr;
 /// Used by:
 /// - POST /auth/login (as LoginResponse)
 /// - POST /auth/refresh (as RefreshTokenResponse)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthResponse {
     /// JWT access token (short-lived, ~6 hours)
     pub access_token: String,
@@ -47,7 +48,7 @@ impl AuthResponse {
 ///
 /// Used by:
 /// - POST /auth/register (as RegisterResponse)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AuthResponseWithUser {
     /// JWT access token (short-lived, ~6 hours)
     pub access_token: String,
@@ -100,7 +101,7 @@ impl AuthResponseWithUser {
 ///
 /// This is returned from user_profile-service via gRPC and included
 /// in registration responses.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct UserProfile {
     /// User's unique identifier (UUID)
     pub user_id: Uuid,

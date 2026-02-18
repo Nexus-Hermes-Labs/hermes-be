@@ -1,6 +1,6 @@
 use crate::presentation::http::dto::{
-    ClientInfo, LoginRequest, LogoutRequest, RefreshTokenRequest, RegisterRequest,
-    VerifyEmailRequest,
+    AuthResponse, AuthResponseWithUser, ClientInfo, LoginRequest, LogoutRequest, LogoutResponse,
+    RefreshTokenRequest, RegisterRequest, VerifyEmailRequest, VerifyEmailResponse,
 };
 use crate::presentation::http::error::ApiError;
 use crate::application::services::authentication::error::AuthApplicationError;
@@ -19,22 +19,17 @@ use validator::Validate;
 /// POST /api/auth/register
 ///
 /// Register a new user_profile account.
-///
-/// # Request Body
-/// ```json
-/// {
-///   "email": "user_profile@example.com",
-///   "username": "johndoe",
-///   "display_name": "John Doe",
-///   "password": "SecurePass123!"
-/// }
-/// ```
-///
-/// # Response
-/// - `201 Created` - Registration successful (returns tokens + user_profile profile)
-/// - `400 Bad Request` - Validation error
-/// - `409 Conflict` - Email already exists
-/// - `500 Internal Server Error` - Server error
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/register",
+    request_body = RegisterRequest,
+    responses(
+        (status = 201, description = "Registration successful", body = AuthResponseWithUser),
+        (status = 400, description = "Validation error"),
+        (status = 409, description = "Email already exists")
+    ),
+    tag = "auth"
+)]
 pub async fn register_handler(
     State(state): State<AppState>,
     client_info: ClientInfo,
@@ -58,22 +53,18 @@ pub async fn register_handler(
 /// POST /api/auth/login
 ///
 /// Authenticate user_profile with email and password.
-///
-/// # Request Body
-/// ```json
-/// {
-///   "email": "user_profile@example.com",
-///   "password": "SecurePass123!",
-///   "device_name": "Chrome on Windows"  // optional
-/// }
-/// ```
-///
-/// # Response
-/// - `200 OK` - Login successful (returns tokens only)
-/// - `400 Bad Request` - Validation error
-/// - `401 Unauthorized` - Invalid credentials
-/// - `403 Forbidden` - Account locked/suspended
-/// - `500 Internal Server Error` - Server error
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login successful", body = AuthResponse),
+        (status = 400, description = "Validation error"),
+        (status = 401, description = "Invalid credentials"),
+        (status = 403, description = "Account locked/suspended")
+    ),
+    tag = "auth"
+)]
 pub async fn login_handler(
     State(state): State<AppState>,
     client_info: ClientInfo,
@@ -97,23 +88,17 @@ pub async fn login_handler(
 /// POST /api/auth/refresh
 ///
 /// Refresh access token using refresh token.
-///
-/// # Request Body
-/// ```json
-/// {
-///   "refresh_token": "eyJ..."
-/// }
-/// ```
-///
-/// # Response
-/// - `200 OK` - Token refreshed (returns new tokens)
-/// - `400 Bad Request` - Validation error
-/// - `401 Unauthorized` - Invalid/expired refresh token
-/// - `500 Internal Server Error` - Server error
-///
-/// # Token Rotation
-/// The old refresh token is invalidated and a new one is issued.
-/// Client MUST use the new refresh token for subsequent requests.
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/refresh",
+    request_body = RefreshTokenRequest,
+    responses(
+        (status = 200, description = "Token refreshed", body = AuthResponse),
+        (status = 400, description = "Validation error"),
+        (status = 401, description = "Invalid/expired refresh token")
+    ),
+    tag = "auth"
+)]
 pub async fn refresh_token_handler(
     State(state): State<AppState>,
     Json(request): Json<RefreshTokenRequest>,
@@ -136,23 +121,17 @@ pub async fn refresh_token_handler(
 /// POST /api/auth/logout
 ///
 /// Logout user_profile by revoking refresh token(s).
-///
-/// Public endpoint following OAuth 2.0 Token Revocation (RFC 7009).
-/// No access token required - validates refresh token instead.
-///
-/// # Request Body
-/// ```json
-/// {
-///   "refresh_token": "eyJ...",
-///   "all_devices": false  // true to logout from all devices
-/// }
-/// ```
-///
-/// # Response
-/// - `200 OK` - Token(s) revoked successfully
-/// - `400 Bad Request` - Validation error
-/// - `401 Unauthorized` - Invalid refresh token
-/// - `500 Internal Server Error` - Server error
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/logout",
+    request_body = LogoutRequest,
+    responses(
+        (status = 200, description = "Token(s) revoked successfully", body = LogoutResponse),
+        (status = 400, description = "Validation error"),
+        (status = 401, description = "Invalid refresh token")
+    ),
+    tag = "auth"
+)]
 pub async fn logout_handler(
     State(state): State<AppState>,
     Json(request): Json<LogoutRequest>,
@@ -187,15 +166,19 @@ pub async fn logout_handler(
 /// GET /api/auth/verify-email?token={token}
 ///
 /// Verify user's email address.
-///
-/// # Query Parameters
-/// - `token` (string, required): The verification token sent to the user's email.
-///
-/// # Response
-/// - `200 OK` - Email verified successfully
-/// - `400 Bad Request` - Validation error (e.g., missing token)
-/// - `401 Unauthorized` - Invalid or expired token
-/// - `500 Internal Server Error` - Server error
+#[utoipa::path(
+    get,
+    path = "/api/v1/auth/verify-email",
+    params(
+        VerifyEmailRequest
+    ),
+    responses(
+        (status = 200, description = "Email verified successfully", body = VerifyEmailResponse),
+        (status = 400, description = "Validation error"),
+        (status = 401, description = "Invalid or expired token")
+    ),
+    tag = "auth"
+)]
 pub async fn verify_email_handler(
     State(state): State<AppState>,
     axum::extract::Query(request): axum::extract::Query<VerifyEmailRequest>,

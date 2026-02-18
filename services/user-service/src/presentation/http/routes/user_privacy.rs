@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::presentation::http::handlers::UserPrivacyHandler;
+use crate::presentation::http::handlers::user_privacy;
 use axum::routing::{get, patch, post, put};
 use axum::Router;
 
@@ -8,26 +8,26 @@ pub fn user_privacy_routes() -> Router<AppState> {
     Router::new()
         .route(
             "/:user_id/privacy",
-            get(UserPrivacyHandler::get_privacy_settings),
+            get(user_privacy::get_privacy_settings),
         )
         .route(
             "/:user_id/privacy/dm",
-            put(UserPrivacyHandler::update_dm_privacy),
+            put(user_privacy::update_dm_privacy),
         )
         .route(
             "/:user_id/privacy/friend-requests",
-            put(UserPrivacyHandler::update_friend_request_privacy),
+            put(user_privacy::update_friend_request_privacy),
         )
         .route(
             "/:user_id/privacy/visibility",
-            patch(UserPrivacyHandler::update_visibility),
+            patch(user_privacy::update_visibility),
         )
         .route(
             "/:user_id/privacy/content",
-            patch(UserPrivacyHandler::update_content_settings),
+            patch(user_privacy::update_content_settings),
         )
         .route(
             "/:user_id/privacy/preset",
-            post(UserPrivacyHandler::apply_preset),
+            post(user_privacy::apply_preset),
         )
 }

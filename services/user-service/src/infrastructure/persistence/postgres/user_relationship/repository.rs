@@ -188,6 +188,28 @@ impl UserRelationshipRepository for PostgresUserRelationshipRepository {
         Ok(exists)
     }
 
+    async fn is_blocked_bidirectional(
+        &self,
+        user_a: Uuid,
+        user_b: Uuid,
+    ) -> Result<bool, Self::Error> {
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM user_relationships
+                WHERE ((user_id = $1 AND target_user_id = $2) OR (user_id = $2 AND target_user_id = $1))
+                  AND type = 'blocked'
+            )
+            "#,
+        )
+        .bind(user_a)
+        .bind(user_b)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(exists)
+    }
+
     async fn delete_by_user_and_target(
         &self,
         user_id: Uuid,
@@ -545,5 +567,57 @@ mod tests {
                 .unwrap(),
             1
         );
+    }
+
+    #[tokio::test]
+    async fn test_is_blocked_bidirectional() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresUserRelationshipRepository::new(db.pool().clone());
+
+        let user_a = create_profile(db.pool()).await;
+        let user_b = create_profile(db.pool()).await;
+
+        // No blocks yet
+        assert!(!repo.is_blocked_bidirectional(user_a, user_b).await.unwrap());
+
+        // A blocks B
+        let block = UserRelationship::create_block(user_a, user_b).unwrap();
+        repo.save(&block).await.unwrap();
+
+        assert!(repo.is_blocked_bidirectional(user_a, user_b).await.unwrap());
+        assert!(repo.is_blocked_bidirectional(user_b, user_a).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_block_deletes_reverse_relationship() {
+        let db = TestDb::new(Path::new("migrations")).await;
+        let repo = PostgresUserRelationshipRepository::new(db.pool().clone());
+
+        let user_a = create_profile(db.pool()).await;
+        let user_b = create_profile(db.pool()).await;
+
+        // A and B are friends
+        let request = UserRelationship::create_request(user_a, user_b, "Hi".to_string()).unwrap();
+        repo.save(&request).await.unwrap();
+        
+        let mut b_incoming = repo.find_by_user_and_target(user_b, user_a).await.unwrap().unwrap();
+        b_incoming.accept().unwrap();
+        repo.update(&b_incoming).await.unwrap();
+        
+        // Verify friendship
+        assert!(repo.find_by_user_and_target(user_a, user_b).await.unwrap().unwrap().is_friend());
+        assert!(repo.find_by_user_and_target(user_b, user_a).await.unwrap().unwrap().is_friend());
+
+        // A blocks B
+        let mut a_side = repo.find_by_user_and_target(user_a, user_b).await.unwrap().unwrap();
+        a_side.block().unwrap();
+        repo.update(&a_side).await.unwrap();
+
+        // A's side is blocked
+        assert!(repo.find_by_user_and_target(user_a, user_b).await.unwrap().unwrap().is_blocked());
+        
+        // B's side SHOULD BE DELETED
+        let b_side = repo.find_by_user_and_target(user_b, user_a).await.unwrap();
+        assert!(b_side.is_none());
     }
 }
