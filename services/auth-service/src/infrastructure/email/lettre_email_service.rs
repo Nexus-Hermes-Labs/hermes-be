@@ -1,13 +1,13 @@
 // services/auth-service/src/infrastructure/email/lettre_email_service.rs
-use std::fmt::Debug;
+use crate::application::services::authentication::error::AuthApplicationError as AppError;
+use crate::domain::auth_credential::EmailService;
 use async_trait::async_trait;
+use lettre::message::Mailbox;
 use lettre::{
     transport::smtp::authentication::Credentials, AsyncSmtpTransport, AsyncTransport, Message,
 };
-use lettre::message::Mailbox;
+use std::fmt::Debug;
 use std::sync::Arc;
-use crate::application::services::authentication::error::AuthApplicationError as AppError;
-use crate::domain::auth_credential::EmailService;
 
 #[derive(Debug, Clone)]
 pub struct LettreEmailService {
@@ -49,10 +49,12 @@ impl LettreEmailService {
                 mailer_builder = mailer_builder.credentials(creds);
             }
         }
-        
+
         let mailer = mailer_builder.port(smtp_port).build();
-        
-        let from_mailbox = from_address.parse::<Mailbox>().map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let from_mailbox = from_address
+            .parse::<Mailbox>()
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         Ok(Self {
             mailer: Arc::new(mailer),
@@ -64,11 +66,16 @@ impl LettreEmailService {
 #[async_trait]
 impl EmailService for LettreEmailService {
     async fn send_verification_email(&self, to: &str, token: &str) -> Result<(), AppError> {
-        let to_mailbox = to.parse::<Mailbox>().map_err(|e| AppError::Internal(e.to_string()))?;
+        let to_mailbox = to
+            .parse::<Mailbox>()
+            .map_err(|e| AppError::Internal(e.to_string()))?;
 
         // TODO: Use a proper templating engine for this
         // TODO: The base URL should come from config
-        let verification_link = format!("http://localhost:8080/v1/auth/verify-email?token={}", token);
+        let verification_link = format!(
+            "http://localhost:8081/api/v1/auth/verify-email?token={}",
+            token
+        );
         let subject = "Welcome to Hermes! Please verify your email";
         let body = format!(
             "<h1>Welcome to Hermes!</h1><p>Please click the link below to verify your email address:</p><p><a href='{}'>Verify Email</a></p>",
@@ -87,7 +94,7 @@ impl EmailService for LettreEmailService {
             .send(email)
             .await
             .map_err(|e| AppError::Internal(format!("Failed to send email: {}", e)))?;
-        
+
         tracing::info!("Sent verification email to {}", to);
 
         Ok(())
