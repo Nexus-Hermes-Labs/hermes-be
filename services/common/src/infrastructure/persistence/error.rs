@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-// TODO: REMOVE. will be service specific
 #[derive(Debug, Error)]
 pub enum RepositoryError {
     #[error("Database error: {0}")]

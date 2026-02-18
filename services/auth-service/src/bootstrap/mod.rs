@@ -79,8 +79,8 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // ========================================
     // 6. RUN BACKGROUND TASKS
     // ========================================
-    let use_case = crate::application::services::authentication::ClearExpiredVerificationTokens::new(credential_repo.clone());
-    let task = crate::application::background::email_verification_cleanup::EmailVerificationCleanupTask::new(Arc::new(use_case));
+    let use_case = crate::application::services::authentication::clear_token_service::ClearExpiredVerificationTokens::new(credential_repo.clone());
+    let task = crate::application::background::email_verification_cleanup_task::EmailVerificationCleanupTask::new(Arc::new(use_case));
     tokio::spawn(common::infrastructure::background::run_periodic_task(task, shutdown_rx.clone()));
     info!("✅ Email verification cleanup task spawned");
 

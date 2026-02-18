@@ -7,6 +7,7 @@ use user_service::infrastructure::persistence::postgres::{
 use user_service::state::user_state::UserState;
 use user_service::state::shared_state::SharedState;
 use user_service::state::AppState;
+use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
 use axum::Router;
 use sqlx::PgPool;
@@ -54,6 +55,7 @@ fn get_or_init_metrics() -> Metrics {
 /// Containers are dropped (and stopped) when `TestHarness` is dropped.
 pub struct TestHarness {
     pub router: Router,
+    pub jwt_manager: Arc<JwtManager>,
     // Keep containers alive for the test duration
     _pg_container: ContainerAsync<Postgres>,
     _redis_container: ContainerAsync<GenericImage>,
@@ -143,10 +145,20 @@ impl TestHarness {
 
         let metrics = get_or_init_metrics();
 
+        let jwt_manager = Arc::new(
+            JwtManager::new(
+                "test-user-service",
+                "test_access_secret_minimum_32_chars_long",
+                "test_refresh_secret_minimum_32_chars_long",
+            )
+            .expect("Failed to create test JWT manager"),
+        );
+
         let shared_state = SharedState {
             db: pool.clone(),
             redis: redis_conn.clone(),
             metrics,
+            jwt_manager: jwt_manager.clone(),
         };
 
         let app_state = AppState {
@@ -165,6 +177,7 @@ impl TestHarness {
 
         Self {
             router,
+            jwt_manager,
             _pg_container: pg_container,
             _redis_container: redis_container,
         }

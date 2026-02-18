@@ -14,7 +14,9 @@ use crate::state::user_state::UserState;
 use crate::state::shared_state::SharedState;
 use crate::state::AppState;
 use crate::bootstrap::error::BootstrapError;
+use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
+use common_config::config;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::info;
@@ -77,6 +79,15 @@ impl AppBuilder {
         // ========================================
         let health_check = Arc::new(HealthCheck::new(db_pool.clone(), redis.clone()));
 
+        let jwt_manager = Arc::new(
+            JwtManager::new(
+                _service_name,
+                &config().secrets.jwt.access_secret,
+                &config().secrets.jwt.refresh_secret,
+            )
+            .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create JWT manager: {e}")))?,
+        );
+
         info!("✅ Infrastructure layer ready");
 
         // ========================================
@@ -113,6 +124,7 @@ impl AppBuilder {
             db: db_pool,
             redis,
             metrics,
+            jwt_manager,
         };
 
         let app_state = AppState {

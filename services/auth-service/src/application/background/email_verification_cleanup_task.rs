@@ -3,22 +3,16 @@ use std::time::Duration;
 use async_trait::async_trait;
 use common::infrastructure::background::BackgroundTask;
 use tracing::info;
-
-use crate::application::services::authentication::error::AuthApplicationError;
-
-#[async_trait]
-pub trait ClearExpiredVerificationTokensTrait: Send + Sync {
-    async fn execute(&self) -> Result<u64, AuthApplicationError>;
-}
+use crate::application::services::authentication::clear_token_service::ClearExpiredTokens;
 
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
 pub struct EmailVerificationCleanupTask {
-    use_case: Arc<dyn ClearExpiredVerificationTokensTrait>,
+    use_case: Arc<dyn ClearExpiredTokens>,
 }
 
 impl EmailVerificationCleanupTask {
-    pub fn new(use_case: Arc<dyn ClearExpiredVerificationTokensTrait>) -> Self {
+    pub fn new(use_case: Arc<dyn ClearExpiredTokens>) -> Self {
         Self { use_case }
     }
 }

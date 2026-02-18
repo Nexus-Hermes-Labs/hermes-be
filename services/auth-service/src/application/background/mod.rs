@@ -1,2 +1,1 @@
-pub mod email_verification_cleanup;
-
+pub mod email_verification_cleanup_task;

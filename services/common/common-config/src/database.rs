@@ -39,7 +39,6 @@ impl Default for DatabaseConfig {
 impl DatabaseConfig {
     /// Create from environment variables
     pub fn from_env() -> Result<Self, std::env::VarError> {
-        // TODO: her servise .env ekle gereksiz toml parse ile ugrasma!
         Ok(Self {
             host: std::env::var("DATABASE_HOST").unwrap_or_else(|_| "localhost".to_string()),
             port: std::env::var("DATABASE_PORT")

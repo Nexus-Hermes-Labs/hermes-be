@@ -1,9 +1,10 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::helpers::make_json_request;
+use common::helpers::{make_authenticated_request, make_json_request};
 use common::setup::TestHarness;
 use serde_json::json;
+use uuid::Uuid;
 
 // ============================================
 // HELPER: create a profile and return (status, body)
@@ -25,8 +26,24 @@ async fn create_profile(
     .await
 }
 
+async fn create_profile_with_token(
+    harness: &TestHarness,
+    username: &str,
+    display_name: &str,
+) -> (String, String) {
+    let (status, body) = create_profile(harness, username, display_name).await;
+    assert_eq!(status, StatusCode::CREATED, "create {username} failed: {body}");
+    let user_id = body["user_id"].as_str().expect("user_id").to_string();
+    let uid: Uuid = user_id.parse().expect("parse user_id uuid");
+    let token = harness
+        .jwt_manager
+        .create_access_token(uid, &format!("{username}@test.com"), 1)
+        .expect("create token");
+    (user_id, token)
+}
+
 // ============================================
-// PROFILE MANAGEMENT TESTS
+// SYSTEM-LEVEL PROFILE MANAGEMENT TESTS
 // ============================================
 
 #[tokio::test]
@@ -167,7 +184,7 @@ async fn test_update_profile_not_found() {
 }
 
 // ============================================
-// CHANGE USERNAME TESTS
+// SYSTEM-LEVEL CHANGE USERNAME TESTS
 // ============================================
 
 #[tokio::test]
@@ -209,7 +226,7 @@ async fn test_change_username_already_taken() {
 }
 
 // ============================================
-// DELETE PROFILE TESTS
+// SYSTEM-LEVEL DELETE PROFILE TESTS
 // ============================================
 
 #[tokio::test]
@@ -259,7 +276,7 @@ async fn test_delete_then_get() {
 }
 
 // ============================================
-// STATUS & PRESENCE TESTS
+// SYSTEM-LEVEL STATUS & PRESENCE TESTS
 // ============================================
 
 #[tokio::test]
@@ -335,7 +352,7 @@ async fn test_clear_custom_status() {
 }
 
 // ============================================
-// SEARCH & DISCOVERY TESTS
+// SYSTEM-LEVEL SEARCH & DISCOVERY TESTS
 // ============================================
 
 #[tokio::test]
@@ -395,7 +412,7 @@ async fn test_search_users() {
 }
 
 // ============================================
-// RELATIONSHIP TESTS
+// SYSTEM-LEVEL RELATIONSHIP TESTS
 // ============================================
 
 #[tokio::test]
@@ -713,7 +730,7 @@ async fn test_friend_request_privacy_none() {
 }
 
 // ============================================
-// PRIVACY TESTS
+// SYSTEM-LEVEL PRIVACY TESTS
 // ============================================
 
 #[tokio::test]
@@ -805,7 +822,7 @@ async fn test_apply_privacy_preset() {
 }
 
 // ============================================
-// COMPLEX INTERACTION TESTS
+// SYSTEM-LEVEL COMPLEX INTERACTION TESTS
 // ============================================
 
 #[tokio::test]
@@ -890,6 +907,863 @@ async fn test_complex_privacy_and_relationship_flow() {
     )
     .await;
     // Since blocks are one-way, Charlie has no relationship record for Alice
-    // TODO: bu kismi bi dusunelim. blocklamalar tek tarafli mi yoksa cift tarafli mi olmali?
+    // TODO: we have think about that. should block should one way or both of them should see same in db?
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+// ============================================
+// @ME AUTHENTICATION TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_me_unauthenticated_returns_401() {
+    let harness = TestHarness::new().await;
+
+    // No token -> 401
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_me_invalid_token_returns_401() {
+    let harness = TestHarness::new().await;
+
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+        "invalid.jwt.token",
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_me_expired_token_returns_401() {
+    let harness = TestHarness::new().await;
+
+    let (_, body) = create_profile(&harness, "expuser", "Expired User").await;
+    let user_id: Uuid = body["user_id"].as_str().unwrap().parse().unwrap();
+
+    // Create token with 0 hours (already expired since nbf = now and exp = now)
+    // We need a negative duration to truly expire, but JwtManager uses hours.
+    // Instead create a refresh token and try to use it as access -> should fail
+    let refresh_token = harness
+        .jwt_manager
+        .create_refresh_token(user_id, "expuser@test.com", 1)
+        .expect("create refresh token");
+
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+        &refresh_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+// ============================================
+// @ME PROFILE TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_me_get_profile() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "meprofile", "Me Profile").await;
+
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+        &token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["username"], "meprofile");
+    assert_eq!(body["display_name"], "Me Profile");
+}
+
+#[tokio::test]
+async fn test_me_update_profile() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "meupdater", "Me Updater").await;
+
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PATCH,
+        "/api/v1/users/@me",
+        Some(json!({
+            "display_name": "Updated Me",
+            "bio": "I updated myself"
+        })),
+        &token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["display_name"], "Updated Me");
+    assert_eq!(body["bio"], "I updated myself");
+}
+
+#[tokio::test]
+async fn test_me_change_username() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "meoldname", "Me Old Name").await;
+
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/username",
+        Some(json!({ "new_username": "menewname" })),
+        &token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["username"], "menewname");
+}
+
+#[tokio::test]
+async fn test_me_delete_then_get_returns_404() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "medeleteme", "Me Delete Me").await;
+
+    // Delete via @me
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::DELETE,
+        "/api/v1/users/@me",
+        None,
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // Subsequent GET should 404
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+// ============================================
+// @ME STATUS & CUSTOM STATUS TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_me_status_lifecycle() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "mestatuser", "Me Stat User").await;
+
+    // Cycle through all statuses
+    for status_val in &["online", "idle", "dnd", "offline"] {
+        let (status, body) = make_authenticated_request(
+            harness.router.clone(),
+            Method::PUT,
+            "/api/v1/users/@me/status",
+            Some(json!({ "status": status_val })),
+            &token,
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::OK, "setting {status_val} failed: {body}");
+        assert_eq!(body["status"], *status_val);
+    }
+
+    // Verify final status is persisted
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "offline");
+}
+
+#[tokio::test]
+async fn test_me_custom_status_set_and_clear() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "mecuststat", "Me Cust Stat").await;
+
+    // Set custom status
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/custom-status",
+        Some(json!({
+            "text": "In a meeting",
+            "emoji": "calendar"
+        })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["custom_status"]["text"], "In a meeting");
+    assert_eq!(body["custom_status"]["emoji"], "calendar");
+
+    // Clear custom status
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::DELETE,
+        "/api/v1/users/@me/custom-status",
+        None,
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // Verify it's cleared
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me",
+        None,
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body["custom_status"].is_null());
+}
+
+// ============================================
+// @ME PRIVACY TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_me_privacy_full_lifecycle() {
+    let harness = TestHarness::new().await;
+    let (_user_id, token) = create_profile_with_token(&harness, "meprivuser", "Me Priv User").await;
+
+    // 1. Get defaults
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/privacy",
+        None,
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["allow_dms_from"], "friends");
+    assert_eq!(body["allow_friend_requests_from"], "everyone");
+
+    // 2. Update DM privacy
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/privacy/dm",
+        Some(json!({ "allow_dms_from": "none" })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["allow_dms_from"], "none");
+
+    // 3. Update friend request privacy
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/privacy/friend-requests",
+        Some(json!({ "allow_friend_requests_from": "none" })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["allow_friend_requests_from"], "none");
+
+    // 4. Update visibility
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PATCH,
+        "/api/v1/users/@me/privacy/visibility",
+        Some(json!({
+            "show_online_status": false,
+            "show_current_activity": false,
+            "show_profile_to_non_friends": false
+        })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["show_online_status"], false);
+    assert_eq!(body["show_current_activity"], false);
+    assert_eq!(body["show_profile_to_non_friends"], false);
+
+    // 5. Update content settings
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PATCH,
+        "/api/v1/users/@me/privacy/content",
+        Some(json!({
+            "allow_nsfw_content": true,
+            "content_filter_level": 2
+        })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["allow_nsfw_content"], true);
+    assert_eq!(body["content_filter_level"], 2);
+
+    // 6. Apply public preset to reset everything
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/privacy/preset",
+        Some(json!({ "preset": "public" })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["allow_dms_from"], "everyone");
+    assert_eq!(body["allow_friend_requests_from"], "everyone");
+    assert_eq!(body["show_online_status"], true);
+}
+
+// ============================================
+// @ME RELATIONSHIP TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_me_friend_request_accept_and_remove() {
+    let harness = TestHarness::new().await;
+
+    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_alice", "Me Alice").await;
+    let (_bob_id, bob_token) = create_profile_with_token(&harness, "me_bob", "Me Bob").await;
+    let bob_id_str = _bob_id.as_str();
+
+    // 1. Alice sends friend request to Bob via @me
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": bob_id_str, "message": "Hey Bob!" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "send request failed: {body}");
+
+    // 2. Alice sees outgoing request
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/outgoing?limit=10&offset=0",
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let outgoing = body.as_array().expect("outgoing array");
+    assert_eq!(outgoing.len(), 1);
+    assert_eq!(outgoing[0]["target_user_id"], bob_id_str);
+
+    // 3. Bob sees incoming request
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/incoming?limit=10&offset=0",
+        None,
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let incoming = body.as_array().expect("incoming array");
+    assert_eq!(incoming.len(), 1);
+
+    // 4. Bob accepts via @me
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/relationships/request/accept",
+        Some(json!({ "target_user_id": alice_id })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 5. Both see each other in friends list
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/friends?limit=10&offset=0",
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let friends = body.as_array().expect("friends array");
+    assert_eq!(friends.len(), 1);
+    assert_eq!(friends[0]["type"], "friend");
+
+    // 6. Alice checks relationship with Bob
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/@me/relationships/{bob_id_str}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["type"], "friend");
+
+    // 7. Alice removes Bob as friend via @me
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::DELETE,
+        &format!("/api/v1/users/@me/relationships/friend/{bob_id_str}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // 8. Verify removal
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/@me/relationships/{bob_id_str}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_me_friend_request_decline() {
+    let harness = TestHarness::new().await;
+
+    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_decl_a", "Me Decl A").await;
+    let (_bob_id, bob_token) = create_profile_with_token(&harness, "me_decl_b", "Me Decl B").await;
+    let bob_id_str = _bob_id.as_str();
+
+    // Alice sends request
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": bob_id_str, "message": "hi" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Bob declines
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/relationships/request/decline",
+        Some(json!({ "target_user_id": alice_id })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // Verify no relationship exists
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/@me/relationships/{bob_id_str}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn test_me_block_and_unblock() {
+    let harness = TestHarness::new().await;
+
+    let (_alice_id, alice_token) = create_profile_with_token(&harness, "me_blk_a", "Me Blk A").await;
+    let (bob_id, _bob_token) = create_profile_with_token(&harness, "me_blk_b", "Me Blk B").await;
+    let bob_id_str = bob_id.as_str();
+
+    // 1. Alice blocks Bob via @me
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/block",
+        Some(json!({ "target_user_id": bob_id_str })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["type"], "blocked");
+
+    // 2. Alice sees Bob in blocked list
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/blocked?limit=10&offset=0",
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let blocked = body.as_array().expect("blocked array");
+    assert_eq!(blocked.len(), 1);
+    assert_eq!(blocked[0]["target_user_id"], bob_id_str);
+
+    // 3. Alice unblocks Bob
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::DELETE,
+        &format!("/api/v1/users/@me/relationships/block/{bob_id_str}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    // 4. Blocked list is empty
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/blocked?limit=10&offset=0",
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let blocked = body.as_array().expect("blocked array");
+    assert!(blocked.is_empty());
+}
+
+// ============================================
+// @ME COMPLEX INTERACTION TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_me_privacy_blocks_friend_request_then_preset_reopens() {
+    let harness = TestHarness::new().await;
+
+    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_prv_a", "Me Prv A").await;
+    let (_bob_id, bob_token) = create_profile_with_token(&harness, "me_prv_b", "Me Prv B").await;
+    let bob_id_str = _bob_id.as_str();
+
+    // 1. Alice sets friend request privacy to "none"
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/privacy/friend-requests",
+        Some(json!({ "allow_friend_requests_from": "none" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 2. Bob cannot send friend request to Alice (uses admin route to simulate)
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": alice_id, "message": "hi" })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // 3. Alice applies "public" preset
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/privacy/preset",
+        Some(json!({ "preset": "public" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["allow_friend_requests_from"], "everyone");
+
+    // 4. Now Bob can send friend request
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": alice_id, "message": "hi again" })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 5. Alice accepts
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/relationships/request/accept",
+        Some(json!({ "target_user_id": bob_id_str })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 6. Both are friends
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/@me/relationships/{bob_id_str}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["type"], "friend");
+}
+
+#[tokio::test]
+async fn test_me_block_prevents_friend_request() {
+    let harness = TestHarness::new().await;
+
+    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_blkfr_a", "Me BlkFr A").await;
+    let (_bob_id, bob_token) = create_profile_with_token(&harness, "me_blkfr_b", "Me BlkFr B").await;
+    let bob_id_str = _bob_id.as_str();
+
+    // 1. Alice blocks Bob
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/block",
+        Some(json!({ "target_user_id": bob_id_str })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 2. Alice cannot send friend request to Bob (she blocked him)
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": bob_id_str, "message": "oops" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // 3. Bob cannot send friend request to Alice (she blocked him)
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": alice_id, "message": "hey" })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn test_me_full_profile_update_then_verify_via_public_route() {
+    let harness = TestHarness::new().await;
+
+    let (user_id, token) = create_profile_with_token(&harness, "me_cross_a", "Me Cross A").await;
+
+    // 1. Update profile via @me
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PATCH,
+        "/api/v1/users/@me",
+        Some(json!({
+            "display_name": "Cross-Verified",
+            "bio": "Updated via @me"
+        })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 2. Set status via @me
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/status",
+        Some(json!({ "status": "dnd" })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 3. Set custom status via @me
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/custom-status",
+        Some(json!({ "text": "Busy coding", "emoji": "computer" })),
+        &token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 4. Verify all changes via the public :user_id route (no auth needed)
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        &format!("/api/v1/users/{user_id}"),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert_eq!(body["display_name"], "Cross-Verified");
+    assert_eq!(body["bio"], "Updated via @me");
+    assert_eq!(body["status"], "dnd");
+    assert_eq!(body["custom_status"]["text"], "Busy coding");
+    assert_eq!(body["custom_status"]["emoji"], "computer");
+}
+
+#[tokio::test]
+async fn test_me_three_user_social_graph() {
+    let harness = TestHarness::new().await;
+
+    // Create 3 users
+    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_soc_a", "Me Soc A").await;
+    let (bob_id, bob_token) = create_profile_with_token(&harness, "me_soc_b", "Me Soc B").await;
+    let (charlie_id, charlie_token) = create_profile_with_token(&harness, "me_soc_c", "Me Soc C").await;
+
+    // Alice -> Bob: friend request, accepted
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": &bob_id, "message": "" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/relationships/request/accept",
+        Some(json!({ "target_user_id": &alice_id })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Alice -> Charlie: friend request, accepted
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": &charlie_id, "message": "" })),
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        "/api/v1/users/@me/relationships/request/accept",
+        Some(json!({ "target_user_id": &alice_id })),
+        &charlie_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Alice has 2 friends
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/friends?limit=10&offset=0",
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let friends = body.as_array().expect("friends");
+    assert_eq!(friends.len(), 2);
+
+    // Bob blocks Charlie
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/block",
+        Some(json!({ "target_user_id": &charlie_id })),
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Bob still has Alice as friend (1 friend), and Charlie in blocked (1 blocked)
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/friends?limit=10&offset=0",
+        None,
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let bob_friends = body.as_array().expect("bob friends");
+    assert_eq!(bob_friends.len(), 1);
+
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/blocked?limit=10&offset=0",
+        None,
+        &bob_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let bob_blocked = body.as_array().expect("bob blocked");
+    assert_eq!(bob_blocked.len(), 1);
+    assert_eq!(bob_blocked[0]["target_user_id"], charlie_id);
+
+    // Charlie cannot send friend request to Bob (blocked)
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/users/@me/relationships/request",
+        Some(json!({ "target_user_id": &bob_id, "message": "" })),
+        &charlie_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+
+    // Alice removes Bob, then her friend count drops to 1
+    let (status, _) = make_authenticated_request(
+        harness.router.clone(),
+        Method::DELETE,
+        &format!("/api/v1/users/@me/relationships/friend/{bob_id}"),
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+
+    let (status, body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/users/@me/relationships/friends?limit=10&offset=0",
+        None,
+        &alice_token,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let alice_friends = body.as_array().expect("alice friends after remove");
+    assert_eq!(alice_friends.len(), 1);
+    assert_eq!(alice_friends[0]["target_user_id"], charlie_id);
 }

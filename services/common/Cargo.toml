@@ -62,6 +62,7 @@ metrics-exporter-prometheus = { workspace = true }
 # ASYNC
 # ============================================================================
 async-trait = { workspace = true }
+futures = {workspace = true}
 
 # ============================================================================
 # DATABASE (for models and utilities)
