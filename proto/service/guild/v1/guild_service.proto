@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package guild.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "common/v1/types.proto";
+
+// ============================================
+// GUILD SERVICE
+// ============================================
+
+/// Guild management service (guilds, members, roles, invites, permissions)
+service GuildService {
+  // ============================================
+  // GUILD MANAGEMENT
+  // ============================================
+
+  /// Create a new guild
+  rpc CreateGuild(CreateGuildRequest) returns (GuildResponse);
+
+  /// Get guild by ID
+  rpc GetGuild(GetGuildRequest) returns (GuildResponse);
+
+  /// Update guild settings
+  rpc UpdateGuild(UpdateGuildRequest) returns (GuildResponse);
+
+  /// Delete guild (owner only)
+  rpc DeleteGuild(DeleteGuildRequest) returns (google.protobuf.Empty);
+
+  // ============================================
+  // MEMBER MANAGEMENT
+  // ============================================
+
+  /// Get members of a guild
+  rpc GetGuildMembers(GetGuildMembersRequest) returns (GetGuildMembersResponse);
+
+  /// Get member info
+  rpc GetGuildMember(GetGuildMemberRequest) returns (GuildMemberResponse);
+
+  /// Check if user is member
+  rpc IsGuildMember(IsGuildMemberRequest) returns (IsGuildMemberResponse);
+
+  /// Remove member from guild (kick)
+  rpc RemoveGuildMember(RemoveGuildMemberRequest) returns (google.protobuf.Empty);
+
+  // ============================================
+  // INVITE MANAGEMENT
+  // ============================================
+
+  /// Create an invite code
+  rpc CreateInvite(CreateInviteRequest) returns (InviteResponse);
+
+  /// Get invite by code
+  rpc GetInvite(GetInviteRequest) returns (InviteResponse);
+
+  /// Use invite code to join guild
+  rpc UseInvite(UseInviteRequest) returns (GuildMemberResponse);
+
+  /// Revoke invite
+  rpc RevokeInvite(RevokeInviteRequest) returns (google.protobuf.Empty);
+}
+
+// ============================================
+// GUILD MESSAGES
+// ============================================
+
+message CreateGuildRequest {
+  string owner_id = 1;
+  string name = 2;
+  optional string description = 3;
+  optional string icon_url = 4;
+}
+
+message GetGuildRequest {
+  string guild_id = 1;
+  optional string requester_id = 2;
+}
+
+message UpdateGuildRequest {
+  string guild_id = 1;
+  string requester_id = 2;
+  optional string name = 3;
+  optional string description = 4;
+  optional string icon_url = 5;
+  optional string banner_url = 6;
+}
+
+message DeleteGuildRequest {
+  string guild_id = 1;
+  string requester_id = 2;
+}
+
+// ============================================
+// MEMBER MESSAGES
+// ============================================
+
+message GetGuildMembersRequest {
+  string guild_id = 1;
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message GetGuildMembersResponse {
+  repeated GuildMemberResponse members = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message GetGuildMemberRequest {
+  string guild_id = 1;
+  string user_id = 2;
+}
+
+message IsGuildMemberRequest {
+  string guild_id = 1;
+  string user_id = 2;
+}
+
+message IsGuildMemberResponse {
+  bool is_member = 1;
+}
+
+message RemoveGuildMemberRequest {
+  string guild_id = 1;
+  string user_id = 2;
+  string requester_id = 3;
+  optional string reason = 4;
+}
+
+// ============================================
+// INVITE MESSAGES
+// ============================================
+
+message CreateInviteRequest {
+  string guild_id = 1;
+  string creator_id = 2;
+  optional int32 max_uses = 3;
+  optional int32 max_age_seconds = 4;   // 0 = never expires
+}
+
+message GetInviteRequest {
+  string code = 1;
+}
+
+message UseInviteRequest {
+  string code = 1;
+  string user_id = 2;
+}
+
+message RevokeInviteRequest {
+  string code = 1;
+  string requester_id = 2;
+}
+
+// ============================================
+// RESPONSE TYPES
+// ============================================
+
+message GuildResponse {
+  string guild_id = 1;
+  string owner_id = 2;
+  string name = 3;
+  optional string description = 4;
+  optional string icon_url = 5;
+  optional string banner_url = 6;
+  int32 member_count = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message GuildMemberResponse {
+  string guild_id = 1;
+  string user_id = 2;
+  string nickname = 3;
+  repeated string role_ids = 4;
+  google.protobuf.Timestamp joined_at = 5;
+}
+
+message InviteResponse {
+  string code = 1;
+  string guild_id = 2;
+  string creator_id = 3;
+  optional int32 max_uses = 4;
+  int32 uses = 5;
+  optional google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
