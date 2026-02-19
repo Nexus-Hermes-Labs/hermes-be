@@ -34,6 +34,7 @@ const MEMBER_SELECT: &str = r#"
 "#;
 
 /// PostgreSQL implementation of GuildMemberRepository
+#[derive(Debug)]
 pub struct PostgresGuildMemberRepository {
     pool: PgPool,
 }

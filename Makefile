@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-reset dev test build format lint check install
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-seed-user db-seed-guild db-reset dev test build format lint check install
 
 # Colors for output
 BLUE := \033[0;34m
@@ -14,6 +14,7 @@ USER_MIGRATION_PATH := services/user-service/migrations
 GUILD_MIGRATION_PATH := services/guild-service/migrations
 AUTH_SEED_PATH := services/auth-service/seeds/dev
 USER_SEED_PATH := services/user-service/seeds/dev
+GUILD_SEED_PATH := services/guild-service/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
 
 ##@ Help
@@ -151,7 +152,7 @@ db-migrate-guild: ## Run guild-service migrations
 	@sqlx migrate run --source $(GUILD_MIGRATION_PATH) --ignore-missing
 	@echo -e "$(GREEN)✅ Guild migrations completed$(NC)"
 
-db-seed: db-seed-auth db-seed-user ## Run all database seeds
+db-seed: db-seed-auth db-seed-user db-seed-guild ## Run all database seeds
 	@echo -e "$(GREEN)✅ All seeds completed$(NC)"
 
 db-seed-auth: ## Run auth-service seeds
@@ -171,6 +172,15 @@ db-seed-user: ## Run user-service seeds
 		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
 	done
 	@echo -e "$(GREEN)✅ User database seeded$(NC)"
+
+db-seed-guild: ## Run guild-service seeds
+	@echo -e "$(BLUE)🌱 Seeding guild database...$(NC)"
+	@set -e; \
+	for file in $$(ls $(GUILD_SEED_PATH)/*.sql | sort); do \
+		echo "Running $$file"; \
+		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
+	done
+	@echo -e "$(GREEN)✅ Guild database seeded$(NC)"
 
 db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database
 	@echo -e "$(GREEN)✅ Database reset completed$(NC)"
