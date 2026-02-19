@@ -232,15 +232,20 @@ impl GuildMemberService {
             ));
         }
 
+        // Domain validation: member must exist, role must not already be assigned
         let mut member = self.get_member(guild_id, user_id).await?;
-        member.assign_role(role_id).map_err(GuildMemberServiceError::MemberDomainError)?;
+        member
+            .assign_role(role_id)
+            .map_err(GuildMemberServiceError::MemberDomainError)?;
 
+        // Targeted single-row insert into the junction table
         self.member_repo
-            .update(&member)
+            .assign_role_to_member(guild_id, user_id, role_id)
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
-        Ok(member)
+        // Reload to return the fresh state from DB
+        self.get_member(guild_id, user_id).await
     }
 
     /// Remove a role from a member
@@ -265,14 +270,19 @@ impl GuildMemberService {
             ));
         }
 
+        // Domain validation: member must exist, role must currently be held
         let mut member = self.get_member(guild_id, user_id).await?;
-        member.remove_role(role_id).map_err(GuildMemberServiceError::MemberDomainError)?;
+        member
+            .remove_role(role_id)
+            .map_err(GuildMemberServiceError::MemberDomainError)?;
 
+        // Targeted single-row delete from the junction table
         self.member_repo
-            .update(&member)
+            .remove_role_from_member(guild_id, user_id, role_id)
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
-        Ok(member)
+        // Reload to return the fresh state from DB
+        self.get_member(guild_id, user_id).await
     }
 }

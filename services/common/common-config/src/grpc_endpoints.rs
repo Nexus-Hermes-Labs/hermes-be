@@ -6,8 +6,10 @@ use serde::Deserialize;
 /// Environment variables:
 /// - `APP_GRPC_ENDPOINTS__AUTH_SERVICE` (e.g., "http://localhost:50051")
 /// - `APP_GRPC_ENDPOINTS__USER_SERVICE` (e.g., "http://localhost:50052")
+/// - `APP_GRPC_ENDPOINTS__GUILD_SERVICE` (e.g., "http://localhost:50056")
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct GrpcEndpointsConfig {
     pub auth_service: Option<String>,
     pub user_service: Option<String>,
+    pub guild_service: Option<String>,
 }

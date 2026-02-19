@@ -4,13 +4,16 @@ use uuid::Uuid;
 
 use crate::domain::guild_member::{GuildMember, GuildMemberError, MemberNickname};
 
-/// Database model for guild_members table
+/// Database read model for guild_members joined with guild_member_roles.
+///
+/// `role_ids` is populated by aggregating the `guild_member_roles` junction table;
+/// it is NOT a stored column on `guild_members`.
 #[derive(Debug, Clone, FromRow)]
 pub struct GuildMemberRow {
     pub guild_id: Uuid,
     pub user_id: Uuid,
     pub nickname: Option<String>,
-    /// Stored as a comma-separated UUID list or JSON array in Postgres
+    /// Aggregated from guild_member_roles via LEFT JOIN + ARRAY_AGG
     pub role_ids: Vec<Uuid>,
     pub joined_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -23,7 +26,7 @@ impl TryFrom<GuildMemberRow> for GuildMember {
     fn try_from(row: GuildMemberRow) -> Result<Self, Self::Error> {
         let nickname = row
             .nickname
-            .map(|n| MemberNickname::new(n))
+            .map(MemberNickname::new)
             .transpose()?;
 
         Ok(GuildMember::from_persisted(
@@ -35,19 +38,5 @@ impl TryFrom<GuildMemberRow> for GuildMember {
             row.updated_at,
             row.left_at,
         ))
-    }
-}
-
-impl From<&GuildMember> for GuildMemberRow {
-    fn from(member: &GuildMember) -> Self {
-        Self {
-            guild_id: member.guild_id(),
-            user_id: member.user_id(),
-            nickname: member.nickname().map(|n| n.as_str().to_string()),
-            role_ids: member.role_ids().to_vec(),
-            joined_at: member.joined_at(),
-            updated_at: member.updated_at(),
-            left_at: if member.is_active() { None } else { Some(member.updated_at()) },
-        }
     }
 }

@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-seed db-seed-auth db-reset dev test build format lint check install
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-reset dev test build format lint check install
 
 # Colors for output
 BLUE := \033[0;34m
@@ -11,6 +11,7 @@ NC := \033[0m # No Color
 COMPOSE := docker-compose
 AUTH_MIGRATION_PATH := services/auth-service/migrations
 USER_MIGRATION_PATH := services/user-service/migrations
+GUILD_MIGRATION_PATH := services/guild-service/migrations
 AUTH_SEED_PATH := services/auth-service/seeds/dev
 USER_SEED_PATH := services/user-service/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
@@ -132,7 +133,7 @@ proto-clean-user:
 
 ##@ Database
 
-db-migrate: db-migrate-auth db-migrate-user ## Run all database migrations
+db-migrate: db-migrate-auth db-migrate-user db-migrate-guild ## Run all database migrations
 	@echo -e "$(GREEN)✅ All migrations completed$(NC)"
 
 db-migrate-auth: ## Run auth-service migrations
@@ -144,6 +145,11 @@ db-migrate-user: ## Run user-service migrations
 	@echo -e "$(BLUE)📦 Running user-service migrations...$(NC)"
 	@sqlx migrate run --source $(USER_MIGRATION_PATH) --ignore-missing
 	@echo -e "$(GREEN)✅ User migrations completed$(NC)"
+
+db-migrate-guild: ## Run guild-service migrations
+	@echo -e "$(BLUE)📦 Running guild-service migrations...$(NC)"
+	@sqlx migrate run --source $(GUILD_MIGRATION_PATH) --ignore-missing
+	@echo -e "$(GREEN)✅ Guild migrations completed$(NC)"
 
 db-seed: db-seed-auth db-seed-user ## Run all database seeds
 	@echo -e "$(GREEN)✅ All seeds completed$(NC)"

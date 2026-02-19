@@ -57,8 +57,24 @@ pub trait GuildMemberRepository: Send + Sync {
     ) -> Result<Vec<Uuid>, RepositoryError>;
 
     // ============================================
-    // ROLE QUERIES
+    // ROLE MANAGEMENT (junction table ops)
     // ============================================
+
+    /// Assign a role to a member (INSERT into guild_member_roles)
+    async fn assign_role_to_member(
+        &self,
+        guild_id: Uuid,
+        user_id: Uuid,
+        role_id: Uuid,
+    ) -> Result<(), RepositoryError>;
+
+    /// Remove a role from a member (DELETE from guild_member_roles)
+    async fn remove_role_from_member(
+        &self,
+        guild_id: Uuid,
+        user_id: Uuid,
+        role_id: Uuid,
+    ) -> Result<(), RepositoryError>;
 
     /// Get all members who have a specific role
     async fn find_by_role(
