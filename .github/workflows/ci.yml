@@ -56,6 +56,9 @@ jobs:
           path: target
           key: ${{ runner.os }}-target-clippy-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install Protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
       - name: Run clippy
         run: cargo clippy --all-targets --all-features -- -D warnings
 
@@ -91,6 +94,9 @@ jobs:
         with:
           path: target
           key: ${{ runner.os }}-target-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Build workspace
         run: cargo build --workspace --all-features
@@ -161,6 +167,9 @@ jobs:
           path: target
           key: ${{ runner.os }}-target-test-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install Protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
       - name: Run tests
         run: cargo test --workspace --all-features
         env:
@@ -177,6 +186,9 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
 
       - name: Check documentation
         run: cargo doc --workspace --all-features --no-deps
