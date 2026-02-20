@@ -3,9 +3,11 @@ use axum::http::StatusCode;
 use axum::Json;
 use uuid::Uuid;
 
-use crate::state::AppState;
-use crate::presentation::dto::user_relationship::{RelationshipRequest, RelationshipResponse, Pagination};
+use crate::presentation::dto::user_relationship::{
+    Pagination, RelationshipRequest, RelationshipResponse,
+};
 use crate::presentation::http::handlers::error::ApiError;
+use crate::state::AppState;
 
 // ============================================
 // Handler

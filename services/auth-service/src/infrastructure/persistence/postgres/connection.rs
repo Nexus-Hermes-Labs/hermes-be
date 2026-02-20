@@ -22,7 +22,6 @@ pub async fn create_pool(config: &DatabaseConfig) -> std::result::Result<PgPool,
     Ok(pool)
 }
 
-
 #[cfg(test)]
 mod tests {
     use common_config::DatabaseConfig;

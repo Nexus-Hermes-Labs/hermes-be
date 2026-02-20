@@ -1,9 +1,7 @@
 use super::error::MessagingError;
 use super::event_publisher::EventPublisher;
-use crate::domain::event::EventEnvelope;
 use async_nats::Client;
 use async_trait::async_trait;
-use serde::Serialize;
 use tracing::{debug, error, info};
 
 /// NATS event publisher
@@ -46,11 +44,7 @@ impl NatsEventPublisher {
 
 #[async_trait]
 impl EventPublisher for NatsEventPublisher {
-    async fn publish_bytes(
-        &self,
-        subject: &str,
-        payload: Vec<u8>,
-    ) -> Result<(), MessagingError> {
+    async fn publish_bytes(&self, subject: &str, payload: Vec<u8>) -> Result<(), MessagingError> {
         debug!(
             subject = %subject,
             "Publishing raw bytes to NATS"

@@ -1,19 +1,20 @@
 use crate::application::services::{
     UserPrivacyService, UserProfileService, UserRelationshipService,
 };
+use crate::bootstrap::error::BootstrapError;
 use crate::domain::user_privacy::UserPrivacyRepository;
 use crate::domain::user_profile::UserProfileRepository;
 use crate::domain::user_relationship::UserRelationshipRepository;
 use crate::infrastructure::persistence::postgres::{
-    PostgresUserPrivacyRepository, PostgresUserProfileRepository, PostgresUserRelationshipRepository,
+    PostgresUserPrivacyRepository, PostgresUserProfileRepository,
+    PostgresUserRelationshipRepository,
 };
 use crate::presentation::grpc::proto::user::v1::user_service_server::UserServiceServer;
 use crate::presentation::grpc::server::UserServiceGrpc;
 use crate::presentation::http::server::Server;
-use crate::state::user_state::UserState;
 use crate::state::shared_state::SharedState;
+use crate::state::user_state::UserState;
 use crate::state::AppState;
-use crate::bootstrap::error::BootstrapError;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
 use common_config::config;
@@ -29,6 +30,11 @@ pub struct AppBuilder {
     metrics: Option<Metrics>,
 }
 
+impl Default for AppBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl AppBuilder {
     pub fn new() -> Self {
@@ -65,14 +71,19 @@ impl AppBuilder {
     /// Returns both the HTTP server and the gRPC service router
     pub async fn build(
         self,
-    ) -> Result<(
-        Server,
-        UserServiceServer<UserServiceGrpc>,
-    ), BootstrapError> {
-        let _service_name = self.service_name.ok_or_else(|| BootstrapError::Initialization("Service name must be provided".to_string()))?;
-        let db_pool = self.db_pool.ok_or_else(|| BootstrapError::Initialization("Database pool must be provided".to_string()))?;
-        let redis = self.redis.ok_or_else(|| BootstrapError::Initialization("Redis connection must be provided".to_string()))?;
-        let metrics = self.metrics.ok_or_else(|| BootstrapError::Initialization("Metrics must be provided".to_string()))?;
+    ) -> Result<(Server, UserServiceServer<UserServiceGrpc>), BootstrapError> {
+        let _service_name = self.service_name.ok_or_else(|| {
+            BootstrapError::Initialization("Service name must be provided".to_string())
+        })?;
+        let db_pool = self.db_pool.ok_or_else(|| {
+            BootstrapError::Initialization("Database pool must be provided".to_string())
+        })?;
+        let redis = self.redis.ok_or_else(|| {
+            BootstrapError::Initialization("Redis connection must be provided".to_string())
+        })?;
+        let metrics = self.metrics.ok_or_else(|| {
+            BootstrapError::Initialization("Metrics must be provided".to_string())
+        })?;
 
         // ========================================
         // INFRASTRUCTURE LAYER
@@ -85,7 +96,9 @@ impl AppBuilder {
                 &config().secrets.jwt.access_secret,
                 &config().secrets.jwt.refresh_secret,
             )
-            .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create JWT manager: {e}")))?,
+            .map_err(|e| {
+                BootstrapError::Infrastructure(format!("Failed to create JWT manager: {e}"))
+            })?,
         );
 
         info!("✅ Infrastructure layer ready");
@@ -93,9 +106,12 @@ impl AppBuilder {
         // ========================================
         // PERSISTENCE LAYER
         // ========================================
-        let user_profile_repo: Arc<dyn UserProfileRepository> = Arc::new(PostgresUserProfileRepository::new(db_pool.clone()));
-        let user_privacy_repo: Arc<dyn UserPrivacyRepository> = Arc::new(PostgresUserPrivacyRepository::new(db_pool.clone()));
-        let relationship_repo: Arc<dyn UserRelationshipRepository> = Arc::new(PostgresUserRelationshipRepository::new(db_pool.clone()));
+        let user_profile_repo: Arc<dyn UserProfileRepository> =
+            Arc::new(PostgresUserProfileRepository::new(db_pool.clone()));
+        let user_privacy_repo: Arc<dyn UserPrivacyRepository> =
+            Arc::new(PostgresUserPrivacyRepository::new(db_pool.clone()));
+        let relationship_repo: Arc<dyn UserRelationshipRepository> =
+            Arc::new(PostgresUserRelationshipRepository::new(db_pool.clone()));
 
         info!("✅ Persistence layer ready");
 

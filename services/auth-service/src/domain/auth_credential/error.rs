@@ -39,9 +39,7 @@ pub enum AuthCredentialError {
     AccountDeleted,
 
     #[error("Account is locked until {locked_until:?}")]
-    AccountLocked {
-        locked_until: Option<DateTime<Utc>>,
-    },
+    AccountLocked { locked_until: Option<DateTime<Utc>> },
 
     // Invalid enum
     #[error("Invalid account status: {0}")]

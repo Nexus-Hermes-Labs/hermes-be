@@ -3,19 +3,14 @@ use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum RelationshipType {
     Friend,
     Blocked,
     PendingIncoming,
+    #[default]
     PendingOutgoing,
-}
-
-impl Default for RelationshipType {
-    fn default() -> Self {
-        Self::PendingOutgoing
-    }
 }
 
 impl RelationshipType {

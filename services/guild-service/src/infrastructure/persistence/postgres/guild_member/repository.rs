@@ -15,7 +15,7 @@ use super::models::GuildMemberRow;
 // All member queries LEFT JOIN guild_member_roles and aggregate
 // role_ids so the domain entity is always fully hydrated.
 
-const MEMBER_SELECT: &str = r#"
+const MEMBER_SELECT: &str = r"
     SELECT
         gm.guild_id,
         gm.user_id,
@@ -31,16 +31,17 @@ const MEMBER_SELECT: &str = r#"
     FROM guild_members gm
     LEFT JOIN guild_member_roles gmr
         ON gmr.guild_id = gm.guild_id AND gmr.user_id = gm.user_id
-"#;
+";
 
-/// PostgreSQL implementation of GuildMemberRepository
+/// `PostgreSQL` implementation of `GuildMemberRepository`
 #[derive(Debug)]
 pub struct PostgresGuildMemberRepository {
     pool: PgPool,
 }
 
 impl PostgresGuildMemberRepository {
-    pub fn new(pool: PgPool) -> Self {
+    #[must_use]
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -51,17 +52,21 @@ impl GuildMemberRepository for PostgresGuildMemberRepository {
 
     async fn save(&self, member: &GuildMember) -> Result<(), RepositoryError> {
         sqlx::query(
-            r#"
+            r"
             INSERT INTO guild_members (guild_id, user_id, nickname, joined_at, updated_at, left_at)
             VALUES ($1, $2, $3, $4, $5, $6)
-            "#,
+            ",
         )
         .bind(member.guild_id())
         .bind(member.user_id())
         .bind(member.nickname().map(|n| n.as_str().to_string()))
         .bind(member.joined_at())
         .bind(member.updated_at())
-        .bind(if member.is_active() { None } else { Some(member.updated_at()) })
+        .bind(if member.is_active() {
+            None
+        } else {
+            Some(member.updated_at())
+        })
         .execute(&self.pool)
         .await?;
 
@@ -70,19 +75,23 @@ impl GuildMemberRepository for PostgresGuildMemberRepository {
 
     async fn update(&self, member: &GuildMember) -> Result<(), RepositoryError> {
         sqlx::query(
-            r#"
+            r"
             UPDATE guild_members
             SET nickname   = $3,
                 updated_at = $4,
                 left_at    = $5
             WHERE guild_id = $1 AND user_id = $2
-            "#,
+            ",
         )
         .bind(member.guild_id())
         .bind(member.user_id())
         .bind(member.nickname().map(|n| n.as_str().to_string()))
         .bind(member.updated_at())
-        .bind(if member.is_active() { None } else { Some(member.updated_at()) })
+        .bind(if member.is_active() {
+            None
+        } else {
+            Some(member.updated_at())
+        })
         .execute(&self.pool)
         .await?;
 
@@ -110,12 +119,12 @@ impl GuildMemberRepository for PostgresGuildMemberRepository {
 
     async fn is_member(&self, guild_id: Uuid, user_id: Uuid) -> Result<bool, RepositoryError> {
         let exists: bool = sqlx::query_scalar(
-            r#"
+            r"
             SELECT EXISTS(
                 SELECT 1 FROM guild_members
                 WHERE guild_id = $1 AND user_id = $2 AND left_at IS NULL
             )
-            "#,
+            ",
         )
         .bind(guild_id)
         .bind(user_id)
@@ -181,11 +190,11 @@ impl GuildMemberRepository for PostgresGuildMemberRepository {
         role_id: Uuid,
     ) -> Result<(), RepositoryError> {
         sqlx::query(
-            r#"
+            r"
             INSERT INTO guild_member_roles (guild_id, user_id, role_id)
             VALUES ($1, $2, $3)
             ON CONFLICT DO NOTHING
-            "#,
+            ",
         )
         .bind(guild_id)
         .bind(user_id)

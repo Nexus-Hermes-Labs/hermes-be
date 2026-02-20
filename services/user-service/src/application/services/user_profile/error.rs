@@ -1,5 +1,5 @@
-use common::infrastructure::persistence::error::RepositoryError;
 use crate::domain::user_profile::UserProfileError;
+use common::infrastructure::persistence::error::RepositoryError;
 
 /// Application errors for UserProfile service
 #[derive(Debug, thiserror::Error)]

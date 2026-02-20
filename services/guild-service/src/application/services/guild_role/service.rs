@@ -14,6 +14,12 @@ pub struct GuildRoleService {
     role_repo: Arc<dyn GuildRoleRepository>,
 }
 
+impl std::fmt::Debug for GuildRoleService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuildRoleService").finish_non_exhaustive()
+    }
+}
+
 impl GuildRoleService {
     /// Create a new `GuildRoleService` with the required repository dependencies.
     pub fn new(
@@ -30,7 +36,7 @@ impl GuildRoleService {
     // ROLE MANAGEMENT
     // ============================================
 
-    /// Create a new role in a guild (owner or MANAGE_ROLES required)
+    /// Create a new role in a guild (owner or `MANAGE_ROLES` required)
     pub async fn create_role(
         &self,
         guild_id: Uuid,
@@ -59,7 +65,7 @@ impl GuildRoleService {
 
         // Determine next position
         let existing = self.role_repo.find_by_guild(guild_id).await?;
-        let next_position = existing.iter().map(|r| r.position()).max().unwrap_or(0) + 1;
+        let next_position = existing.iter().map(GuildRole::position).max().unwrap_or(0) + 1;
 
         let role = GuildRole::new(guild_id, name, permissions, next_position)
             .map_err(GuildRoleServiceError::DomainError)?;
@@ -90,10 +96,7 @@ impl GuildRoleService {
     }
 
     /// Get a single role
-    pub async fn get_role(
-        &self,
-        role_id: Uuid,
-    ) -> Result<GuildRole, GuildRoleServiceError> {
+    pub async fn get_role(&self, role_id: Uuid) -> Result<GuildRole, GuildRoleServiceError> {
         self.role_repo
             .find_by_id(role_id)
             .await
@@ -102,6 +105,7 @@ impl GuildRoleService {
     }
 
     /// Update a role
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_role(
         &self,
         guild_id: Uuid,

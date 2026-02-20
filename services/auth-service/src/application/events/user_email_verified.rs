@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
+use common::domain::event::IntoEventEnvelope;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use common::domain::event::IntoEventEnvelope;
 
 /// Event published when user_profile verifies their email address
 ///
@@ -34,11 +34,7 @@ impl UserEmailVerifiedEvent {
 
     /// Create event with custom timestamp (for testing)
     #[cfg(test)]
-    pub fn new_with_timestamp(
-        user_id: Uuid,
-        email: String,
-        verified_at: DateTime<Utc>,
-    ) -> Self {
+    pub fn new_with_timestamp(user_id: Uuid, email: String, verified_at: DateTime<Utc>) -> Self {
         Self {
             user_id,
             email,

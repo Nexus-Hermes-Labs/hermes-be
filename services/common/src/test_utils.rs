@@ -43,10 +43,7 @@ impl TestDb {
             .await
             .expect("Failed to load migrations");
 
-        migrator
-            .run(&pool)
-            .await
-            .expect("Failed to run migrations");
+        migrator.run(&pool).await.expect("Failed to run migrations");
 
         Self {
             pool,

@@ -13,7 +13,6 @@ use crate::presentation::grpc::proto::user::v1::{
     CreateUserProfileRequest, GetUserProfileRequest, UserProfileResponse,
 };
 
-
 /// gRPC client for user-service
 #[derive(Clone)]
 pub struct UserGrpcClient {
@@ -102,14 +101,18 @@ impl UserProfileClient for UserGrpcClient {
             source: "registration".to_string(),
         });
 
-        let response = client.create_user_profile(request).await.map_err(|e| {
-            tracing::error!(
-                code = ?e.code(),
-                message = %e.message(),
-                "gRPC create_user_profile failed"
-            );
-            AuthApplicationError::UserServiceError(e.to_string())
-        })?.into_inner();
+        let response = client
+            .create_user_profile(request)
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    code = ?e.code(),
+                    message = %e.message(),
+                    "gRPC create_user_profile failed"
+                );
+                AuthApplicationError::UserServiceError(e.to_string())
+            })?
+            .into_inner();
 
         let info: UserProfileInfo = response.try_into().map_err(|e: UserGrpcError| {
             AuthApplicationError::UserServiceInvalidResponse(e.to_string())
@@ -125,9 +128,11 @@ impl UserProfileClient for UserGrpcClient {
             requester_id: None,
         });
 
-        let response = client.get_user_profile(request).await.map_err(|e| {
-            AuthApplicationError::UserServiceError(e.to_string())
-        })?.into_inner();
+        let response = client
+            .get_user_profile(request)
+            .await
+            .map_err(|e| AuthApplicationError::UserServiceError(e.to_string()))?
+            .into_inner();
 
         let info: UserProfileInfo = response.try_into().map_err(|e: UserGrpcError| {
             AuthApplicationError::UserServiceInvalidResponse(e.to_string())

@@ -63,7 +63,7 @@ pub async fn update_dm_privacy(
     let privacy = request
         .allow_dms_from
         .parse::<DmPrivacy>()
-        .map_err(|e| ApiError::validation(e))?;
+        .map_err(ApiError::validation)?;
 
     let service = &state.user.user_privacy_service;
     let settings = service.update_dm_privacy(user_id, privacy).await?;
@@ -93,7 +93,7 @@ pub async fn update_friend_request_privacy(
     let privacy = request
         .allow_friend_requests_from
         .parse::<FriendRequestPrivacy>()
-        .map_err(|e| ApiError::validation(e))?;
+        .map_err(ApiError::validation)?;
 
     let service = &state.user.user_privacy_service;
     let settings = service
@@ -157,8 +157,9 @@ pub async fn update_content_settings(
     let filter_level = request
         .content_filter_level
         .map(|level| {
-            ContentFilterLevel::from_i16(level)
-                .map_err(|_| ApiError::validation(format!("Invalid content filter level: {}", level)))
+            ContentFilterLevel::from_i16(level).map_err(|_| {
+                ApiError::validation(format!("Invalid content filter level: {}", level))
+            })
         })
         .transpose()?;
 

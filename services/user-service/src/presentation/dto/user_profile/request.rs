@@ -13,7 +13,10 @@ static USERNAME_REGEX: Lazy<regex::Regex> =
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateProfileRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
-    #[validate(regex(path = "*USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
+    #[validate(regex(
+        path = "*USERNAME_REGEX",
+        message = "Username can only contain lowercase letters, numbers, and underscores"
+    ))]
     pub username: String,
 
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
@@ -46,7 +49,10 @@ pub struct UpdateProfileRequest {
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct ChangeUsernameRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
-    #[validate(regex(path = "*USERNAME_REGEX", message = "Username can only contain lowercase letters, numbers, and underscores"))]
+    #[validate(regex(
+        path = "*USERNAME_REGEX",
+        message = "Username can only contain lowercase letters, numbers, and underscores"
+    ))]
     pub new_username: String,
 }
 

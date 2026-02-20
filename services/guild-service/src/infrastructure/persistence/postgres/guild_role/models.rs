@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::domain::guild_role::{GuildRole, GuildRoleError, Permissions, RoleColor};
 
-/// Database model for guild_roles table
+/// Database model for `guild_roles` table
 #[derive(Debug, Clone, FromRow)]
 pub struct GuildRoleRow {
     pub id: Uuid,
@@ -24,7 +24,7 @@ impl TryFrom<GuildRoleRow> for GuildRole {
     type Error = GuildRoleError;
 
     fn try_from(row: GuildRoleRow) -> Result<Self, Self::Error> {
-        Ok(GuildRole::from_persisted(
+        Ok(Self::from_persisted(
             row.id,
             row.guild_id,
             row.name,

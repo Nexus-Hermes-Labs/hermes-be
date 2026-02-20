@@ -31,8 +31,8 @@ impl TryFrom<AuthCredentialRow> for AuthCredential {
     type Error = String;
 
     fn try_from(row: AuthCredentialRow) -> Result<Self, Self::Error> {
-        let email = Email::new(row.email)
-            .map_err(|e| format!("Invalid email in database: {:?}", e))?;
+        let email =
+            Email::new(row.email).map_err(|e| format!("Invalid email in database: {:?}", e))?;
 
         let password_hash = PasswordHash::from_hash(row.password_hash);
 

@@ -5,15 +5,15 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::presentation::dto::guild_invite::request::*;
-use crate::presentation::dto::guild_invite::response::*;
+use crate::presentation::dto::guild_invite::request::CreateInviteRequest;
+use crate::presentation::dto::guild_invite::response::InviteResponse;
 use crate::presentation::dto::guild_member::response::GuildMemberResponse;
 use crate::state::AppState;
 use common::middleware::authentication::AuthenticatedUser;
 
 use super::error::ApiError;
 
-/// POST /api/v1/guilds/:guild_id/invites
+/// POST /`api/v1/guilds/:guild_id/invites`
 #[utoipa::path(
     post,
     path = "/api/v1/guilds/{guild_id}/invites",
@@ -32,11 +32,19 @@ pub async fn create_invite(
     Path(guild_id): Path<Uuid>,
     Json(request): Json<CreateInviteRequest>,
 ) -> Result<(StatusCode, Json<InviteResponse>), ApiError> {
-    let creator_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    let creator_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let invite = state
         .guild
         .invite_service
-        .create_invite(guild_id, creator_id, request.max_uses, request.max_age_seconds)
+        .create_invite(
+            guild_id,
+            creator_id,
+            request.max_uses,
+            request.max_age_seconds,
+        )
         .await?;
     Ok((StatusCode::CREATED, Json(InviteResponse::from(invite))))
 }
@@ -77,12 +85,15 @@ pub async fn use_invite(
     auth_user: AuthenticatedUser,
     Path(code): Path<String>,
 ) -> Result<Json<GuildMemberResponse>, ApiError> {
-    let user_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    let user_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let member = state.guild.invite_service.use_invite(code, user_id).await?;
     Ok(Json(GuildMemberResponse::from(member)))
 }
 
-/// DELETE /api/v1/guilds/:guild_id/invites/:code
+/// DELETE /`api/v1/guilds/:guild_id/invites/:code`
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/invites/{code}",
@@ -102,12 +113,19 @@ pub async fn revoke_invite(
     auth_user: AuthenticatedUser,
     Path((_guild_id, code)): Path<(Uuid, String)>,
 ) -> Result<StatusCode, ApiError> {
-    let requester_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
-    state.guild.invite_service.revoke_invite(code, requester_id).await?;
+    let requester_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    state
+        .guild
+        .invite_service
+        .revoke_invite(code, requester_id)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// GET /api/v1/guilds/:guild_id/invites
+/// GET /`api/v1/guilds/:guild_id/invites`
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/invites",
@@ -124,7 +142,16 @@ pub async fn list_invites(
     auth_user: AuthenticatedUser,
     Path(guild_id): Path<Uuid>,
 ) -> Result<Json<Vec<InviteResponse>>, ApiError> {
-    let requester_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
-    let invites = state.guild.invite_service.list_invites(guild_id, requester_id).await?;
-    Ok(Json(invites.into_iter().map(InviteResponse::from).collect()))
+    let requester_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    let invites = state
+        .guild
+        .invite_service
+        .list_invites(guild_id, requester_id)
+        .await?;
+    Ok(Json(
+        invites.into_iter().map(InviteResponse::from).collect(),
+    ))
 }

@@ -9,13 +9,15 @@ use crate::domain::guild_role::{GuildRole, GuildRoleRepository};
 
 use super::models::GuildRoleRow;
 
-/// PostgreSQL implementation of GuildRoleRepository
+/// `PostgreSQL` implementation of `GuildRoleRepository`
+#[derive(Debug)]
 pub struct PostgresGuildRoleRepository {
     pool: PgPool,
 }
 
 impl PostgresGuildRoleRepository {
-    pub fn new(pool: PgPool) -> Self {
+    #[must_use]
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -48,10 +50,10 @@ impl Repository<GuildRole, Uuid> for PostgresGuildRoleRepository {
     async fn save(&self, entity: &GuildRole) -> Result<(), Self::Error> {
         let row = GuildRoleRow::from(entity);
         sqlx::query(
-            r#"
+            r"
             INSERT INTO guild_roles (id, guild_id, name, color, permissions, position, hoist, mentionable, is_default, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-            "#,
+            ",
         )
         .bind(row.id)
         .bind(row.guild_id)
@@ -73,7 +75,7 @@ impl Repository<GuildRole, Uuid> for PostgresGuildRoleRepository {
     async fn update(&self, entity: &GuildRole) -> Result<(), Self::Error> {
         let row = GuildRoleRow::from(entity);
         sqlx::query(
-            r#"
+            r"
             UPDATE guild_roles
             SET name        = $2,
                 color       = $3,
@@ -83,7 +85,7 @@ impl Repository<GuildRole, Uuid> for PostgresGuildRoleRepository {
                 mentionable = $7,
                 updated_at  = $8
             WHERE id = $1
-            "#,
+            ",
         )
         .bind(row.id)
         .bind(row.name)
@@ -109,12 +111,11 @@ impl Repository<GuildRole, Uuid> for PostgresGuildRoleRepository {
     }
 
     async fn exists(&self, id: Uuid) -> Result<bool, Self::Error> {
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM guild_roles WHERE id = $1)",
-        )
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await?;
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM guild_roles WHERE id = $1)")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(exists)
     }

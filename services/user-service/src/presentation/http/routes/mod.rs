@@ -3,6 +3,7 @@ mod user_privacy;
 mod user_profile;
 mod user_relationship;
 
+use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
 use axum::Router;
 use common::middleware::authentication::auth_middleware;
@@ -11,7 +12,6 @@ use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::presentation::http::docs::ApiDoc;
 
 pub fn create_router(
     app_state: AppState,
@@ -22,11 +22,10 @@ pub fn create_router(
     >,
 ) -> Router {
     // @me routes require JWT authentication
-    let me_routes = user_me::user_me_routes()
-        .route_layer(axum::middleware::from_fn_with_state(
-            app_state.shared.jwt_manager.clone(),
-            auth_middleware,
-        ));
+    let me_routes = user_me::user_me_routes().route_layer(axum::middleware::from_fn_with_state(
+        app_state.shared.jwt_manager.clone(),
+        auth_middleware,
+    ));
 
     // Existing :user_id routes (admin/cross-service use)
     let id_routes = Router::new()
@@ -34,9 +33,7 @@ pub fn create_router(
         .merge(user_privacy::user_privacy_routes())
         .merge(user_relationship::user_relationship_routes());
 
-    let user_routes = Router::new()
-        .merge(me_routes)
-        .merge(id_routes);
+    let user_routes = Router::new().merge(me_routes).merge(id_routes);
 
     let api_router = Router::new()
         .nest("/users", user_routes)

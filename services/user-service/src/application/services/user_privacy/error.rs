@@ -1,6 +1,6 @@
-use uuid::Uuid;
-use common::infrastructure::persistence::error::RepositoryError;
 use crate::domain::user_privacy::UserPrivacyError;
+use common::infrastructure::persistence::error::RepositoryError;
+use uuid::Uuid;
 
 /// Application errors for UserPrivacy service
 #[derive(Debug, thiserror::Error)]

@@ -7,14 +7,14 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::domain::guild_role::{Permissions, RoleColor};
-use crate::presentation::dto::guild_role::request::*;
-use crate::presentation::dto::guild_role::response::*;
+use crate::presentation::dto::guild_role::request::{CreateRoleRequest, UpdateRoleRequest};
+use crate::presentation::dto::guild_role::response::GuildRoleResponse;
 use crate::state::AppState;
 use common::middleware::authentication::AuthenticatedUser;
 
 use super::error::ApiError;
 
-/// POST /api/v1/guilds/:guild_id/roles
+/// POST `/api/v1/guilds/:guild_id/roles`
 #[utoipa::path(
     post,
     path = "/api/v1/guilds/{guild_id}/roles",
@@ -33,7 +33,10 @@ pub async fn create_role(
     Json(request): Json<CreateRoleRequest>,
 ) -> Result<(StatusCode, Json<GuildRoleResponse>), ApiError> {
     request.validate()?;
-    let requester_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    let requester_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let role = state
         .guild
         .role_service
@@ -47,7 +50,7 @@ pub async fn create_role(
     Ok((StatusCode::CREATED, Json(GuildRoleResponse::from(role))))
 }
 
-/// GET /api/v1/guilds/:guild_id/roles
+/// GET `/api/v1/guilds/:guild_id/roles`
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/roles",
@@ -63,10 +66,12 @@ pub async fn list_roles(
     Path(guild_id): Path<Uuid>,
 ) -> Result<Json<Vec<GuildRoleResponse>>, ApiError> {
     let roles = state.guild.role_service.list_roles(guild_id).await?;
-    Ok(Json(roles.into_iter().map(GuildRoleResponse::from).collect()))
+    Ok(Json(
+        roles.into_iter().map(GuildRoleResponse::from).collect(),
+    ))
 }
 
-/// GET /api/v1/guilds/:guild_id/roles/:role_id
+/// GET `/api/v1/guilds/:guild_id/roles/:role_id`
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/roles/{role_id}",
@@ -88,7 +93,7 @@ pub async fn get_role(
     Ok(Json(GuildRoleResponse::from(role)))
 }
 
-/// PATCH /api/v1/guilds/:guild_id/roles/:role_id
+/// PATCH `/api/v1/guilds/:guild_id/roles/:role_id`
 #[utoipa::path(
     patch,
     path = "/api/v1/guilds/{guild_id}/roles/{role_id}",
@@ -111,7 +116,10 @@ pub async fn update_role(
     Json(request): Json<UpdateRoleRequest>,
 ) -> Result<Json<GuildRoleResponse>, ApiError> {
     request.validate()?;
-    let requester_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    let requester_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
 
     let color = request.color.map(RoleColor);
     let permissions = request.permissions.map(Permissions::new);
@@ -133,7 +141,7 @@ pub async fn update_role(
     Ok(Json(GuildRoleResponse::from(role)))
 }
 
-/// DELETE /api/v1/guilds/:guild_id/roles/:role_id
+/// DELETE `/api/v1/guilds/:guild_id/roles/:role_id`
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/roles/{role_id}",
@@ -153,7 +161,14 @@ pub async fn delete_role(
     auth_user: AuthenticatedUser,
     Path((guild_id, role_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
-    let requester_id = auth_user.0.user_id().map_err(|_| ApiError::forbidden("Invalid user ID"))?;
-    state.guild.role_service.delete_role(guild_id, role_id, requester_id).await?;
+    let requester_id = auth_user
+        .0
+        .user_id()
+        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
+    state
+        .guild
+        .role_service
+        .delete_role(guild_id, role_id, requester_id)
+        .await?;
     Ok(StatusCode::NO_CONTENT)
 }

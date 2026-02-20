@@ -1,3 +1,4 @@
+//! Build script for guild-service: compiles Protocol Buffer definitions via tonic-build.
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Compile guild-service proto (server only)
     tonic_build::configure()

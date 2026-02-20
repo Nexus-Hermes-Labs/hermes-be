@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::domain::user_profile::{UserProfile, UserProfileError, Username, UserStatus};
+use crate::domain::user_profile::{UserProfile, UserProfileError, UserStatus, Username};
 
 /// Database model for user_profiles table
 #[derive(Debug, Clone, FromRow)]
@@ -109,11 +109,7 @@ mod tests {
     #[test]
     fn test_entity_to_row_conversion() {
         let username = Username::new("testuser").unwrap();
-        let profile = UserProfile::new(
-            username,
-            "Test User".to_string(),
-        )
-        .unwrap();
+        let profile = UserProfile::new(username, "Test User".to_string()).unwrap();
 
         let row = UserProfileRow::from(&profile);
         assert_eq!(row.username, "testuser");

@@ -1,10 +1,10 @@
+use crate::domain::auth_session::{AuthSession, AuthSessionRepository};
 use async_trait::async_trait;
+use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::repository::Repository;
 use sqlx::PgPool;
 use tracing::{debug, error, info};
 use uuid::Uuid;
-use common::infrastructure::persistence::error::RepositoryError;
-use common::infrastructure::persistence::repository::Repository;
-use crate::domain::auth_session::{AuthSession, AuthSessionRepository};
 
 use super::models::{AuthSessionInsert, AuthSessionRow, AuthSessionUpdate};
 
@@ -31,12 +31,10 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<AuthSession>, Self::Error> {
         debug!(session_id = %id, "Finding session by ID");
 
-        let row = sqlx::query_as::<_, AuthSessionRow>(
-            "SELECT * FROM auth_sessions WHERE id = $1",
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await?;
+        let row = sqlx::query_as::<_, AuthSessionRow>("SELECT * FROM auth_sessions WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(row.and_then(|r| r.try_into().ok()))
     }
@@ -127,9 +125,10 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
             .await?;
 
         if result.rows_affected() == 0 {
-            return Err(RepositoryError::NotFound(
-                format!("Session with ID {} not found", id)
-            ));
+            return Err(RepositoryError::NotFound(format!(
+                "Session with ID {} not found",
+                id
+            )));
         }
 
         debug!(session_id = %id, "Auth session deleted");
@@ -139,12 +138,11 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
     async fn exists(&self, id: Uuid) -> Result<bool, Self::Error> {
         debug!(session_id = %id, "Checking if session exists");
 
-        let exists: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM auth_sessions WHERE id = $1)",
-        )
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await?;
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM auth_sessions WHERE id = $1)")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(exists)
     }
@@ -187,7 +185,10 @@ impl AuthSessionRepository for PostgresAuthSessionRepository {
         Ok(row.and_then(|r| r.try_into().ok()))
     }
 
-    async fn find_active_by_credential_id(&self, credential_id: Uuid) -> Result<Vec<AuthSession>, Self::Error> {
+    async fn find_active_by_credential_id(
+        &self,
+        credential_id: Uuid,
+    ) -> Result<Vec<AuthSession>, Self::Error> {
         debug!(credential_id = %credential_id, "Finding active sessions by credential ID");
 
         let rows = sqlx::query_as::<_, AuthSessionRow>(
@@ -206,7 +207,10 @@ impl AuthSessionRepository for PostgresAuthSessionRepository {
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
 
-    async fn find_all_by_credential_id(&self, credential_id: Uuid) -> Result<Vec<AuthSession>, Self::Error> {
+    async fn find_all_by_credential_id(
+        &self,
+        credential_id: Uuid,
+    ) -> Result<Vec<AuthSession>, Self::Error> {
         debug!(credential_id = %credential_id, "Finding all sessions by credential ID");
 
         let rows = sqlx::query_as::<_, AuthSessionRow>(
@@ -247,11 +251,9 @@ impl AuthSessionRepository for PostgresAuthSessionRepository {
     async fn delete_expired_sessions(&self) -> Result<usize, Self::Error> {
         info!("Deleting expired sessions");
 
-        let result = sqlx::query(
-            "DELETE FROM auth_sessions WHERE expires_at < NOW()",
-        )
-        .execute(&self.pool)
-        .await?;
+        let result = sqlx::query("DELETE FROM auth_sessions WHERE expires_at < NOW()")
+            .execute(&self.pool)
+            .await?;
 
         let count = result.rows_affected() as usize;
         info!(deleted_count = count, "Expired sessions deleted");
@@ -306,7 +308,10 @@ mod tests {
         assert!(found.is_some());
 
         // Find by token hash
-        let found = repo.find_by_refresh_token_hash("token_hash_123").await.unwrap();
+        let found = repo
+            .find_by_refresh_token_hash("token_hash_123")
+            .await
+            .unwrap();
         assert!(found.is_some());
 
         // Exists
@@ -325,22 +330,23 @@ mod tests {
 
         // Create 3 sessions
         for i in 0..3 {
-            let session = AuthSession::create(
-                credential_id,
-                format!("token_{}", i),
-                30,
-                None,
-                None,
-            );
+            let session =
+                AuthSession::create(credential_id, format!("token_{}", i), 30, None, None);
             repo.save(&session).await.unwrap();
         }
 
         // Revoke all
-        let count = repo.revoke_all_by_credential_id(credential_id).await.unwrap();
+        let count = repo
+            .revoke_all_by_credential_id(credential_id)
+            .await
+            .unwrap();
         assert_eq!(count, 3);
 
         // Verify no active sessions
-        let active = repo.find_active_by_credential_id(credential_id).await.unwrap();
+        let active = repo
+            .find_active_by_credential_id(credential_id)
+            .await
+            .unwrap();
         assert_eq!(active.len(), 0);
     }
 

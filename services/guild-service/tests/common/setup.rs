@@ -1,7 +1,9 @@
 use axum::Router;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
-use guild_service::application::{GuildInviteService, GuildMemberService, GuildRoleService, GuildService};
+use guild_service::application::{
+    GuildInviteService, GuildMemberService, GuildRoleService, GuildService,
+};
 use guild_service::infrastructure::persistence::{
     PostgresGuildInviteRepository, PostgresGuildMemberRepository, PostgresGuildRepository,
     PostgresGuildRoleRepository,
@@ -24,16 +26,14 @@ use uuid::Uuid;
 
 const GUILD_ENUMS_SQL: &str =
     include_str!("../../migrations/20260210000000_create_guild_enums.sql");
-const GUILDS_SQL: &str =
-    include_str!("../../migrations/20260210000001_create_guilds.sql");
+const GUILDS_SQL: &str = include_str!("../../migrations/20260210000001_create_guilds.sql");
 const GUILD_MEMBERS_SQL: &str =
     include_str!("../../migrations/20260210000002_create_guild_members.sql");
 const GUILD_ROLES_SQL: &str =
     include_str!("../../migrations/20260210000003_create_guild_roles.sql");
 const GUILD_INVITES_SQL: &str =
     include_str!("../../migrations/20260210000004_create_guild_invites.sql");
-const GUILD_INDEXES_SQL: &str =
-    include_str!("../../migrations/20260210000005_create_indexes.sql");
+const GUILD_INDEXES_SQL: &str = include_str!("../../migrations/20260210000005_create_indexes.sql");
 const GUILD_MEMBER_ROLES_SQL: &str =
     include_str!("../../migrations/20260210000006_create_guild_member_roles.sql");
 const GUILD_MEMBER_ROLES_INDEXES_SQL: &str =
@@ -87,8 +87,7 @@ impl TestHarness {
             .await
             .expect("get pg port");
         let pg_url = format!(
-            "postgres://postgres:postgres@{}:{}/postgres",
-            pg_host, pg_port
+            "postgres://postgres:postgres@{pg_host}:{pg_port}/postgres",
         );
 
         let pool = PgPool::connect(&pg_url)
@@ -127,9 +126,8 @@ impl TestHarness {
             .get_host_port_ipv4(6379)
             .await
             .expect("get redis port");
-        let redis_url = format!("redis://{}:{}", redis_host, redis_port);
-        let redis_client =
-            redis::Client::open(redis_url.as_str()).expect("create redis client");
+        let redis_url = format!("redis://{redis_host}:{redis_port}");
+        let redis_client = redis::Client::open(redis_url.as_str()).expect("create redis client");
         let redis_conn = redis::aio::ConnectionManager::new(redis_client)
             .await
             .expect("create redis connection manager");
@@ -154,10 +152,7 @@ impl TestHarness {
             guild_repo.clone(),
             member_repo.clone(),
         ));
-        let role_service = Arc::new(GuildRoleService::new(
-            guild_repo.clone(),
-            role_repo.clone(),
-        ));
+        let role_service = Arc::new(GuildRoleService::new(guild_repo.clone(), role_repo.clone()));
         let invite_service = Arc::new(GuildInviteService::new(
             guild_repo,
             invite_repo,
@@ -173,12 +168,8 @@ impl TestHarness {
         // ── 6. Assemble state ────────────────────────────────────────────────
         let metrics = get_or_init_metrics();
 
-        let guild_state = GuildState::new(
-            guild_service,
-            member_service,
-            role_service,
-            invite_service,
-        );
+        let guild_state =
+            GuildState::new(guild_service, member_service, role_service, invite_service);
         let shared_state = SharedState {
             db: pool.clone(),
             redis: redis_conn.clone(),
@@ -211,7 +202,7 @@ impl TestHarness {
         }
     }
 
-    /// Create a test JWT access token for the given user_id.
+    /// Create a test JWT access token for the given `user_id`.
     pub fn token_for(&self, user_id: Uuid) -> String {
         self.jwt_manager
             .create_access_token(user_id, "test@example.com", 1)
@@ -220,7 +211,7 @@ impl TestHarness {
 
     /// Directly insert a member row (bypasses service layer for fixture setup).
     ///
-    /// Roles are stored in `guild_member_roles`; no role_ids column on `guild_members`.
+    /// Roles are stored in `guild_member_roles`; no `role_ids` column on `guild_members`.
     /// Also increments the guild's `member_count` to stay consistent.
     pub async fn seed_member(&self, guild_id: Uuid, user_id: Uuid) {
         sqlx::query(

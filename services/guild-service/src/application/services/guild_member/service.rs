@@ -14,6 +14,12 @@ pub struct GuildMemberService {
     member_repo: Arc<dyn GuildMemberRepository>,
 }
 
+impl std::fmt::Debug for GuildMemberService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuildMemberService").finish_non_exhaustive()
+    }
+}
+
 impl GuildMemberService {
     /// Create a new `GuildMemberService` with the required repository dependencies.
     pub fn new(
@@ -117,7 +123,7 @@ impl GuildMemberService {
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))
     }
 
-    /// Kick a member (requires KICK_MEMBERS permission, checked by caller)
+    /// Kick a member (requires `KICK_MEMBERS` permission, checked by caller)
     pub async fn kick_member(
         &self,
         guild_id: Uuid,
@@ -178,7 +184,8 @@ impl GuildMemberService {
 
         if guild.is_owner(user_id) {
             return Err(GuildMemberServiceError::Forbidden(
-                "Guild owner cannot leave; transfer ownership or delete the guild first".to_string(),
+                "Guild owner cannot leave; transfer ownership or delete the guild first"
+                    .to_string(),
             ));
         }
 
@@ -213,7 +220,7 @@ impl GuildMemberService {
     // ROLE ASSIGNMENT
     // ============================================
 
-    /// Assign a role to a member (owner or MANAGE_ROLES permission required)
+    /// Assign a role to a member (owner or `MANAGE_ROLES` permission required)
     pub async fn assign_role(
         &self,
         guild_id: Uuid,

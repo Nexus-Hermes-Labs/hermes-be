@@ -64,7 +64,9 @@ pub async fn get_profile_by_username(
 ) -> Result<Json<ProfileResponse>, ApiError> {
     let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
     let service = &state.user.user_profile_service;
-    let profile = service.get_profile_by_username(username, requester_id).await?;
+    let profile = service
+        .get_profile_by_username(username, requester_id)
+        .await?;
     Ok(Json(ProfileResponse::from(profile)))
 }
 
@@ -152,7 +154,9 @@ pub async fn change_username(
     request.validate()?;
 
     let service = &state.user.user_profile_service;
-    let profile = service.change_username(user_id, request.new_username).await?;
+    let profile = service
+        .change_username(user_id, request.new_username)
+        .await?;
 
     Ok(Json(ProfileResponse::from(profile)))
 }

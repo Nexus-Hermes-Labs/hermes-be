@@ -54,6 +54,9 @@ impl CacheConfig {
             _ => "".to_string(),
         };
 
-        format!("redis://{}{}:{}/{}", auth, self.host, self.port, self.database)
+        format!(
+            "redis://{}{}:{}/{}",
+            auth, self.host, self.port, self.database
+        )
     }
 }

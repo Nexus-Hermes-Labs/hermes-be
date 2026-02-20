@@ -27,7 +27,7 @@ pub trait UserProfileClient: Send + Sync {
         &self,
         username: String,
         display_name: String,
-        email: String
+        email: String,
     ) -> Result<UserProfileInfo, AuthApplicationError>;
 
     async fn get_profile(&self, user_id: Uuid) -> Result<UserProfileInfo, AuthApplicationError>;

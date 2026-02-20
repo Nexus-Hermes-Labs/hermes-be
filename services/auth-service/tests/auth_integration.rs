@@ -48,12 +48,13 @@ async fn login_user(
 
 async fn verify_email(harness: &TestHarness, email: &str) {
     // 1. Get verification token from DB
-    let row: (Option<String>,) = sqlx::query_as("SELECT email_verification_token FROM auth_credentials WHERE email = $1")
-        .bind(email)
-        .fetch_one(&harness.pool)
-        .await
-        .expect("failed to fetch verification token");
-    
+    let row: (Option<String>,) =
+        sqlx::query_as("SELECT email_verification_token FROM auth_credentials WHERE email = $1")
+            .bind(email)
+            .fetch_one(&harness.pool)
+            .await
+            .expect("failed to fetch verification token");
+
     let token = row.0.expect("verification token not found in DB");
 
     // 2. Call verify-email endpoint
@@ -407,8 +408,7 @@ async fn test_logout_all_devices() {
     let (_, reg_body) = login_user(&harness, "logoutall@example.com", "strongpassword123").await;
 
     // Login a second time (simulating another device)
-    let (_, _login_body) =
-        login_user(&harness, "logoutall@example.com", "strongpassword123").await;
+    let (_, _login_body) = login_user(&harness, "logoutall@example.com", "strongpassword123").await;
 
     let refresh_token = reg_body["refresh_token"].as_str().expect("refresh_token");
 
@@ -425,7 +425,10 @@ async fn test_logout_all_devices() {
 
     assert_eq!(status, StatusCode::OK, "body: {body}");
     let revoked = body["sessions_revoked"].as_u64().expect("sessions_revoked");
-    assert!(revoked >= 2, "expected at least 2 sessions revoked, got {revoked}");
+    assert!(
+        revoked >= 2,
+        "expected at least 2 sessions revoked, got {revoked}"
+    );
 }
 
 #[tokio::test]
@@ -470,8 +473,7 @@ async fn test_full_auth_flow() {
     verify_email(&harness, "flow@example.com").await;
 
     // 2. Login
-    let (status, login_body) =
-        login_user(&harness, "flow@example.com", "strongpassword123").await;
+    let (status, login_body) = login_user(&harness, "flow@example.com", "strongpassword123").await;
     assert_eq!(status, StatusCode::OK, "login failed: {login_body}");
 
     // 3. Refresh

@@ -1,3 +1,6 @@
+//! Guild Service – manages guilds, members, roles, and invites.
+#![allow(missing_docs)]
+
 pub mod application;
 pub mod bootstrap;
 pub mod domain;

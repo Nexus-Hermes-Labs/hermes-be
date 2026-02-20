@@ -1,11 +1,11 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::domain::user_privacy::{FriendRequestPrivacy, UserPrivacyRepository};
+use crate::application::services::UserPrivacyService;
+use crate::domain::user_privacy::FriendRequestPrivacy;
 use crate::domain::user_relationship::{
     RelationshipType, UserRelationship, UserRelationshipRepository,
 };
-use crate::application::services::UserPrivacyService;
 
 use super::error::UserRelationshipServiceError;
 

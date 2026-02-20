@@ -1,5 +1,5 @@
-use std::time::Duration;
 use serde::Deserialize;
+use std::time::Duration;
 
 /// Database configuration
 #[derive(Debug, Clone, Deserialize)]
@@ -30,8 +30,8 @@ impl Default for DatabaseConfig {
             max_connections: 10,
             min_connections: 2,
             acquire_timeout: Duration::from_secs(30),
-            idle_timeout: Duration::from_secs(600),      // 10 minutes
-            max_lifetime: Duration::from_secs(1800),     // 30 minutes
+            idle_timeout: Duration::from_secs(600), // 10 minutes
+            max_lifetime: Duration::from_secs(1800), // 30 minutes
         }
     }
 }

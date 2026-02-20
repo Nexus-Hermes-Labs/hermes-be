@@ -1,7 +1,7 @@
-use axum::Router;
-use axum::routing::{delete, get, patch, post, put};
-use crate::state::AppState;
 use crate::presentation::http::handlers::user_profile;
+use crate::state::AppState;
+use axum::routing::{delete, get, patch, post, put};
+use axum::Router;
 
 /// Create user profile routes
 pub fn user_profile_routes() -> Router<AppState> {
@@ -18,13 +18,18 @@ pub fn user_profile_routes() -> Router<AppState> {
             "/check-username/:username",
             get(user_profile::check_username_availability),
         )
-        
         // Generic /:user_id routes
         .route("/:user_id", get(user_profile::get_profile))
         .route("/:user_id", patch(user_profile::update_profile))
         .route("/:user_id", delete(user_profile::delete_profile))
         .route("/:user_id/username", put(user_profile::change_username))
         .route("/:user_id/status", put(user_profile::update_status))
-        .route("/:user_id/custom-status", put(user_profile::set_custom_status))
-        .route("/:user_id/custom-status", delete(user_profile::clear_custom_status))
+        .route(
+            "/:user_id/custom-status",
+            put(user_profile::set_custom_status),
+        )
+        .route(
+            "/:user_id/custom-status",
+            delete(user_profile::clear_custom_status),
+        )
 }

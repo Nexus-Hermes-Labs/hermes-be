@@ -1,8 +1,10 @@
 // src/bootstrap/app_builder.rs
 use crate::application::services::authentication::service::AuthService;
 use crate::application::services::authentication::user_profile_client::UserProfileClient;
+use crate::bootstrap::error::BootstrapError;
 use crate::domain::auth_credential::EmailService;
-use crate::infrastructure::grpc::UserGrpcClient; // Changed from LazyUserProfileGrpcClient and LazyUserProfileClientAdapter
+use crate::infrastructure::grpc::UserGrpcClient;
+// Changed from LazyUserProfileGrpcClient and LazyUserProfileClientAdapter
 use crate::infrastructure::persistence::postgres::{
     PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
@@ -30,9 +32,11 @@ pub struct AppBuilder {
     metrics: Option<Metrics>,
 }
 
-use crate::bootstrap::error::BootstrapError;
-
-// ... (skipping some code)
+impl Default for AppBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl AppBuilder {
     pub fn new() -> Self {
@@ -70,24 +74,29 @@ impl AppBuilder {
     pub async fn build(
         self,
         email_service: Arc<dyn EmailService>,
-    ) -> Result<(
-        Server,
-        AuthServiceServer<AuthServiceGrpc>,
-        Arc<PostgresAuthCredentialRepository>,
-    ), BootstrapError> {
-        let service_name = self.service_name.ok_or_else(|| BootstrapError::Initialization("Service name must be provided".to_string()))?;
+    ) -> Result<
+        (
+            Server,
+            AuthServiceServer<AuthServiceGrpc>,
+            Arc<PostgresAuthCredentialRepository>,
+        ),
+        BootstrapError,
+    > {
+        let service_name = self.service_name.ok_or_else(|| {
+            BootstrapError::Initialization("Service name must be provided".to_string())
+        })?;
 
-        let db_pool = self
-            .db_pool
-            .clone()
-            .ok_or_else(|| BootstrapError::Initialization("Database pool must be provided".to_string()))?;
+        let db_pool = self.db_pool.clone().ok_or_else(|| {
+            BootstrapError::Initialization("Database pool must be provided".to_string())
+        })?;
 
-        let redis = self
-            .redis
-            .clone()
-            .ok_or_else(|| BootstrapError::Initialization("Redis connection must be provided".to_string()))?;
+        let redis = self.redis.clone().ok_or_else(|| {
+            BootstrapError::Initialization("Redis connection must be provided".to_string())
+        })?;
 
-        let metrics = self.metrics.clone().ok_or_else(|| BootstrapError::Initialization("Metrics must be provided".to_string()))?;
+        let metrics = self.metrics.clone().ok_or_else(|| {
+            BootstrapError::Initialization("Metrics must be provided".to_string())
+        })?;
 
         // ========================================
         // INFRASTRUCTURE LAYER
@@ -113,17 +122,20 @@ impl AppBuilder {
         // ========================================
         // gRPC CLIENTS (infrastructure adapters)
         // ========================================
-        let user_profile_client = Arc::new(
-            UserGrpcClient::new(
-                config()
-                    .grpc_endpoints
-                    .user_service
-                    .clone()
-                    .ok_or_else(|| BootstrapError::Configuration("User service endpoint not configured".to_string()))?,
-            )
-            .await
-            .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create gRPC client: {}", e)))?,
-        );
+        let user_profile_client =
+            Arc::new(
+                UserGrpcClient::new(config().grpc_endpoints.user_service.clone().ok_or_else(
+                    || {
+                        BootstrapError::Configuration(
+                            "User service endpoint not configured".to_string(),
+                        )
+                    },
+                )?)
+                .await
+                .map_err(|e| {
+                    BootstrapError::Infrastructure(format!("Failed to create gRPC client: {}", e))
+                })?,
+            );
 
         info!("✅ gRPC clients ready");
 
@@ -190,14 +202,21 @@ impl AppBuilder {
                 &config().secrets.jwt.access_secret,
                 &config().secrets.jwt.refresh_secret,
             )
-            .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create JWT manager: {}", e)))?,
+            .map_err(|e| {
+                BootstrapError::Infrastructure(format!("Failed to create JWT manager: {}", e))
+            })?,
         );
 
         // Event Publisher
         let event_publisher = Arc::new(
             NatsEventPublisher::new(service_name, &config().nats.get_url())
                 .await
-                .map_err(|e| BootstrapError::Infrastructure(format!("Failed to create NATS publisher: {}", e)))?,
+                .map_err(|e| {
+                    BootstrapError::Infrastructure(format!(
+                        "Failed to create NATS publisher: {}",
+                        e
+                    ))
+                })?,
         );
 
         Ok(Infrastructure {
@@ -225,6 +244,7 @@ impl AppBuilder {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn build_application(
         &self,
         repos: Repositories,
@@ -253,7 +273,11 @@ impl AppBuilder {
         })
     }
 
-    fn compose_state(&self, app: Application, infra: Infrastructure) -> Result<AppState, BootstrapError> {
+    fn compose_state(
+        &self,
+        app: Application,
+        infra: Infrastructure,
+    ) -> Result<AppState, BootstrapError> {
         let auth_state = AuthState::new(
             app.auth_service,
             infra.jwt_manager,

@@ -180,7 +180,7 @@ impl AuthSession {
     /// Update last_used_at timestamp with validation
     pub fn use_session(&mut self) -> Result<(), AuthSessionError> {
         self.ensure_valid()?;
-        self.mark_as_used(); 
+        self.mark_as_used();
         Ok(())
     }
 
@@ -245,13 +245,7 @@ mod tests {
 
     #[test]
     fn test_revoke_session() {
-        let mut session = AuthSession::create(
-            Uuid::new_v4(),
-            "hash".to_string(),
-            30,
-            None,
-            None,
-        );
+        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None);
 
         session.revoke();
 
@@ -262,13 +256,7 @@ mod tests {
 
     #[test]
     fn test_use_session_updates_last_used() {
-        let mut session = AuthSession::create(
-            Uuid::new_v4(),
-            "hash".to_string(),
-            30,
-            None,
-            None,
-        );
+        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None);
 
         let original_last_used = session.last_used_at();
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -280,18 +268,15 @@ mod tests {
 
     #[test]
     fn test_use_revoked_session_fails() {
-        let mut session = AuthSession::create(
-            Uuid::new_v4(),
-            "hash".to_string(),
-            30,
-            None,
-            None,
-        );
+        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None);
 
         session.revoke();
 
         let result = session.use_session();
-        assert!(matches!(result, Err(AuthSessionError::SessionRevoked { .. })));
+        assert!(matches!(
+            result,
+            Err(AuthSessionError::SessionRevoked { .. })
+        ));
     }
 
     #[test]
@@ -310,7 +295,10 @@ mod tests {
             "hash".to_string(),
             30,
             None,
-            Some("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0".to_string()),
+            Some(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"
+                    .to_string(),
+            ),
         );
         assert_eq!(firefox_session.device_name(), Some("Firefox Browser"));
     }
@@ -318,13 +306,7 @@ mod tests {
     #[test]
     fn test_matches_token() {
         let token_hash = "specific_hash_123".to_string();
-        let session = AuthSession::create(
-            Uuid::new_v4(),
-            token_hash.clone(),
-            30,
-            None,
-            None,
-        );
+        let session = AuthSession::create(Uuid::new_v4(), token_hash.clone(), 30, None, None);
 
         assert!(session.matches_token(&token_hash));
         assert!(!session.matches_token("wrong_hash"));

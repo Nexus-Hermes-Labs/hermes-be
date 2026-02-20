@@ -101,11 +101,8 @@ mod tests {
 
     #[test]
     fn test_dm_privacy_changed_event() {
-        let event = DmPrivacyChangedEvent::new(
-            Uuid::new_v4(),
-            "friends".to_string(),
-            "none".to_string(),
-        );
+        let event =
+            DmPrivacyChangedEvent::new(Uuid::new_v4(), "friends".to_string(), "none".to_string());
 
         assert_eq!(event.old_setting, "friends");
         assert_eq!(event.new_setting, "none");

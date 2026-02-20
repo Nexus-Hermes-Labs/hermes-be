@@ -10,10 +10,17 @@ use super::error::GuildInviteServiceError;
 /// Guild Invite Application Service
 ///
 /// Handles the full invite lifecycle: creation, lookup, redemption, and revocation.
+#[allow(clippy::struct_field_names)]
 pub struct GuildInviteService {
     guild_repo: Arc<dyn GuildRepository>,
     invite_repo: Arc<dyn GuildInviteRepository>,
     member_repo: Arc<dyn GuildMemberRepository>,
+}
+
+impl std::fmt::Debug for GuildInviteService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuildInviteService").finish_non_exhaustive()
+    }
 }
 
 impl GuildInviteService {
@@ -84,7 +91,7 @@ impl GuildInviteService {
 
     /// Use an invite to join a guild
     ///
-    /// Returns the new GuildMember record on success.
+    /// Returns the new `GuildMember` record on success.
     pub async fn use_invite(
         &self,
         code: String,
@@ -129,7 +136,9 @@ impl GuildInviteService {
         }
 
         // Consume one use
-        invite.use_invite().map_err(GuildInviteServiceError::DomainError)?;
+        invite
+            .use_invite()
+            .map_err(GuildInviteServiceError::DomainError)?;
 
         self.invite_repo
             .update(&invite)
@@ -175,11 +184,15 @@ impl GuildInviteService {
             .ok_or(GuildInviteServiceError::GuildNotFound)?;
 
         // Guild owner can revoke any invite; creator can revoke their own
-        if !guild.is_owner(requester_id) {
-            invite.revoke(requester_id).map_err(GuildInviteServiceError::DomainError)?;
-        } else {
+        if guild.is_owner(requester_id) {
             // Owner: force revoke by treating them as the creator
-            invite.revoke(invite.creator_id()).map_err(GuildInviteServiceError::DomainError)?;
+            invite
+                .revoke(invite.creator_id())
+                .map_err(GuildInviteServiceError::DomainError)?;
+        } else {
+            invite
+                .revoke(requester_id)
+                .map_err(GuildInviteServiceError::DomainError)?;
         }
 
         self.invite_repo

@@ -28,7 +28,7 @@ impl GuildName {
         }
 
         // Reject control characters
-        if value.chars().any(|c| c.is_control()) {
+        if value.chars().any(char::is_control) {
             return Err(GuildError::InvalidNameFormat);
         }
 
@@ -36,6 +36,7 @@ impl GuildName {
     }
 
     /// Returns the underlying string slice.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -60,17 +61,19 @@ impl FromStr for GuildName {
 // ============================================
 
 /// Whether the guild is publicly discoverable
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum GuildVisibility {
     /// Listed in guild discovery
     Public,
     /// Not listed; join via invite only
+    #[default]
     Private,
 }
 
 impl GuildVisibility {
     /// Returns the lowercase string representation used in the API and database (`"public"` / `"private"`).
-    pub fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
         match self {
             Self::Public => "public",
             Self::Private => "private",
@@ -78,14 +81,9 @@ impl GuildVisibility {
     }
 
     /// Returns `true` if the guild is publicly discoverable.
-    pub fn is_public(&self) -> bool {
+    #[must_use]
+    pub const fn is_public(self) -> bool {
         matches!(self, Self::Public)
-    }
-}
-
-impl Default for GuildVisibility {
-    fn default() -> Self {
-        Self::Private
     }
 }
 

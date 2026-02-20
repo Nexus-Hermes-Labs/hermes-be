@@ -2,7 +2,9 @@ use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
-use crate::application::services::{UserPrivacyService, UserProfileService, UserRelationshipService};
+use crate::application::services::{
+    UserPrivacyService, UserProfileService, UserRelationshipService,
+};
 use crate::presentation::grpc::proto::user::v1::user_service_server::UserService;
 use crate::presentation::grpc::proto::user::v1::{
     BatchGetUserProfilesRequest, BatchGetUserProfilesResponse, CreateUserProfileRequest,
@@ -209,7 +211,7 @@ impl UserService for UserServiceGrpc {
             let page_size = p.page_size.clamp(1, 100);
             crate::presentation::grpc::proto::common::v1::PaginationResponse {
                 total_items: proto_profiles.len() as i32, // Simplified; ideally count from DB
-                total_pages: 1, // Simplified
+                total_pages: 1,                           // Simplified
                 current_page: p.page.max(1),
                 page_size,
             }

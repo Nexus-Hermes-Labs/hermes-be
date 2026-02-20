@@ -63,22 +63,26 @@ impl Permissions {
     pub const ADMINISTRATOR: i64 = 1 << 31;
 
     /// Creates a new `Permissions` instance from a raw bitfield value.
-    pub fn new(bits: i64) -> Self {
+    #[must_use]
+    pub const fn new(bits: i64) -> Self {
         Self(bits)
     }
 
     /// Returns a `Permissions` object with zero bits set (all denied).
-    pub fn none() -> Self {
+    #[must_use]
+    pub const fn none() -> Self {
         Self(0)
     }
 
     /// Returns a `Permissions` object with only the [`ADMINISTRATOR`] bit set.
-    pub fn administrator() -> Self {
+    #[must_use]
+    pub const fn administrator() -> Self {
         Self(Self::ADMINISTRATOR)
     }
 
     /// Returns the underlying raw `i64` value.
-    pub fn bits(self) -> i64 {
+    #[must_use]
+    pub const fn bits(self) -> i64 {
         self.0
     }
 
@@ -89,20 +93,25 @@ impl Permissions {
     ///
     /// ### Example:
     /// ```
+    /// use guild_service::domain::guild_role::Permissions;
     /// let p = Permissions::new(Permissions::BAN_MEMBERS);
     /// assert!(p.has(Permissions::BAN_MEMBERS));
     /// ```
-    pub fn has(self, permission: i64) -> bool {
+    #[must_use]
+    pub const fn has(self, permission: i64) -> bool {
         (self.0 & Self::ADMINISTRATOR != 0) || (self.0 & permission != 0)
     }
 
     /// Grants a permission by setting its bit. Returns a new instance.
-    pub fn add(self, permission: i64) -> Self {
+    #[must_use]
+    #[allow(clippy::should_implement_trait)]
+    pub const fn add(self, permission: i64) -> Self {
         Self(self.0 | permission)
     }
 
     /// Revokes a permission by clearing its bit. Returns a new instance.
-    pub fn remove(self, permission: i64) -> Self {
+    #[must_use]
+    pub const fn remove(self, permission: i64) -> Self {
         Self(self.0 & !permission)
     }
 }
@@ -130,17 +139,20 @@ impl RoleColor {
     }
 
     /// Convert the color to an uppercase hex string, e.g. `"#FF5733"`.
+    #[must_use]
     pub fn to_hex(self) -> String {
         format!("#{:06X}", self.0)
     }
 
     /// Return the raw RGB integer value.
-    pub fn value(self) -> i32 {
+    #[must_use]
+    pub const fn value(self) -> i32 {
         self.0
     }
 
     /// Returns `true` when no color has been set (value is 0 = default grey).
-    pub fn is_default(self) -> bool {
+    #[must_use]
+    pub const fn is_default(self) -> bool {
         self.0 == 0
     }
 }
@@ -152,12 +164,14 @@ impl fmt::Display for RoleColor {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_permissions() {
-        let perms = Permissions::new(Permissions::SEND_MESSAGES | Permissions::READ_MESSAGE_HISTORY);
+        let perms =
+            Permissions::new(Permissions::SEND_MESSAGES | Permissions::READ_MESSAGE_HISTORY);
         assert!(perms.has(Permissions::SEND_MESSAGES));
         assert!(perms.has(Permissions::READ_MESSAGE_HISTORY));
         assert!(!perms.has(Permissions::ADMINISTRATOR));

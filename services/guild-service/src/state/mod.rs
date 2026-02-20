@@ -9,6 +9,7 @@ use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 
 /// Application state shared across HTTP handlers and gRPC services.
+#[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct AppState {
     /// Guild-domain services (guild, member, role, invite).

@@ -55,10 +55,7 @@ impl Repository<UserProfile, Uuid> for PostgresUserProfileRepository {
 
         let profiles: Vec<UserProfile> = rows
             .into_iter()
-            .map(|r| {
-                UserProfile::try_from(r)
-                    .map_err(|e| RepositoryError::Mapping(e.to_string()))
-            })
+            .map(|r| UserProfile::try_from(r).map_err(|e| RepositoryError::Mapping(e.to_string())))
             .collect::<Result<_, RepositoryError>>()?;
 
         Ok(profiles)
@@ -307,8 +304,7 @@ mod tests {
         let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("uniqueuser").unwrap();
-        let profile1 =
-            UserProfile::new(username.clone(), "User 1".to_string()).unwrap();
+        let profile1 = UserProfile::new(username.clone(), "User 1".to_string()).unwrap();
 
         repo.save(&profile1).await.unwrap();
 
@@ -325,8 +321,7 @@ mod tests {
         let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("findmeuser").unwrap();
-        let profile =
-            UserProfile::new(username.clone(), "Find Me".to_string()).unwrap();
+        let profile = UserProfile::new(username.clone(), "Find Me".to_string()).unwrap();
 
         repo.save(&profile).await.unwrap();
 
@@ -341,8 +336,7 @@ mod tests {
         let repo = PostgresUserProfileRepository::new(db.pool().clone());
 
         let username = Username::new("searchuser").unwrap();
-        let profile =
-            UserProfile::new(username, "Searchable User".to_string()).unwrap();
+        let profile = UserProfile::new(username, "Searchable User".to_string()).unwrap();
 
         repo.save(&profile).await.unwrap();
 

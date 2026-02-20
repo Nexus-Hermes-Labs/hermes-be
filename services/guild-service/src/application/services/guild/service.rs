@@ -10,10 +10,17 @@ use super::error::GuildServiceError;
 /// Guild Application Service
 ///
 /// Orchestrates guild creation, settings updates, and deletion.
+#[allow(clippy::struct_field_names)]
 pub struct GuildService {
     guild_repo: Arc<dyn GuildRepository>,
     member_repo: Arc<dyn GuildMemberRepository>,
     role_repo: Arc<dyn GuildRoleRepository>,
+}
+
+impl std::fmt::Debug for GuildService {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuildService").finish_non_exhaustive()
+    }
 }
 
 impl GuildService {
@@ -41,8 +48,7 @@ impl GuildService {
         name: String,
         description: Option<String>,
     ) -> Result<Guild, GuildServiceError> {
-        let guild_name = GuildName::new(&name)
-            .map_err(GuildServiceError::DomainError)?;
+        let guild_name = GuildName::new(&name).map_err(GuildServiceError::DomainError)?;
 
         let guild = Guild::new(owner_id, guild_name, description)
             .map_err(GuildServiceError::DomainError)?;
@@ -72,6 +78,7 @@ impl GuildService {
     }
 
     /// Update guild settings
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_guild(
         &self,
         guild_id: Uuid,
@@ -161,10 +168,7 @@ impl GuildService {
     }
 
     /// Get guilds owned by a user
-    pub async fn get_owned_guilds(
-        &self,
-        owner_id: Uuid,
-    ) -> Result<Vec<Guild>, GuildServiceError> {
+    pub async fn get_owned_guilds(&self, owner_id: Uuid) -> Result<Vec<Guild>, GuildServiceError> {
         self.guild_repo
             .find_by_owner(owner_id)
             .await

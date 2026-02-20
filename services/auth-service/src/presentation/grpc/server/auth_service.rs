@@ -13,7 +13,7 @@ use crate::presentation::grpc::proto::auth::v1::{
     ValidateTokenRequest, ValidateTokenResponse,
 };
 use common::infrastructure::security::jwt_manager::JwtManager;
- // Add EmailService import
+// Add EmailService import
 
 /// gRPC server implementation for AuthService
 ///

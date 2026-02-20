@@ -47,6 +47,6 @@ pub struct SearchGuildsRequest {
     pub offset: i64,
 }
 
-fn default_limit() -> i64 {
+const fn default_limit() -> i64 {
     20
 }

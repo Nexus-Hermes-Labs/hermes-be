@@ -1,8 +1,8 @@
+use common_config::DatabaseConfig;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 use sqlx::PgPool;
-use common_config::DatabaseConfig;
 
-/// Create and configure a PostgreSQL connection pool
+/// Create and configure a `PostgreSQL` connection pool
 pub async fn create_pool(config: &DatabaseConfig) -> Result<PgPool, sqlx::Error> {
     let options = PgConnectOptions::new()
         .host(&config.host)

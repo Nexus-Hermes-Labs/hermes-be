@@ -24,4 +24,4 @@ mod valueobject;
 pub use entity::UserProfile;
 pub use error::UserProfileError;
 pub use repository::UserProfileRepository;
-pub use valueobject::{Username, UserStatus};
+pub use valueobject::{UserStatus, Username};

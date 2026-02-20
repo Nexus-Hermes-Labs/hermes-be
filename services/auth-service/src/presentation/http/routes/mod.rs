@@ -1,6 +1,7 @@
 mod auth;
 mod health;
 
+use crate::presentation::http::docs::ApiDoc;
 use crate::state::app_state::AppState;
 use axum::Router;
 use common::observability::HealthCheck;
@@ -8,7 +9,6 @@ use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::presentation::http::docs::ApiDoc;
 
 pub fn create_router(
     app_state: AppState,

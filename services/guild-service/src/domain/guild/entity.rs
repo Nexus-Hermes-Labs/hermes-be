@@ -78,7 +78,8 @@ impl Guild {
 
     /// Reconstruct from database
     #[allow(clippy::too_many_arguments)]
-    pub fn from_persisted(
+    #[must_use]
+    pub const fn from_persisted(
         id: Uuid,
         owner_id: Uuid,
         name: GuildName,
@@ -113,77 +114,92 @@ impl Guild {
     // ============================================
 
     /// Returns the guild's unique identifier.
-    pub fn id(&self) -> Uuid {
+    #[must_use]
+    pub const fn id(&self) -> Uuid {
         self.id
     }
 
     /// Returns the user ID of the current guild owner.
-    pub fn owner_id(&self) -> Uuid {
+    #[must_use]
+    pub const fn owner_id(&self) -> Uuid {
         self.owner_id
     }
 
     /// Returns the validated guild name.
-    pub fn name(&self) -> &GuildName {
+    #[must_use]
+    pub const fn name(&self) -> &GuildName {
         &self.name
     }
 
     /// Returns the guild description, if one has been set.
+    #[must_use]
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
     }
 
     /// Returns the guild icon URL, if one has been set.
+    #[must_use]
     pub fn icon_url(&self) -> Option<&str> {
         self.icon_url.as_deref()
     }
 
     /// Returns the guild banner URL, if one has been set.
+    #[must_use]
     pub fn banner_url(&self) -> Option<&str> {
         self.banner_url.as_deref()
     }
 
     /// Returns the current visibility setting (`Public` or `Private`).
-    pub fn visibility(&self) -> GuildVisibility {
+    #[must_use]
+    pub const fn visibility(&self) -> GuildVisibility {
         self.visibility
     }
 
     /// Returns the cached count of active members.
-    pub fn member_count(&self) -> i32 {
+    #[must_use]
+    pub const fn member_count(&self) -> i32 {
         self.member_count
     }
 
     /// Returns the maximum number of members allowed in this guild.
-    pub fn max_members(&self) -> i32 {
+    #[must_use]
+    pub const fn max_members(&self) -> i32 {
         self.max_members
     }
 
     /// Returns the timestamp when the guild was created.
-    pub fn created_at(&self) -> DateTime<Utc> {
+    #[must_use]
+    pub const fn created_at(&self) -> DateTime<Utc> {
         self.created_at
     }
 
     /// Returns the timestamp of the most recent guild update.
-    pub fn updated_at(&self) -> DateTime<Utc> {
+    #[must_use]
+    pub const fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
 
     /// Returns `true` if the guild has been soft-deleted.
-    pub fn is_deleted(&self) -> bool {
+    #[must_use]
+    pub const fn is_deleted(&self) -> bool {
         self.deleted_at.is_some()
     }
 
     /// Returns `true` if the guild has **not** been deleted.
-    pub fn is_active(&self) -> bool {
+    #[must_use]
+    pub const fn is_active(&self) -> bool {
         self.deleted_at.is_none()
     }
 
     /// Returns `true` if `user_id` is the current owner of this guild.
+    #[must_use]
     pub fn is_owner(&self, user_id: Uuid) -> bool {
         self.owner_id == user_id
     }
 
     /// Returns `true` when `member_count` has reached `max_members`.
-    pub fn is_full(&self) -> bool {
+    #[must_use]
+    pub const fn is_full(&self) -> bool {
         self.member_count >= self.max_members
     }
 
@@ -212,12 +228,12 @@ impl Guild {
         }
 
         if let Some(url) = icon_url {
-            Self::validate_url(&url).map_err(|_| GuildError::InvalidIconUrl)?;
+            Self::validate_url(&url).map_err(|()| GuildError::InvalidIconUrl)?;
             self.icon_url = Some(url);
         }
 
         if let Some(url) = banner_url {
-            Self::validate_url(&url).map_err(|_| GuildError::InvalidBannerUrl)?;
+            Self::validate_url(&url).map_err(|()| GuildError::InvalidBannerUrl)?;
             self.banner_url = Some(url);
         }
 
@@ -232,7 +248,11 @@ impl Guild {
     /// Transfer ownership to another member
     ///
     /// **Important:** Caller must verify that `new_owner_id` is an active member
-    pub fn transfer_ownership(&mut self, requester_id: Uuid, new_owner_id: Uuid) -> Result<(), GuildError> {
+    pub fn transfer_ownership(
+        &mut self,
+        requester_id: Uuid,
+        new_owner_id: Uuid,
+    ) -> Result<(), GuildError> {
         if self.owner_id != requester_id {
             return Err(GuildError::NotOwner);
         }
@@ -290,6 +310,7 @@ impl Guild {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

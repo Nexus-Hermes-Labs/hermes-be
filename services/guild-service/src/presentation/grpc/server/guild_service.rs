@@ -12,17 +12,25 @@ use crate::presentation::grpc::proto::guild::v1::{
     UseInviteRequest,
 };
 
-/// gRPC server implementation for GuildService
+/// gRPC server implementation for `GuildService`
+#[derive(Debug)]
+#[allow(clippy::struct_field_names)]
 pub struct GuildServiceGrpc {
+    /// Guild management service
     guild_service: Arc<GuildService>,
+    /// Member management service
     member_service: Arc<GuildMemberService>,
     #[allow(dead_code)]
+    /// Role management service
     role_service: Arc<GuildRoleService>,
+    /// Invite management service
     invite_service: Arc<GuildInviteService>,
 }
 
 impl GuildServiceGrpc {
-    pub fn new(
+    /// Create a new `GuildServiceGrpc` instance.
+    #[must_use]
+    pub const fn new(
         guild_service: Arc<GuildService>,
         member_service: Arc<GuildMemberService>,
         role_service: Arc<GuildRoleService>,
@@ -52,11 +60,11 @@ fn guild_to_proto(g: &crate::domain::Guild) -> GuildResponse {
         member_count: g.member_count(),
         created_at: Some(prost_types::Timestamp {
             seconds: g.created_at().timestamp(),
-            nanos: g.created_at().timestamp_subsec_nanos() as i32,
+            nanos: g.created_at().timestamp_subsec_nanos().cast_signed(),
         }),
         updated_at: Some(prost_types::Timestamp {
             seconds: g.updated_at().timestamp(),
-            nanos: g.updated_at().timestamp_subsec_nanos() as i32,
+            nanos: g.updated_at().timestamp_subsec_nanos().cast_signed(),
         }),
     }
 }
@@ -65,11 +73,14 @@ fn member_to_proto(m: &crate::domain::GuildMember) -> GuildMemberResponse {
     GuildMemberResponse {
         guild_id: m.guild_id().to_string(),
         user_id: m.user_id().to_string(),
-        nickname: m.nickname().map(|n| n.as_str().to_string()).unwrap_or_default(),
-        role_ids: m.role_ids().iter().map(|id| id.to_string()).collect(),
+        nickname: m
+            .nickname()
+            .map(|n| n.as_str().to_string())
+            .unwrap_or_default(),
+        role_ids: m.role_ids().iter().map(ToString::to_string).collect(),
         joined_at: Some(prost_types::Timestamp {
             seconds: m.joined_at().timestamp(),
-            nanos: m.joined_at().timestamp_subsec_nanos() as i32,
+            nanos: m.joined_at().timestamp_subsec_nanos().cast_signed(),
         }),
     }
 }
@@ -83,11 +94,11 @@ fn invite_to_proto(inv: &crate::domain::GuildInvite) -> InviteResponse {
         uses: inv.uses(),
         expires_at: inv.expires_at().map(|t| prost_types::Timestamp {
             seconds: t.timestamp(),
-            nanos: t.timestamp_subsec_nanos() as i32,
+            nanos: t.timestamp_subsec_nanos().cast_signed(),
         }),
         created_at: Some(prost_types::Timestamp {
             seconds: inv.created_at().timestamp(),
-            nanos: inv.created_at().timestamp_subsec_nanos() as i32,
+            nanos: inv.created_at().timestamp_subsec_nanos().cast_signed(),
         }),
     }
 }
@@ -185,13 +196,11 @@ impl GuildServiceTrait for GuildServiceGrpc {
         let guild_id = Uuid::parse_str(&req.guild_id)
             .map_err(|_| Status::invalid_argument("Invalid guild_id"))?;
 
-        let (limit, offset) = if let Some(p) = &req.pagination {
+        let (limit, offset) = req.pagination.as_ref().map_or((50_i64, 0_i64), |p| {
             let page = p.page.max(1);
             let page_size = p.page_size.clamp(1, 100);
             (i64::from(page_size), i64::from((page - 1) * page_size))
-        } else {
-            (50_i64, 0_i64)
-        };
+        });
 
         let members = self
             .member_service
@@ -204,7 +213,7 @@ impl GuildServiceTrait for GuildServiceGrpc {
         let pagination_response = req.pagination.map(|p| {
             let page_size = p.page_size.clamp(1, 100);
             crate::presentation::grpc::proto::common::v1::PaginationResponse {
-                total_items: proto_members.len() as i32,
+                total_items: i32::try_from(proto_members.len()).unwrap_or(i32::MAX),
                 total_pages: 1,
                 current_page: p.page.max(1),
                 page_size,

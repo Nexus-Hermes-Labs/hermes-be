@@ -19,7 +19,7 @@ impl PaginationParams {
     pub fn new(page: i64, page_size: i64) -> Self {
         Self {
             page: page.max(1),
-            page_size: page_size.max(1).min(100),
+            page_size: page_size.clamp(1, 100),
         }
     }
 
@@ -95,7 +95,7 @@ mod tests {
     #[test]
     fn test_paginated_has_next_prev() {
         let p: Paginated<i32> = Paginated::new(vec![], 60, 2, 20);
-        assert!(p.has_next());  // page 2, total 3
-        assert!(p.has_prev());  // page 2 > 1
+        assert!(p.has_next()); // page 2, total 3
+        assert!(p.has_prev()); // page 2 > 1
     }
 }

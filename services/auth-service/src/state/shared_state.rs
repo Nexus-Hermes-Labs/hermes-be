@@ -1,6 +1,6 @@
-use sqlx::PgPool;
-use common::observability::Metrics;
 use crate::domain::auth_credential::EmailService;
+use common::observability::Metrics;
+use sqlx::PgPool;
 use std::sync::Arc;
 
 #[derive(Clone)]

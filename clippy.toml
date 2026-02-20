@@ -13,7 +13,6 @@ cognitive-complexity-threshold = 20
 # Struct & API Design
 # ==============================
 enum-variant-name-threshold = 3
-struct-excessive-bools-threshold = 2
 
 # ==============================
 # Functions

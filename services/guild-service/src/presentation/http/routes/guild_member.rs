@@ -3,7 +3,9 @@ use axum::{
     Router,
 };
 
-use crate::presentation::http::handlers::guild_member::*;
+use crate::presentation::http::handlers::guild_member::{
+    assign_role, get_member, kick_member, leave_guild, list_members, remove_role,
+};
 use crate::state::AppState;
 
 pub fn guild_member_routes() -> Router<AppState> {

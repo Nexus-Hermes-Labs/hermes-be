@@ -14,7 +14,9 @@ use crate::domain::user_privacy::{
 use crate::domain::user_profile::UserStatus;
 use crate::presentation::dto::user_privacy::*;
 use crate::presentation::dto::user_profile::{request::*, response::*};
-use crate::presentation::dto::user_relationship::{Pagination, RelationshipRequest, RelationshipResponse};
+use crate::presentation::dto::user_relationship::{
+    Pagination, RelationshipRequest, RelationshipResponse,
+};
 use crate::state::AppState;
 
 use super::error::ApiError;
@@ -129,7 +131,9 @@ pub async fn change_username(
     request.validate()?;
     let user_id = extract_user_id(&claims)?;
     let service = &state.user.user_profile_service;
-    let profile = service.change_username(user_id, request.new_username).await?;
+    let profile = service
+        .change_username(user_id, request.new_username)
+        .await?;
     Ok(Json(ProfileResponse::from(profile)))
 }
 
@@ -263,7 +267,7 @@ pub async fn update_dm_privacy(
     let privacy = request
         .allow_dms_from
         .parse::<DmPrivacy>()
-        .map_err(|e| ApiError::validation(e))?;
+        .map_err(ApiError::validation)?;
     let service = &state.user.user_privacy_service;
     let settings = service.update_dm_privacy(user_id, privacy).await?;
     Ok(Json(PrivacySettingsResponse::from(settings)))
@@ -292,7 +296,7 @@ pub async fn update_friend_request_privacy(
     let privacy = request
         .allow_friend_requests_from
         .parse::<FriendRequestPrivacy>()
-        .map_err(|e| ApiError::validation(e))?;
+        .map_err(ApiError::validation)?;
     let service = &state.user.user_privacy_service;
     let settings = service
         .update_friend_request_privacy(user_id, privacy)
@@ -792,7 +796,9 @@ pub async fn get_relationship(
 // HELPERS
 // ============================================
 
-fn extract_user_id(claims: &common::infrastructure::security::jwt_manager::Claims) -> Result<Uuid, ApiError> {
+fn extract_user_id(
+    claims: &common::infrastructure::security::jwt_manager::Claims,
+) -> Result<Uuid, ApiError> {
     claims
         .user_id()
         .map_err(|_| ApiError::internal("Invalid user ID in token"))

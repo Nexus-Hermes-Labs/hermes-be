@@ -38,7 +38,10 @@ pub async fn make_json_request(
             Ok(v) => v,
             Err(e) => {
                 let body_str = String::from_utf8_lossy(&bytes);
-                panic!("Failed to parse response body as JSON. Error: {}, Body: {}", e, body_str);
+                panic!(
+                    "Failed to parse response body as JSON. Error: {}, Body: {}",
+                    e, body_str
+                );
             }
         }
     };
@@ -83,7 +86,10 @@ pub async fn make_authenticated_request(
             Ok(v) => v,
             Err(e) => {
                 let body_str = String::from_utf8_lossy(&bytes);
-                panic!("Failed to parse response body as JSON. Error: {}, Body: {}", e, body_str);
+                panic!(
+                    "Failed to parse response body as JSON. Error: {}, Body: {}",
+                    e, body_str
+                );
             }
         }
     };

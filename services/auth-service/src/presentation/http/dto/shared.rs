@@ -1,13 +1,13 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
-use uuid::Uuid;
 use axum::{
     async_trait,
     extract::{ConnectInfo, FromRequestParts},
     http::{request::Parts, StatusCode},
 };
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 // ============================================
 // BASE AUTHENTICATION RESPONSE TYPES
@@ -134,7 +134,7 @@ pub struct UserProfile {
 /// Client information extracted from HTTP request
 ///
 /// Used for session tracking and audit logging.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ClientInfo {
     /// Client IP address
     ///
@@ -155,16 +155,6 @@ pub struct ClientInfo {
     pub device_name: Option<String>,
 }
 
-impl Default for ClientInfo {
-    fn default() -> Self {
-        Self {
-            ip_address: None,
-            user_agent: None,
-            device_name: None,
-        }
-    }
-}
-
 impl ClientInfo {
     pub fn new(
         ip_address: Option<String>,
@@ -179,17 +169,36 @@ impl ClientInfo {
     }
 }
 
+#[async_trait]
+impl<S> FromRequestParts<S> for ClientInfo
+where
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let ip_address = parts
+            .extensions
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ConnectInfo(addr)| addr.ip().to_string());
+
+        let user_agent = parts
+            .headers
+            .get("user-agent")
+            .and_then(|h_val| h_val.to_str().ok())
+            .map(|s| s.to_string());
+
+        Ok(ClientInfo::new(ip_address, user_agent, None))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_auth_response_creation() {
-        let response = AuthResponse::new(
-            "access".to_string(),
-            "refresh".to_string(),
-            21600,
-        );
+        let response = AuthResponse::new("access".to_string(), "refresh".to_string(), 21600);
 
         assert_eq!(response.access_token, "access");
         assert_eq!(response.refresh_token, "refresh");
@@ -234,12 +243,8 @@ mod tests {
             created_at: Utc::now(),
         };
 
-        let response_with_user = AuthResponseWithUser::new(
-            "access".to_string(),
-            "refresh".to_string(),
-            21600,
-            user,
-        );
+        let response_with_user =
+            AuthResponseWithUser::new("access".to_string(), "refresh".to_string(), 21600, user);
 
         let base_response = response_with_user.into_auth_response();
 
@@ -267,28 +272,5 @@ mod tests {
         assert_eq!(info.ip_address, Some("127.0.0.1".to_string()));
         assert_eq!(info.user_agent, Some("Mozilla/5.0".to_string()));
         assert_eq!(info.device_name, Some("Chrome".to_string()));
-    }
-}
-
-#[async_trait]
-impl<S> FromRequestParts<S> for ClientInfo
-where
-    S: Send + Sync,
-{
-    type Rejection = (StatusCode, String);
-
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let ip_address = parts
-            .extensions
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|ConnectInfo(addr)| addr.ip().to_string());
-
-        let user_agent = parts
-            .headers
-            .get("user-agent")
-            .and_then(|h_val| h_val.to_str().ok())
-            .map(|s| s.to_string());
-
-        Ok(ClientInfo::new(ip_address, user_agent, None))
     }
 }

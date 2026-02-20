@@ -1,7 +1,7 @@
-use common::infrastructure::persistence::error::RepositoryError;
 use crate::domain::GuildRoleError;
+use common::infrastructure::persistence::error::RepositoryError;
 
-/// Application errors for GuildRoleService
+/// Application errors for `GuildRoleService`
 #[derive(Debug, thiserror::Error)]
 pub enum GuildRoleServiceError {
     #[error("Guild not found")]

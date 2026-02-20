@@ -1,8 +1,8 @@
+use crate::application::services::authentication::error::AuthApplicationError;
+use crate::domain::auth_credential::error::AuthCredentialError;
+use crate::domain::auth_credential::PasswordHash;
 use async_trait::async_trait;
 use std::fmt::Debug;
-use crate::application::services::authentication::error::AuthApplicationError;
-use crate::domain::auth_credential::PasswordHash;
-use crate::domain::auth_credential::error::AuthCredentialError;
 
 /// Password hashing and verification service
 ///
@@ -28,7 +28,11 @@ pub trait PasswordService: Send + Sync {
     ///
     /// # Returns
     /// * `true` if password matches, `false` otherwise
-    fn verify_password(&self, password: &str, hash: &PasswordHash) -> Result<bool, AuthCredentialError>;
+    fn verify_password(
+        &self,
+        password: &str,
+        hash: &PasswordHash,
+    ) -> Result<bool, AuthCredentialError>;
 }
 
 /// Email delivery service abstraction.

@@ -1,11 +1,11 @@
 use super::error::AuthApplicationError;
 use super::user_profile_client::UserProfileClient;
 use crate::application::events::UserCreatedEvent;
+use crate::domain::auth_credential::EmailService;
 use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
-use crate::domain::auth_credential::EmailService;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
@@ -349,7 +349,7 @@ impl AuthService {
             warn!(user_id = %credential.id(), "Login failed: email not verified");
             return Err(AuthApplicationError::EmailNotVerified);
         }
-        
+
         if credential.is_locked() {
             warn!(
                 user_id = %credential.id(),
@@ -494,7 +494,7 @@ impl AuthService {
             .map_err(|_| AuthApplicationError::HashingFailed)?;
         let mut session = self
             .session_repo
-            .find_by_refresh_token_hash(&token_hash.as_str())
+            .find_by_refresh_token_hash(token_hash.as_str())
             .await?
             .ok_or_else(|| {
                 warn!("Refresh failed: session not found");
@@ -547,11 +547,13 @@ impl AuthService {
             .credential_repo
             .find_by_user_id(user_id)
             .await?
-            .ok_or_else(|| AuthApplicationError::UserNotFound(user_id))?;
+            .ok_or(AuthApplicationError::UserNotFound(user_id))?;
 
         let revoked_count = if all_devices {
             // Revoke all sessions
-            self.session_repo.revoke_all_by_credential_id(credential.id()).await?
+            self.session_repo
+                .revoke_all_by_credential_id(credential.id())
+                .await?
         } else if let Some(session_id) = session_id {
             // Revoke specific session
             if let Some(mut session) = self.session_repo.find_by_id(session_id).await? {

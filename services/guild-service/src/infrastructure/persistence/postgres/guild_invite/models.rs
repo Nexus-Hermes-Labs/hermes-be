@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 use crate::domain::guild_invite::{GuildInvite, GuildInviteError, InviteCode};
 
-/// Database model for guild_invites table
+/// Database model for `guild_invites` table
 #[derive(Debug, Clone, FromRow)]
 pub struct GuildInviteRow {
     pub code: String,
@@ -21,7 +21,7 @@ impl TryFrom<GuildInviteRow> for GuildInvite {
     type Error = GuildInviteError;
 
     fn try_from(row: GuildInviteRow) -> Result<Self, Self::Error> {
-        Ok(GuildInvite::from_persisted(
+        Ok(Self::from_persisted(
             InviteCode::from_existing(row.code),
             row.guild_id,
             row.creator_id,

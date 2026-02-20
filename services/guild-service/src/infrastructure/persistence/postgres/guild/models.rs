@@ -26,10 +26,12 @@ impl TryFrom<GuildRow> for Guild {
 
     fn try_from(row: GuildRow) -> Result<Self, Self::Error> {
         let name = GuildName::new(&row.name)?;
-        let visibility = row.visibility.parse::<GuildVisibility>()
+        let visibility = row
+            .visibility
+            .parse::<GuildVisibility>()
             .map_err(|_| GuildError::InvalidNameFormat)?; // Reuse error as a fallback
 
-        Ok(Guild::from_persisted(
+        Ok(Self::from_persisted(
             row.id,
             row.owner_id,
             name,
@@ -60,7 +62,11 @@ impl From<&Guild> for GuildRow {
             max_members: guild.max_members(),
             created_at: guild.created_at(),
             updated_at: guild.updated_at(),
-            deleted_at: if guild.is_deleted() { Some(guild.updated_at()) } else { None },
+            deleted_at: if guild.is_deleted() {
+                Some(guild.updated_at())
+            } else {
+                None
+            },
         }
     }
 }

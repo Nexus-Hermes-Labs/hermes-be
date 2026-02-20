@@ -127,9 +127,9 @@ impl PostgresAuthAuditRepository {
         // For now, we use the simpler specific methods above
 
         // This is a simplified version - in production you'd want proper dynamic query building
-        if filters.credential_id.is_some() && filters.event_type.is_none() {
+        if let (Some(credential_id), None) = (filters.credential_id, &filters.event_type) {
             return self
-                .find_by_credential_id(filters.credential_id.unwrap(), limit, offset)
+                .find_by_credential_id(credential_id, limit, offset)
                 .await;
         }
 
@@ -139,7 +139,9 @@ impl PostgresAuthAuditRepository {
 
         // Fallback to credential_id if both are present
         if let Some(credential_id) = filters.credential_id {
-            return self.find_by_credential_id(credential_id, limit, offset).await;
+            return self
+                .find_by_credential_id(credential_id, limit, offset)
+                .await;
         }
 
         // No filters - return recent logs

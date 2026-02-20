@@ -21,7 +21,7 @@ impl MemberNickname {
             return Err(GuildMemberError::InvalidNicknameLength);
         }
 
-        if value.chars().any(|c| c.is_control()) {
+        if value.chars().any(char::is_control) {
             return Err(GuildMemberError::InvalidNicknameFormat);
         }
 
@@ -29,6 +29,7 @@ impl MemberNickname {
     }
 
     /// Returns the underlying string slice.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }

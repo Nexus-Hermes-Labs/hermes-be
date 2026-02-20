@@ -1,5 +1,5 @@
-use thiserror::Error;
 use crate::presentation::error::PresentationError;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum BootstrapError {

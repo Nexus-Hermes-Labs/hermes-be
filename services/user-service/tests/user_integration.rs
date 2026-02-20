@@ -32,12 +32,16 @@ async fn create_profile_with_token(
     display_name: &str,
 ) -> (String, String) {
     let (status, body) = create_profile(harness, username, display_name).await;
-    assert_eq!(status, StatusCode::CREATED, "create {username} failed: {body}");
+    assert_eq!(
+        status,
+        StatusCode::CREATED,
+        "create {username} failed: {body}"
+    );
     let user_id = body["user_id"].as_str().expect("user_id").to_string();
     let uid: Uuid = user_id.parse().expect("parse user_id uuid");
     let token = harness
         .jwt_manager
-        .create_access_token(uid, &format!("{username}@test.com"), 1)
+        .create_access_token(uid, format!("{username}@test.com"), 1)
         .expect("create token");
     (user_id, token)
 }
@@ -295,7 +299,11 @@ async fn test_update_status() {
         )
         .await;
 
-        assert_eq!(status, StatusCode::OK, "setting {status_val} failed: {body}");
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "setting {status_val} failed: {body}"
+        );
         assert_eq!(body["status"], *status_val);
     }
 }
@@ -1082,7 +1090,11 @@ async fn test_me_status_lifecycle() {
         )
         .await;
 
-        assert_eq!(status, StatusCode::OK, "setting {status_val} failed: {body}");
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "setting {status_val} failed: {body}"
+        );
         assert_eq!(body["status"], *status_val);
     }
 
@@ -1353,7 +1365,8 @@ async fn test_me_friend_request_accept_and_remove() {
 async fn test_me_friend_request_decline() {
     let harness = TestHarness::new().await;
 
-    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_decl_a", "Me Decl A").await;
+    let (alice_id, alice_token) =
+        create_profile_with_token(&harness, "me_decl_a", "Me Decl A").await;
     let (_bob_id, bob_token) = create_profile_with_token(&harness, "me_decl_b", "Me Decl B").await;
     let bob_id_str = _bob_id.as_str();
 
@@ -1395,7 +1408,8 @@ async fn test_me_friend_request_decline() {
 async fn test_me_block_and_unblock() {
     let harness = TestHarness::new().await;
 
-    let (_alice_id, alice_token) = create_profile_with_token(&harness, "me_blk_a", "Me Blk A").await;
+    let (_alice_id, alice_token) =
+        create_profile_with_token(&harness, "me_blk_a", "Me Blk A").await;
     let (bob_id, _bob_token) = create_profile_with_token(&harness, "me_blk_b", "Me Blk B").await;
     let bob_id_str = bob_id.as_str();
 
@@ -1535,8 +1549,10 @@ async fn test_me_privacy_blocks_friend_request_then_preset_reopens() {
 async fn test_me_block_prevents_friend_request() {
     let harness = TestHarness::new().await;
 
-    let (alice_id, alice_token) = create_profile_with_token(&harness, "me_blkfr_a", "Me BlkFr A").await;
-    let (_bob_id, bob_token) = create_profile_with_token(&harness, "me_blkfr_b", "Me BlkFr B").await;
+    let (alice_id, alice_token) =
+        create_profile_with_token(&harness, "me_blkfr_a", "Me BlkFr A").await;
+    let (_bob_id, bob_token) =
+        create_profile_with_token(&harness, "me_blkfr_b", "Me BlkFr B").await;
     let bob_id_str = _bob_id.as_str();
 
     // 1. Alice blocks Bob
@@ -1638,7 +1654,8 @@ async fn test_me_three_user_social_graph() {
     // Create 3 users
     let (alice_id, alice_token) = create_profile_with_token(&harness, "me_soc_a", "Me Soc A").await;
     let (bob_id, bob_token) = create_profile_with_token(&harness, "me_soc_b", "Me Soc B").await;
-    let (charlie_id, charlie_token) = create_profile_with_token(&harness, "me_soc_c", "Me Soc C").await;
+    let (charlie_id, charlie_token) =
+        create_profile_with_token(&harness, "me_soc_c", "Me Soc C").await;
 
     // Alice -> Bob: friend request, accepted
     let (status, _) = make_authenticated_request(

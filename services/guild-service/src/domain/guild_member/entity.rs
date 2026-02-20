@@ -42,6 +42,7 @@ impl GuildMember {
     // ============================================
 
     /// Create a new guild member (when user joins)
+    #[must_use]
     pub fn new(guild_id: Uuid, user_id: Uuid) -> Self {
         let now = Utc::now();
         Self {
@@ -56,7 +57,9 @@ impl GuildMember {
     }
 
     /// Reconstruct from database
-    pub fn from_persisted(
+    #[allow(clippy::too_many_arguments)]
+    #[must_use]
+    pub const fn from_persisted(
         guild_id: Uuid,
         user_id: Uuid,
         nickname: Option<MemberNickname>,
@@ -81,41 +84,49 @@ impl GuildMember {
     // ============================================
 
     /// Returns the ID of the guild this membership belongs to.
-    pub fn guild_id(&self) -> Uuid {
+    #[must_use]
+    pub const fn guild_id(&self) -> Uuid {
         self.guild_id
     }
 
     /// Returns the ID of the member's user account.
-    pub fn user_id(&self) -> Uuid {
+    #[must_use]
+    pub const fn user_id(&self) -> Uuid {
         self.user_id
     }
 
     /// Returns the server-specific nickname, if one has been set.
-    pub fn nickname(&self) -> Option<&MemberNickname> {
+    #[must_use]
+    pub const fn nickname(&self) -> Option<&MemberNickname> {
         self.nickname.as_ref()
     }
 
     /// Returns the slice of role IDs currently assigned to this member.
+    #[must_use]
     pub fn role_ids(&self) -> &[Uuid] {
         &self.role_ids
     }
 
     /// Returns the timestamp when the user joined the guild.
-    pub fn joined_at(&self) -> DateTime<Utc> {
+    #[must_use]
+    pub const fn joined_at(&self) -> DateTime<Utc> {
         self.joined_at
     }
 
     /// Returns the timestamp of the most recent update to this membership record.
-    pub fn updated_at(&self) -> DateTime<Utc> {
+    #[must_use]
+    pub const fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
 
     /// Returns `true` if the member has not left or been kicked.
-    pub fn is_active(&self) -> bool {
+    #[must_use]
+    pub const fn is_active(&self) -> bool {
         self.left_at.is_none()
     }
 
     /// Returns `true` if the given `role_id` is currently assigned to this member.
+    #[must_use]
     pub fn has_role(&self, role_id: Uuid) -> bool {
         self.role_ids.contains(&role_id)
     }

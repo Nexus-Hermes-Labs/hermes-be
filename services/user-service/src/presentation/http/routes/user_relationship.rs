@@ -1,7 +1,7 @@
-use axum::Router;
-use axum::routing::{delete, get, post, put};
-use crate::state::AppState;
 use crate::presentation::http::handlers::user_relationship;
+use crate::state::AppState;
+use axum::routing::{delete, get, post, put};
+use axum::Router;
 
 /// Create user relationship routes
 pub fn user_relationship_routes() -> Router<AppState> {
@@ -19,13 +19,11 @@ pub fn user_relationship_routes() -> Router<AppState> {
             "/:user_id/relationships/request/decline",
             put(user_relationship::decline_friend_request),
         )
-        
         // Friends
         .route(
             "/:user_id/relationships/friend/:target_user_id",
             delete(user_relationship::remove_friend),
         )
-        
         // Blocks
         .route(
             "/:user_id/relationships/block",
@@ -35,7 +33,6 @@ pub fn user_relationship_routes() -> Router<AppState> {
             "/:user_id/relationships/block/:target_user_id",
             delete(user_relationship::unblock_user),
         )
-        
         // Specific queries first
         .route(
             "/:user_id/relationships/friends",
@@ -53,7 +50,6 @@ pub fn user_relationship_routes() -> Router<AppState> {
             "/:user_id/relationships/blocked",
             get(user_relationship::get_blocked_users),
         )
-        
         // Generic query last
         .route(
             "/:user_id/relationships/:target_user_id",

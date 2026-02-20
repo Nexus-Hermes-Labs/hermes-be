@@ -1,5 +1,5 @@
-use thiserror::Error;
 use crate::presentation::error::PresentationError;
+use thiserror::Error;
 
 /// Errors that can occur during service startup.
 #[derive(Debug, Error)]
@@ -8,7 +8,7 @@ pub enum BootstrapError {
     #[error("Initialization error: {0}")]
     Initialization(String),
 
-    /// Failed to connect to or run migrations against PostgreSQL.
+    /// Failed to connect to or run migrations against `PostgreSQL`.
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 

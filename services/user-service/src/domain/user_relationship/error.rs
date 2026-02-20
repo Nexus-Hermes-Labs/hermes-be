@@ -17,12 +17,14 @@ pub enum UserRelationshipError {
     #[error("Invalid state transition: Cannot accept a relationship that is not pending_incoming")]
     CannotAccept,
 
-    #[error("Invalid state transition: Cannot decline a relationship that is not pending_incoming")]
+    #[error(
+        "Invalid state transition: Cannot decline a relationship that is not pending_incoming"
+    )]
     CannotDecline,
 
     #[error("Invalid state transition: The relationship is already blocked")]
     AlreadyBlocked,
-    
+
     #[error("Invalid state transition: The relationship is not blocked")]
     NotBlocked,
 }

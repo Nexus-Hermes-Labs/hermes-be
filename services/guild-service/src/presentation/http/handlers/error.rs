@@ -35,11 +35,7 @@ pub struct ApiError {
 
 impl ApiError {
     /// Create an `ApiError` with an explicit HTTP status, error code, and message.
-    pub fn new(
-        status: StatusCode,
-        error: impl Into<String>,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn new(status: StatusCode, error: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             status,
             error: error.into(),
@@ -70,7 +66,11 @@ impl ApiError {
 
     /// HTTP 422 – the request body is syntactically valid but fails domain validation.
     pub fn unprocessable(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation_error", message)
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_error",
+            message,
+        )
     }
 
     /// HTTP 500 – an unexpected server-side error occurred.
@@ -80,6 +80,13 @@ impl ApiError {
             "internal_server_error",
             message,
         )
+    }
+
+    /// Attach structured details to the error response (e.g. per-field validation errors).
+    #[must_use]
+    pub fn with_details(mut self, details: serde_json::Value) -> Self {
+        self.details = Some(details);
+        self
     }
 }
 
@@ -101,12 +108,17 @@ impl IntoResponse for ApiError {
 impl From<GuildServiceError> for ApiError {
     fn from(err: GuildServiceError) -> Self {
         match err {
-            GuildServiceError::GuildNotFound => ApiError::not_found("Guild not found"),
-            GuildServiceError::Forbidden(msg) => ApiError::forbidden(msg),
-            GuildServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
+            GuildServiceError::GuildNotFound => Self::not_found("Guild not found"),
+            GuildServiceError::Forbidden(msg) => Self::forbidden(msg),
+            GuildServiceError::DomainError(e) => match e {
+                crate::domain::GuildError::NotOwner => {
+                    Self::forbidden("Only the guild owner can perform this action")
+                }
+                _ => Self::bad_request(e.to_string()),
+            },
             GuildServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);
-                ApiError::internal("An error occurred while processing your request")
+                Self::internal("An error occurred while processing your request")
             }
         }
     }
@@ -115,20 +127,20 @@ impl From<GuildServiceError> for ApiError {
 impl From<GuildMemberServiceError> for ApiError {
     fn from(err: GuildMemberServiceError) -> Self {
         match err {
-            GuildMemberServiceError::GuildNotFound => ApiError::not_found("Guild not found"),
-            GuildMemberServiceError::MemberNotFound => ApiError::not_found("Member not found"),
+            GuildMemberServiceError::GuildNotFound => Self::not_found("Guild not found"),
+            GuildMemberServiceError::MemberNotFound => Self::not_found("Member not found"),
             GuildMemberServiceError::AlreadyMember => {
-                ApiError::conflict("User is already a member of this guild")
+                Self::conflict("User is already a member of this guild")
             }
             GuildMemberServiceError::GuildFull => {
-                ApiError::bad_request("Guild has reached its member limit")
+                Self::bad_request("Guild has reached its member limit")
             }
-            GuildMemberServiceError::Forbidden(msg) => ApiError::forbidden(msg),
-            GuildMemberServiceError::GuildDomainError(e) => ApiError::bad_request(e.to_string()),
-            GuildMemberServiceError::MemberDomainError(e) => ApiError::bad_request(e.to_string()),
+            GuildMemberServiceError::Forbidden(msg) => Self::forbidden(msg),
+            GuildMemberServiceError::GuildDomainError(e) => Self::bad_request(e.to_string()),
+            GuildMemberServiceError::MemberDomainError(e) => Self::bad_request(e.to_string()),
             GuildMemberServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);
-                ApiError::internal("An error occurred while processing your request")
+                Self::internal("An error occurred while processing your request")
             }
         }
     }
@@ -137,19 +149,19 @@ impl From<GuildMemberServiceError> for ApiError {
 impl From<GuildRoleServiceError> for ApiError {
     fn from(err: GuildRoleServiceError) -> Self {
         match err {
-            GuildRoleServiceError::GuildNotFound => ApiError::not_found("Guild not found"),
-            GuildRoleServiceError::RoleNotFound => ApiError::not_found("Role not found"),
+            GuildRoleServiceError::GuildNotFound => Self::not_found("Guild not found"),
+            GuildRoleServiceError::RoleNotFound => Self::not_found("Role not found"),
             GuildRoleServiceError::RoleNameTaken => {
-                ApiError::conflict("A role with this name already exists")
+                Self::conflict("A role with this name already exists")
             }
             GuildRoleServiceError::CannotDeleteDefaultRole => {
-                ApiError::bad_request("Cannot delete the @everyone role")
+                Self::bad_request("Cannot delete the @everyone role")
             }
-            GuildRoleServiceError::Forbidden(msg) => ApiError::forbidden(msg),
-            GuildRoleServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
+            GuildRoleServiceError::Forbidden(msg) => Self::forbidden(msg),
+            GuildRoleServiceError::DomainError(e) => Self::bad_request(e.to_string()),
             GuildRoleServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);
-                ApiError::internal("An error occurred while processing your request")
+                Self::internal("An error occurred while processing your request")
             }
         }
     }
@@ -158,22 +170,22 @@ impl From<GuildRoleServiceError> for ApiError {
 impl From<GuildInviteServiceError> for ApiError {
     fn from(err: GuildInviteServiceError) -> Self {
         match err {
-            GuildInviteServiceError::GuildNotFound => ApiError::not_found("Guild not found"),
-            GuildInviteServiceError::InviteNotFound => ApiError::not_found("Invite not found"),
+            GuildInviteServiceError::GuildNotFound => Self::not_found("Guild not found"),
+            GuildInviteServiceError::InviteNotFound => Self::not_found("Invite not found"),
             GuildInviteServiceError::InviteInvalid => {
-                ApiError::bad_request("Invite is expired or exhausted")
+                Self::bad_request("Invite is expired or exhausted")
             }
             GuildInviteServiceError::AlreadyMember => {
-                ApiError::conflict("You are already a member of this guild")
+                Self::conflict("You are already a member of this guild")
             }
             GuildInviteServiceError::GuildFull => {
-                ApiError::bad_request("Guild has reached its member limit")
+                Self::bad_request("Guild has reached its member limit")
             }
-            GuildInviteServiceError::Forbidden(msg) => ApiError::forbidden(msg),
-            GuildInviteServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
+            GuildInviteServiceError::Forbidden(msg) => Self::forbidden(msg),
+            GuildInviteServiceError::DomainError(e) => Self::bad_request(e.to_string()),
             GuildInviteServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);
-                ApiError::internal("An error occurred while processing your request")
+                Self::internal("An error occurred while processing your request")
             }
         }
     }
@@ -181,16 +193,8 @@ impl From<GuildInviteServiceError> for ApiError {
 
 impl From<validator::ValidationErrors> for ApiError {
     fn from(errors: validator::ValidationErrors) -> Self {
-        ApiError::unprocessable("Validation failed").with_details(serde_json::json!({
+        Self::unprocessable("Validation failed").with_details(serde_json::json!({
             "validation_errors": errors.field_errors()
         }))
-    }
-}
-
-impl ApiError {
-    /// Attach structured details to the error response (e.g. per-field validation errors).
-    pub fn with_details(mut self, details: serde_json::Value) -> Self {
-        self.details = Some(details);
-        self
     }
 }

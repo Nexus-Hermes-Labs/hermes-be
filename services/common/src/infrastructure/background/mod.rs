@@ -1,5 +1,5 @@
-use std::time::Duration;
 use async_trait::async_trait;
+use std::time::Duration;
 use tokio::sync::watch;
 use tokio::time::{self, MissedTickBehavior};
 use tracing::{error, info};
@@ -18,12 +18,9 @@ pub trait BackgroundTask: Send + Sync {
 }
 
 /// Runs a periodic background task with graceful shutdown support
-pub async fn run_periodic_task<T: BackgroundTask>(
-    task: T,
-    mut shutdown_rx: watch::Receiver<bool>,
-) {
+pub async fn run_periodic_task<T: BackgroundTask>(task: T, mut shutdown_rx: watch::Receiver<bool>) {
     let mut interval = time::interval(task.interval());
-    
+
     // Prevent burst execution if ticks are missed
     interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
 

@@ -4,7 +4,8 @@ use std::sync::Arc;
 /// Guild domain state
 ///
 /// Holds all pre-composed guild application services, shared across handlers via `AppState`.
-#[derive(Clone)]
+#[allow(clippy::struct_field_names)]
+#[derive(Clone, Debug)]
 pub struct GuildState {
     /// Handles guild CRUD and ownership management.
     pub guild_service: Arc<GuildService>,
@@ -18,7 +19,8 @@ pub struct GuildState {
 
 impl GuildState {
     /// Compose a `GuildState` from pre-built application services.
-    pub fn new(
+    #[must_use]
+    pub const fn new(
         guild_service: Arc<GuildService>,
         member_service: Arc<GuildMemberService>,
         role_service: Arc<GuildRoleService>,

@@ -2,8 +2,8 @@ mod app_builder;
 pub mod error;
 
 use crate::bootstrap::error::BootstrapError;
-use common_config::config;
 use common::observability;
+use common_config::config;
 use tracing::info;
 
 pub use app_builder::AppBuilder;
@@ -13,8 +13,9 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // ========================================
     // 1. INITIALIZE METRICS
     // ========================================
-    let metrics = observability::metrics::Metrics::init()
-        .map_err(|e| BootstrapError::Initialization(format!("Failed to initialize metrics: {}", e)))?;
+    let metrics = observability::metrics::Metrics::init().map_err(|e| {
+        BootstrapError::Initialization(format!("Failed to initialize metrics: {}", e))
+    })?;
 
     info!("✅ Metrics initialized");
 
@@ -22,11 +23,10 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // 2. INITIALIZE DATABASE
     // ========================================
     info!("📦 Connecting to PostgreSQL...");
-    let db_pool = crate::infrastructure::persistence::postgres::connection::create_pool(
-        &config().database
-    )
-    .await
-    .map_err(BootstrapError::Database)?;
+    let db_pool =
+        crate::infrastructure::persistence::postgres::connection::create_pool(&config().database)
+            .await
+            .map_err(BootstrapError::Database)?;
 
     info!("✅ Database connected");
 
@@ -34,8 +34,8 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // 3. INITIALIZE REDIS
     // ========================================
     info!("🔴 Connecting to Redis...");
-    let redis_client = redis::Client::open(config().redis.get_url().clone())
-        .map_err(BootstrapError::Redis)?;
+    let redis_client =
+        redis::Client::open(config().redis.get_url().clone()).map_err(BootstrapError::Redis)?;
     let redis_manager = redis::aio::ConnectionManager::new(redis_client)
         .await
         .map_err(BootstrapError::Redis)?;
@@ -78,13 +78,17 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
 
     let http_shutdown_rx = shutdown_rx.clone();
     let http_handle = tokio::spawn(async move {
-        server.run(async move {
-            let mut rx = http_shutdown_rx;
-            let _ = rx.changed().await;
-        }).await.map_err(BootstrapError::Presentation)
+        server
+            .run(async move {
+                let mut rx = http_shutdown_rx;
+                let _ = rx.changed().await;
+            })
+            .await
+            .map_err(BootstrapError::Presentation)
     });
 
-    let grpc_addr = std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
+    let grpc_addr =
+        std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
     let grpc_shutdown_rx = shutdown_rx.clone();
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()
@@ -99,7 +103,9 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
 
     // Handle signals for graceful shutdown
     let mut sig_term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-        .map_err(|e| BootstrapError::Initialization(format!("Failed to setup signal handler: {}", e)))?;
+        .map_err(|e| {
+            BootstrapError::Initialization(format!("Failed to setup signal handler: {}", e))
+        })?;
 
     // Wait for either server to finish (or fail), or a shutdown signal
     tokio::select! {

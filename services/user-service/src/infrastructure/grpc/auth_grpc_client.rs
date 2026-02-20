@@ -15,7 +15,7 @@ use tracing::{error, info};
 /// Lives in the infrastructure layer as it's an external adapter.
 #[derive(Clone)]
 pub struct AuthGrpcClient {
-    endpoint: Endpoint,  // ✅ Endpoint store et, Channel değil
+    endpoint: Endpoint, // ✅ Endpoint store et, Channel değil
 }
 
 impl AuthGrpcClient {
@@ -41,7 +41,7 @@ impl AuthGrpcClient {
 
     /// Validate an access token
     pub async fn validate_token(
-        &self,  // ✅ &mut yerine &self
+        &self, // ✅ &mut yerine &self
         access_token: &str,
     ) -> Result<ValidateTokenResponse, tonic::Status> {
         let mut client = self.create_client();
@@ -60,7 +60,7 @@ impl AuthGrpcClient {
 
     /// Check if a user has a specific permission
     pub async fn check_permission(
-        &self,  // ✅ &mut yerine &self
+        &self, // ✅ &mut yerine &self
         user_id: &str,
         permission: &str,
         resource_id: &str,

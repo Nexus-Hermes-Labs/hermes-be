@@ -28,12 +28,12 @@ impl TryFrom<UserPrivacySettingsRow> for UserPrivacySettings {
         let allow_dms_from = row
             .allow_dms_from
             .parse::<DmPrivacy>()
-            .map_err(|e| UserPrivacyError::InvalidDmPrivacy(e))?;
+            .map_err(UserPrivacyError::InvalidDmPrivacy)?;
 
         let allow_friend_requests_from = row
             .allow_friend_requests_from
             .parse::<FriendRequestPrivacy>()
-            .map_err(|e| UserPrivacyError::InvalidFriendRequestPrivacy(e))?;
+            .map_err(UserPrivacyError::InvalidFriendRequestPrivacy)?;
 
         let content_filter_level = ContentFilterLevel::from_i16(row.content_filter_level)
             .map_err(|_| UserPrivacyError::InvalidContentFilterLevel(row.content_filter_level))?;
@@ -58,10 +58,7 @@ impl From<&UserPrivacySettings> for UserPrivacySettingsRow {
         Self {
             user_id: settings.user_id(),
             allow_dms_from: settings.allow_dms_from().as_str().to_string(),
-            allow_friend_requests_from: settings
-                .allow_friend_requests_from()
-                .as_str()
-                .to_string(),
+            allow_friend_requests_from: settings.allow_friend_requests_from().as_str().to_string(),
             show_online_status: settings.show_online_status(),
             show_current_activity: settings.show_current_activity(),
             show_profile_to_non_friends: settings.show_profile_to_non_friends(),

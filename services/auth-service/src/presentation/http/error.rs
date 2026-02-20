@@ -1,4 +1,5 @@
 // presentation/api/errors/api_error.rs
+use crate::application::services::authentication::error::AuthApplicationError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -6,7 +7,6 @@ use axum::{
 };
 use serde::Serialize;
 use validator::ValidationErrors;
-use crate::application::services::authentication::error::AuthApplicationError;
 
 #[derive(Debug)]
 pub struct ApiError {
@@ -119,7 +119,7 @@ impl From<AuthApplicationError> for ApiError {
                     message: "Failed to create user profile. Please try again later.".to_string(),
                     code: "USER_SERVICE_ERROR".to_string(),
                 }
-            },
+            }
             AuthApplicationError::UserServiceError(ref msg)
             | AuthApplicationError::UserServiceTransportError(ref msg) => {
                 tracing::error!("User service communication error: {}", msg);
@@ -128,7 +128,7 @@ impl From<AuthApplicationError> for ApiError {
                     message: "User service is unavailable. Please try again later.".to_string(),
                     code: "USER_SERVICE_UNAVAILABLE".to_string(),
                 }
-            },
+            }
             AuthApplicationError::UserServiceInvalidResponse(ref msg) => {
                 tracing::error!("User service invalid response: {}", msg);
                 ApiError {
@@ -136,7 +136,7 @@ impl From<AuthApplicationError> for ApiError {
                     message: "Received invalid response from user service.".to_string(),
                     code: "USER_SERVICE_INVALID_RESPONSE".to_string(),
                 }
-            },
+            }
 
             // 500 Internal Server Error
             AuthApplicationError::HashingFailed
@@ -159,9 +159,15 @@ impl From<ValidationErrors> for ApiError {
             .iter()
             .flat_map(|(field, errors)| {
                 errors.iter().map(move |error| {
-                    format!("{}: {}", field, error.message.as_ref()
-                        .map(|m| m.to_string())
-                        .unwrap_or_else(|| "Invalid value".to_string()))
+                    format!(
+                        "{}: {}",
+                        field,
+                        error
+                            .message
+                            .as_ref()
+                            .map(|m| m.to_string())
+                            .unwrap_or_else(|| "Invalid value".to_string())
+                    )
                 })
             })
             .collect();

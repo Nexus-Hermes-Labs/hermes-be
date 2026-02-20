@@ -1,7 +1,7 @@
 use crate::state::app_state::AppState;
 use axum::http::{header, HeaderValue, Method};
-use common_config::config;
 use common::observability::HealthCheck;
+use common_config::config;
 use std::{net::SocketAddr, sync::Arc};
 use tower_http::{
     cors::CorsLayer,
@@ -29,7 +29,10 @@ impl Server {
         })
     }
 
-    pub async fn run(self, shutdown: impl std::future::Future<Output = ()> + Send + 'static) -> Result<(), PresentationError> {
+    pub async fn run(
+        self,
+        shutdown: impl std::future::Future<Output = ()> + Send + 'static,
+    ) -> Result<(), PresentationError> {
         let app = self.build_router();
         let addr = self.server_address();
 

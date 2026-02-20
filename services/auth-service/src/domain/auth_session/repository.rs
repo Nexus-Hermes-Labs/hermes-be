@@ -31,7 +31,9 @@ use uuid::Uuid;
 /// 🎯 DOMAIN-SPECIFIC METHODS
 /// --------------------------------------------------
 #[async_trait]
-pub trait AuthSessionRepository: Repository<AuthSession, Uuid, Error = RepositoryError> + Send + Sync {
+pub trait AuthSessionRepository:
+    Repository<AuthSession, Uuid, Error = RepositoryError> + Send + Sync
+{
     // ============================================
     // SESSION LOOKUPS
     // ============================================
@@ -47,10 +49,16 @@ pub trait AuthSessionRepository: Repository<AuthSession, Uuid, Error = Repositor
     // ============================================
 
     /// Find all active (non-revoked, non-expired) sessions for a credential
-    async fn find_active_by_credential_id(&self, credential_id: Uuid) -> Result<Vec<AuthSession>, Self::Error>;
+    async fn find_active_by_credential_id(
+        &self,
+        credential_id: Uuid,
+    ) -> Result<Vec<AuthSession>, Self::Error>;
 
     /// Find all sessions (including revoked/expired) for a credential
-    async fn find_all_by_credential_id(&self, credential_id: Uuid) -> Result<Vec<AuthSession>, Self::Error>;
+    async fn find_all_by_credential_id(
+        &self,
+        credential_id: Uuid,
+    ) -> Result<Vec<AuthSession>, Self::Error>;
 
     // ============================================
     // BULK OPERATIONS

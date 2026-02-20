@@ -416,7 +416,7 @@ mod tests {
 
         // Create 5 credentials
         for i in 0..5 {
-            let email = Email::new(&format!("user{}@example.com", i)).unwrap();
+            let email = Email::new(format!("user{}@example.com", i)).unwrap();
             let password_hash = PasswordHash::from_hash("$argon2id$...");
             let user_id = Uuid::new_v4(); // Dummy user_id for test
             let credential = AuthCredential::new(user_id, email, password_hash);
@@ -466,7 +466,10 @@ mod tests {
         assert_eq!(found_by_token.unwrap().email(), &email);
 
         // Find by non-existent token (should fail)
-        let found_by_non_existent = repo.find_by_verification_token("non_existent").await.unwrap();
+        let found_by_non_existent = repo
+            .find_by_verification_token("non_existent")
+            .await
+            .unwrap();
         assert!(found_by_non_existent.is_none());
     }
 
@@ -501,19 +504,35 @@ mod tests {
 
         // Credential with expired token
         let email1 = Email::new("cleanme1@example.com").unwrap();
-        let credential1 = AuthCredential::new(Uuid::new_v4(), email1.clone(), PasswordHash::from_hash("$argon2id$..."));
+        let credential1 = AuthCredential::new(
+            Uuid::new_v4(),
+            email1.clone(),
+            PasswordHash::from_hash("$argon2id$..."),
+        );
         repo.save(&credential1).await.unwrap();
-        repo.set_verification_token(credential1.id(), "token1", -1).await.unwrap(); // Expired
+        repo.set_verification_token(credential1.id(), "token1", -1)
+            .await
+            .unwrap(); // Expired
 
         // Credential with valid token
         let email2 = Email::new("cleanme2@example.com").unwrap();
-        let credential2 = AuthCredential::new(Uuid::new_v4(), email2.clone(), PasswordHash::from_hash("$argon2id$..."));
+        let credential2 = AuthCredential::new(
+            Uuid::new_v4(),
+            email2.clone(),
+            PasswordHash::from_hash("$argon2id$..."),
+        );
         repo.save(&credential2).await.unwrap();
-        repo.set_verification_token(credential2.id(), "token2", 1).await.unwrap(); // Valid
+        repo.set_verification_token(credential2.id(), "token2", 1)
+            .await
+            .unwrap(); // Valid
 
         // Credential without token
         let email3 = Email::new("cleanme3@example.com").unwrap();
-        let credential3 = AuthCredential::new(Uuid::new_v4(), email3.clone(), PasswordHash::from_hash("$argon2id$..."));
+        let credential3 = AuthCredential::new(
+            Uuid::new_v4(),
+            email3.clone(),
+            PasswordHash::from_hash("$argon2id$..."),
+        );
         repo.save(&credential3).await.unwrap();
 
         // Clear expired tokens

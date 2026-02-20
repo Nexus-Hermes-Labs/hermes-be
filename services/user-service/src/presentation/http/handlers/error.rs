@@ -75,7 +75,11 @@ impl ApiError {
     }
 
     pub fn validation(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation_error", message)
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_error",
+            message,
+        )
     }
 }
 

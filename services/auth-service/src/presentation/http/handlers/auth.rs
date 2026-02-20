@@ -1,9 +1,9 @@
+use crate::application::services::authentication::error::AuthApplicationError;
 use crate::presentation::http::dto::{
     AuthResponse, AuthResponseWithUser, ClientInfo, LoginRequest, LogoutRequest, LogoutResponse,
     RefreshTokenRequest, RegisterRequest, VerifyEmailRequest, VerifyEmailResponse,
 };
 use crate::presentation::http::error::ApiError;
-use crate::application::services::authentication::error::AuthApplicationError;
 use crate::state::app_state::AppState;
 use axum::{
     extract::State,
@@ -142,12 +142,11 @@ pub async fn logout_handler(
         .auth
         .jwt_manager
         .verify_refresh_token(&request.refresh_token)
-        .map_err(|_e| {
-            Into::<ApiError>::into(AuthApplicationError::InvalidToken)
-        })?;
+        .map_err(|_e| Into::<ApiError>::into(AuthApplicationError::InvalidToken))?;
 
-    let user_id = claims.user_id().map_err(|_e| {
-                    Into::<ApiError>::into(AuthApplicationError::InvalidToken)    })?;
+    let user_id = claims
+        .user_id()
+        .map_err(|_e| Into::<ApiError>::into(AuthApplicationError::InvalidToken))?;
 
     // Session ID is optional in the claims, but if present, we use it for specific logout
     // Otherwise, all_devices will handle revoking all sessions for the user.

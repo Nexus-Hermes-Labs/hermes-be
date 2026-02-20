@@ -9,19 +9,21 @@ use crate::domain::guild::{Guild, GuildRepository};
 
 use super::models::GuildRow;
 
-const GUILD_COLUMNS: &str = r#"
+const GUILD_COLUMNS: &str = r"
     id, owner_id, name, description, icon_url, banner_url,
     visibility::TEXT as visibility,
     member_count, max_members, created_at, updated_at, deleted_at
-"#;
+";
 
-/// PostgreSQL implementation of GuildRepository
+/// `PostgreSQL` implementation of `GuildRepository`
+#[derive(Debug)]
 pub struct PostgresGuildRepository {
     pool: PgPool,
 }
 
 impl PostgresGuildRepository {
-    pub fn new(pool: PgPool) -> Self {
+    #[must_use]
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -31,10 +33,8 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
     type Error = RepositoryError;
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Guild>, Self::Error> {
-        let sql = format!(
-            "SELECT {} FROM guilds WHERE id = $1 AND deleted_at IS NULL",
-            GUILD_COLUMNS
-        );
+        let sql =
+            format!("SELECT {GUILD_COLUMNS} FROM guilds WHERE id = $1 AND deleted_at IS NULL");
         let row = sqlx::query_as::<_, GuildRow>(&sql)
             .bind(id)
             .fetch_optional(&self.pool)
@@ -45,8 +45,7 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
 
     async fn find_all(&self) -> Result<Vec<Guild>, Self::Error> {
         let sql = format!(
-            "SELECT {} FROM guilds WHERE deleted_at IS NULL ORDER BY created_at DESC",
-            GUILD_COLUMNS
+            "SELECT {GUILD_COLUMNS} FROM guilds WHERE deleted_at IS NULL ORDER BY created_at DESC"
         );
         let rows = sqlx::query_as::<_, GuildRow>(&sql)
             .fetch_all(&self.pool)
@@ -58,13 +57,13 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
     async fn save(&self, entity: &Guild) -> Result<(), Self::Error> {
         let row = GuildRow::from(entity);
         sqlx::query(
-            r#"
+            r"
             INSERT INTO guilds (
                 id, owner_id, name, description, icon_url, banner_url,
                 visibility, member_count, max_members, created_at, updated_at, deleted_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7::guild_visibility, $8, $9, $10, $11, $12)
-            "#,
+            ",
         )
         .bind(row.id)
         .bind(row.owner_id)
@@ -87,7 +86,7 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
     async fn update(&self, entity: &Guild) -> Result<(), Self::Error> {
         let row = GuildRow::from(entity);
         sqlx::query(
-            r#"
+            r"
             UPDATE guilds
             SET owner_id    = $2,
                 name        = $3,
@@ -99,7 +98,7 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
                 updated_at  = $9,
                 deleted_at  = $10
             WHERE id = $1
-            "#,
+            ",
         )
         .bind(row.id)
         .bind(row.owner_id)
@@ -118,12 +117,10 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), Self::Error> {
-        sqlx::query(
-            "UPDATE guilds SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1",
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE guilds SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
@@ -140,11 +137,9 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
     }
 
     async fn count(&self) -> Result<i64, Self::Error> {
-        let count: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM guilds WHERE deleted_at IS NULL",
-        )
-        .fetch_one(&self.pool)
-        .await?;
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM guilds WHERE deleted_at IS NULL")
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(count)
     }
@@ -153,10 +148,7 @@ impl Repository<Guild, Uuid> for PostgresGuildRepository {
 #[async_trait]
 impl GuildRepository for PostgresGuildRepository {
     async fn find_by_owner(&self, owner_id: Uuid) -> Result<Vec<Guild>, Self::Error> {
-        let sql = format!(
-            "SELECT {} FROM guilds WHERE owner_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
-            GUILD_COLUMNS
-        );
+        let sql = format!("SELECT {GUILD_COLUMNS} FROM guilds WHERE owner_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC");
         let rows = sqlx::query_as::<_, GuildRow>(&sql)
             .bind(owner_id)
             .fetch_all(&self.pool)
@@ -165,12 +157,14 @@ impl GuildRepository for PostgresGuildRepository {
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
 
-    async fn search_public(&self, query: &str, limit: i64, offset: i64) -> Result<Vec<Guild>, Self::Error> {
-        let pattern = format!("%{}%", query);
-        let sql = format!(
-            "SELECT {} FROM guilds WHERE deleted_at IS NULL AND visibility = 'public' AND name ILIKE $1 ORDER BY member_count DESC LIMIT $2 OFFSET $3",
-            GUILD_COLUMNS
-        );
+    async fn search_public(
+        &self,
+        query: &str,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Guild>, Self::Error> {
+        let pattern = format!("%{query}%");
+        let sql = format!("SELECT {GUILD_COLUMNS} FROM guilds WHERE deleted_at IS NULL AND visibility = 'public' AND name ILIKE $1 ORDER BY member_count DESC LIMIT $2 OFFSET $3");
         let rows = sqlx::query_as::<_, GuildRow>(&sql)
             .bind(&pattern)
             .bind(limit)
@@ -182,10 +176,8 @@ impl GuildRepository for PostgresGuildRepository {
     }
 
     async fn find_by_ids(&self, ids: Vec<Uuid>) -> Result<Vec<Guild>, Self::Error> {
-        let sql = format!(
-            "SELECT {} FROM guilds WHERE id = ANY($1) AND deleted_at IS NULL",
-            GUILD_COLUMNS
-        );
+        let sql =
+            format!("SELECT {GUILD_COLUMNS} FROM guilds WHERE id = ANY($1) AND deleted_at IS NULL");
         let rows = sqlx::query_as::<_, GuildRow>(&sql)
             .bind(&ids)
             .fetch_all(&self.pool)

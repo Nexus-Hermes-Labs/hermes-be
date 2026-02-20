@@ -1,5 +1,5 @@
 mod models;
 mod repository;
 
-pub use models::{AuthAuditLog, AuthAuditLogRow, AuditLogFilters};
+pub use models::{AuditLogFilters, AuthAuditLog, AuthAuditLogRow};
 pub use repository::PostgresAuthAuditRepository;

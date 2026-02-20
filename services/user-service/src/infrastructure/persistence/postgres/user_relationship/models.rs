@@ -86,7 +86,10 @@ mod tests {
         };
 
         let entity = UserRelationship::try_from(row).unwrap();
-        assert_eq!(entity.relationship_type(), RelationshipType::PendingOutgoing);
+        assert_eq!(
+            entity.relationship_type(),
+            RelationshipType::PendingOutgoing
+        );
         assert_eq!(entity.message(), Some("Hello!"));
     }
 

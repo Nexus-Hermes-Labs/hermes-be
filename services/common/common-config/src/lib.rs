@@ -1,13 +1,13 @@
 // common-config/src/lib.rs
 pub mod cache;
 pub mod database;
+pub mod error;
 pub mod grpc_endpoints;
 pub mod logging;
 pub mod messaging;
 pub mod secrets;
 pub mod service;
 pub mod smtp;
-pub mod error;
 
 pub use cache::CacheConfig;
 pub use database::DatabaseConfig;
@@ -18,11 +18,11 @@ pub use secrets::SecretsConfig;
 pub use service::ServiceConfig;
 pub use smtp::SmtpConfig;
 
+use crate::error::ConfigError;
 use figment::{providers::Env, Figment};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::env;
-use crate::error::ConfigError;
 
 /// Main application configuration
 #[derive(Debug, Clone, Deserialize)]
@@ -79,7 +79,9 @@ impl Config {
     pub fn validate(&self) -> Result<(), ConfigError> {
         // Validate service config
         if self.service.name.is_empty() {
-            return Err(ConfigError::Validation("Service name cannot be empty".into()));
+            return Err(ConfigError::Validation(
+                "Service name cannot be empty".into(),
+            ));
         }
 
         if self.service.port == 0 {
@@ -104,7 +106,9 @@ impl Config {
 
         // Validate database config
         if self.database.host.is_empty() {
-            return Err(ConfigError::Validation("Database host cannot be empty".into()));
+            return Err(ConfigError::Validation(
+                "Database host cannot be empty".into(),
+            ));
         }
 
         // Validate Redis config
@@ -114,16 +118,20 @@ impl Config {
 
         // Validate NATS config
         if self.nats.servers.is_empty() {
-            return Err(ConfigError::Validation("NATS servers cannot be empty".into()));
+            return Err(ConfigError::Validation(
+                "NATS servers cannot be empty".into(),
+            ));
         }
-        
+
         // Validate SMTP config
         if self.smtp.host.is_empty() {
             return Err(ConfigError::Validation("SMTP host cannot be empty".into()));
         }
-        
+
         if self.smtp.from_address.is_empty() {
-            return Err(ConfigError::Validation("SMTP from_address cannot be empty".into()));
+            return Err(ConfigError::Validation(
+                "SMTP from_address cannot be empty".into(),
+            ));
         }
 
         // Delegate nested secrets validations
@@ -165,7 +173,9 @@ pub fn init_config(service_name: &str) -> Result<(), ConfigError> {
 
 /// Get reference to global configuration
 pub fn config() -> &'static Config {
-    CONFIG.get().expect("CONFIG is not initialized. Call init_config() first")
+    CONFIG
+        .get()
+        .expect("CONFIG is not initialized. Call init_config() first")
 }
 
 /// Check if config is initialized

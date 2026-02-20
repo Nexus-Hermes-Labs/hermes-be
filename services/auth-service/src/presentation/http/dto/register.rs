@@ -1,5 +1,5 @@
-use std::sync::LazyLock;
 use serde::Deserialize;
+use std::sync::LazyLock;
 use utoipa::ToSchema;
 use validator::Validate;
 
@@ -73,9 +73,8 @@ pub use super::shared::AuthResponseWithUser as RegisterResponse;
 
 use regex::Regex;
 
-static USERNAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^[a-z0-9_]+$").expect("Failed to compile username regex")
-});
+static USERNAME_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-z0-9_]+$").expect("Failed to compile username regex"));
 
 #[cfg(test)]
 mod tests {

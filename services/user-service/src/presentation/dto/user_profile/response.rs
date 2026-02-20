@@ -24,17 +24,16 @@ pub struct ProfileResponse {
 
 impl From<UserProfile> for ProfileResponse {
     fn from(profile: UserProfile) -> Self {
-        let custom_status = if profile.custom_status_text().is_some()
-            || profile.custom_status_emoji().is_some()
-        {
-            Some(CustomStatusResponse {
-                text: profile.custom_status_text().map(String::from),
-                emoji: profile.custom_status_emoji().map(String::from),
-                expires_at: profile.custom_status_expires_at(),
-            })
-        } else {
-            None
-        };
+        let custom_status =
+            if profile.custom_status_text().is_some() || profile.custom_status_emoji().is_some() {
+                Some(CustomStatusResponse {
+                    text: profile.custom_status_text().map(String::from),
+                    emoji: profile.custom_status_emoji().map(String::from),
+                    expires_at: profile.custom_status_expires_at(),
+                })
+            } else {
+                None
+            };
 
         Self {
             user_id: profile.id(),

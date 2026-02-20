@@ -1,6 +1,6 @@
+use crate::domain::event::EventEnvelope;
 use async_trait::async_trait;
 use serde::Serialize;
-use crate::domain::event::EventEnvelope;
 
 use super::error::MessagingError;
 
@@ -8,11 +8,7 @@ use super::error::MessagingError;
 #[async_trait]
 pub trait EventPublisher: Send + Sync {
     /// Publish raw bytes to a subject/topic
-    async fn publish_bytes(
-        &self,
-        subject: &str,
-        payload: Vec<u8>,
-    ) -> Result<(), MessagingError>;
+    async fn publish_bytes(&self, subject: &str, payload: Vec<u8>) -> Result<(), MessagingError>;
 
     /// Health check
     async fn health_check(&self) -> Result<(), MessagingError>;
@@ -28,12 +24,12 @@ pub trait EventPublisherExt: EventPublisher {
         event: &EventEnvelope<T>,
     ) -> Result<(), MessagingError>
     where
-        T: Serialize + Send + Sync + 'static
+        T: Serialize + Send + Sync + 'static,
     {
         let payload = event
             .to_json_bytes()
             .map_err(|e| MessagingError::SerializationFailed(e.to_string()))?;
-        
+
         self.publish_bytes(subject, payload).await
     }
 

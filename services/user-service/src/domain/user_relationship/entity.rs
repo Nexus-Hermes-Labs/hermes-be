@@ -25,7 +25,6 @@ pub struct UserRelationship {
     // ============================================
     // IDENTITY
     // ============================================
-
     /// Unique identifier of this relationship record.
     id: Uuid,
 
@@ -39,7 +38,6 @@ pub struct UserRelationship {
     // ============================================
     // STATE
     // ============================================
-
     /// Current type of the relationship.
     /// Determines behavior and allowed transitions.
     relationship_type: RelationshipType,
@@ -51,7 +49,6 @@ pub struct UserRelationship {
     // ============================================
     // METADATA
     // ============================================
-
     /// Timestamp when this relationship was created.
     created_at: DateTime<Utc>,
 

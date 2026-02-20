@@ -13,16 +13,11 @@ pub trait GuildInviteRepository: Send + Sync {
     async fn update(&self, invite: &GuildInvite) -> Result<(), RepositoryError>;
 
     /// Find invite by code (case-sensitive)
-    async fn find_by_code(
-        &self,
-        code: &InviteCode,
-    ) -> Result<Option<GuildInvite>, RepositoryError>;
+    async fn find_by_code(&self, code: &InviteCode)
+        -> Result<Option<GuildInvite>, RepositoryError>;
 
     /// Get all active invites for a guild
-    async fn find_by_guild(
-        &self,
-        guild_id: Uuid,
-    ) -> Result<Vec<GuildInvite>, RepositoryError>;
+    async fn find_by_guild(&self, guild_id: Uuid) -> Result<Vec<GuildInvite>, RepositoryError>;
 
     /// Get all invites created by a user in a guild
     async fn find_by_creator(
@@ -32,8 +27,5 @@ pub trait GuildInviteRepository: Send + Sync {
     ) -> Result<Vec<GuildInvite>, RepositoryError>;
 
     /// Delete all invites for a guild (on guild deletion)
-    async fn delete_by_guild(
-        &self,
-        guild_id: Uuid,
-    ) -> Result<(), RepositoryError>;
+    async fn delete_by_guild(&self, guild_id: Uuid) -> Result<(), RepositoryError>;
 }

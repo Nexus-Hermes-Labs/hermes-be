@@ -1,19 +1,31 @@
+#![allow(clippy::needless_for_each)]
 use utoipa::OpenApi;
 
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild::request::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild::response::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild_invite::request::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild_invite::response::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild_member::request::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild_member::response::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild_role::request::*;
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::dto::guild_role::response::*;
 
+#[allow(clippy::wildcard_imports)]
 use crate::presentation::http::handlers::{
     guild::*, guild_invite::*, guild_member::*, guild_role::*,
 };
 
-#[derive(OpenApi)]
+/// `OpenAPI` documentation for the guild service.
+#[allow(clippy::needless_for_each)]
+#[derive(Debug, OpenApi)]
 #[openapi(
     paths(
         // Guild

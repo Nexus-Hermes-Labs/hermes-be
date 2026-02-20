@@ -1,15 +1,6 @@
-use user_service::application::services::{
-    UserPrivacyService, UserProfileService, UserRelationshipService,
-};
-use user_service::infrastructure::persistence::postgres::{
-    PostgresUserPrivacyRepository, PostgresUserProfileRepository, PostgresUserRelationshipRepository,
-};
-use user_service::state::user_state::UserState;
-use user_service::state::shared_state::SharedState;
-use user_service::state::AppState;
+use axum::Router;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
-use axum::Router;
 use sqlx::PgPool;
 use std::sync::Arc;
 use testcontainers::runners::AsyncRunner;
@@ -17,10 +8,19 @@ use testcontainers::{ContainerAsync, GenericImage};
 use testcontainers_modules::postgres::Postgres;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+use user_service::application::services::{
+    UserPrivacyService, UserProfileService, UserRelationshipService,
+};
+use user_service::infrastructure::persistence::postgres::{
+    PostgresUserPrivacyRepository, PostgresUserProfileRepository,
+    PostgresUserRelationshipRepository,
+};
+use user_service::state::shared_state::SharedState;
+use user_service::state::user_state::UserState;
+use user_service::state::AppState;
 
 // SQL migrations
-const USER_ENUMS_SQL: &str =
-    include_str!("../../migrations/20260121135148_create_enums.sql");
+const USER_ENUMS_SQL: &str = include_str!("../../migrations/20260121135148_create_enums.sql");
 const USER_PROFILES_SQL: &str =
     include_str!("../../migrations/20260121135149_create_user_profiles.sql");
 const USER_PRIVACY_SQL: &str =
@@ -29,12 +29,10 @@ const USER_BADGES_SQL: &str =
     include_str!("../../migrations/20260121135151_create_user_badges.sql");
 const USER_RELATIONSHIPS_SQL: &str =
     include_str!("../../migrations/20260121135152_create_user_relationships.sql");
-const USER_INDEXES_SQL: &str =
-    include_str!("../../migrations/20260121135153_create_indexes.sql");
+const USER_INDEXES_SQL: &str = include_str!("../../migrations/20260121135153_create_indexes.sql");
 const USER_FUNCTIONS_SQL: &str =
     include_str!("../../migrations/20260121135154_create_functions.sql");
-const USER_TRIGGERS_SQL: &str =
-    include_str!("../../migrations/20260121135155_create_triggers.sql");
+const USER_TRIGGERS_SQL: &str = include_str!("../../migrations/20260121135155_create_triggers.sql");
 
 /// Initialize the global metrics recorder exactly once across all tests.
 static METRICS_INIT: std::sync::Once = std::sync::Once::new();
@@ -47,7 +45,10 @@ fn get_or_init_metrics() -> Metrics {
         unsafe { METRICS = Some(m) };
     });
     // SAFETY: guaranteed to be initialized after call_once
-    unsafe { METRICS.clone().expect("metrics initialized") }
+    #[allow(static_mut_refs)]
+    unsafe {
+        METRICS.clone().expect("metrics initialized")
+    }
 }
 
 /// Holds all testcontainers and the fully-built router.
@@ -109,17 +110,13 @@ impl TestHarness {
             .start()
             .await
             .expect("start redis container");
-        let redis_host = redis_container
-            .get_host()
-            .await
-            .expect("get redis host");
+        let redis_host = redis_container.get_host().await.expect("get redis host");
         let redis_port = redis_container
             .get_host_port_ipv4(6379)
             .await
             .expect("get redis port");
         let redis_url = format!("redis://{}:{}", redis_host, redis_port);
-        let redis_client =
-            redis::Client::open(redis_url.as_str()).expect("create redis client");
+        let redis_client = redis::Client::open(redis_url.as_str()).expect("create redis client");
         let redis_conn = redis::aio::ConnectionManager::new(redis_client)
             .await
             .expect("create redis connection manager");
@@ -127,8 +124,7 @@ impl TestHarness {
         // 3. Build services
         let user_profile_repo = Arc::new(PostgresUserProfileRepository::new(pool.clone()));
         let user_privacy_repo = Arc::new(PostgresUserPrivacyRepository::new(pool.clone()));
-        let relationship_repo =
-            Arc::new(PostgresUserRelationshipRepository::new(pool.clone()));
+        let relationship_repo = Arc::new(PostgresUserRelationshipRepository::new(pool.clone()));
 
         let user_profile_service = Arc::new(UserProfileService::new(
             user_profile_repo,
@@ -175,7 +171,10 @@ impl TestHarness {
         let trace = TraceLayer::new_for_http();
 
         let router = user_service::presentation::http::routes::create_router(
-            app_state, health_check, cors, trace,
+            app_state,
+            health_check,
+            cors,
+            trace,
         );
 
         Self {

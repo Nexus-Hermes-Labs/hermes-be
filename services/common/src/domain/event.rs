@@ -30,12 +30,7 @@ impl<T> EventEnvelope<T>
 where
     T: Serialize,
 {
-    pub fn new(
-        event_type: String,
-        aggregate_id: Uuid,
-        payload: T,
-        source_service: String,
-    ) -> Self {
+    pub fn new(event_type: String, aggregate_id: Uuid, payload: T, source_service: String) -> Self {
         Self {
             event_id: Uuid::new_v4(),
             event_type,

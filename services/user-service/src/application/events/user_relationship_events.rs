@@ -65,10 +65,7 @@ impl FriendRequestDeclinedEvent {
     }
 
     pub fn subject(&self) -> String {
-        format!(
-            "user.relationship.friend_request.declined.{}",
-            self.user_id
-        )
+        format!("user.relationship.friend_request.declined.{}", self.user_id)
     }
 }
 

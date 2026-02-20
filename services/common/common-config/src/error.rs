@@ -1,4 +1,3 @@
-
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
     #[error("Configuration extraction error: {0}")]

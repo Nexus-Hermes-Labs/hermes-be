@@ -1,26 +1,25 @@
+use auth_service::application::services::authentication::service::AuthService;
 use auth_service::infrastructure::grpc::UserGrpcClient;
 use auth_service::infrastructure::persistence::postgres::{
     PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
 use auth_service::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use auth_service::infrastructure::security::token::sha256_service::Sha256TokenHasher;
-use auth_service::application::services::authentication::service::AuthService;
-use auth_service::state::app_state::AppState;
-use auth_service::state::auth_state::AuthState;
-use auth_service::state::shared_state::SharedState;
 use auth_service::presentation::grpc::proto::user::v1::user_service_server::{
     UserService, UserServiceServer,
 };
 use auth_service::presentation::grpc::proto::user::v1::{
-    CreateUserProfileRequest, DeleteUserProfileRequest, GetUserProfileRequest,
+    BatchGetUserProfilesRequest, BatchGetUserProfilesResponse, CreateUserProfileRequest,
+    DeleteUserProfileRequest, GetUserProfileRequest, SearchUsersRequest, SearchUsersResponse,
     UpdateUserProfileRequest, UserProfileResponse,
-    BatchGetUserProfilesRequest, BatchGetUserProfilesResponse,
-    SearchUsersRequest, SearchUsersResponse,
 };
+use auth_service::state::app_state::AppState;
+use auth_service::state::auth_state::AuthState;
+use auth_service::state::shared_state::SharedState;
+use axum::Router;
 use common::infrastructure::messaging::NatsEventPublisher;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
-use axum::Router;
 use sqlx::PgPool;
 use std::sync::Arc;
 use testcontainers::runners::AsyncRunner;
@@ -36,8 +35,9 @@ const USER_ENUMS_SQL: &str =
     include_str!("../../../user-service/migrations/20260121135148_create_enums.sql");
 const USER_PROFILES_SQL: &str =
     include_str!("../../../user-service/migrations/20260121135149_create_user_profiles.sql");
-const USER_PRIVACY_SQL: &str =
-    include_str!("../../../user-service/migrations/20260121135150_create_user_privacy_settings.sql");
+const USER_PRIVACY_SQL: &str = include_str!(
+    "../../../user-service/migrations/20260121135150_create_user_privacy_settings.sql"
+);
 const USER_BADGES_SQL: &str =
     include_str!("../../../user-service/migrations/20260121135151_create_user_badges.sql");
 const USER_RELATIONSHIPS_SQL: &str =
@@ -50,20 +50,17 @@ const USER_TRIGGERS_SQL: &str =
     include_str!("../../../user-service/migrations/20260121135155_create_triggers.sql");
 
 // Auth-service migrations
-const AUTH_ENUMS_SQL: &str =
-    include_str!("../../migrations/20260122000000_create_enums.sql");
+const AUTH_ENUMS_SQL: &str = include_str!("../../migrations/20260122000000_create_enums.sql");
 const AUTH_CREDENTIALS_SQL: &str =
     include_str!("../../migrations/20260122000001_create_auth_credentials.sql");
 const AUTH_SESSIONS_SQL: &str =
     include_str!("../../migrations/20260122000002_create_auth_sessions.sql");
 const AUTH_AUDIT_LOG_SQL: &str =
     include_str!("../../migrations/20260122000003_create_auth_audit_log.sql");
-const AUTH_INDEXES_SQL: &str =
-    include_str!("../../migrations/20260122000004_create_indexes.sql");
+const AUTH_INDEXES_SQL: &str = include_str!("../../migrations/20260122000004_create_indexes.sql");
 const AUTH_FUNCTIONS_SQL: &str =
     include_str!("../../migrations/20260122000005_create_functions.sql");
-const AUTH_TRIGGERS_SQL: &str =
-    include_str!("../../migrations/20260122000006_create_triggers.sql");
+const AUTH_TRIGGERS_SQL: &str = include_str!("../../migrations/20260122000006_create_triggers.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -80,7 +77,10 @@ fn get_or_init_metrics() -> Metrics {
         unsafe { METRICS = Some(m) };
     });
     // SAFETY: guaranteed to be initialized after call_once
-    unsafe { METRICS.clone().expect("metrics initialized") }
+    #[allow(static_mut_refs)]
+    unsafe {
+        METRICS.clone().expect("metrics initialized")
+    }
 }
 
 // ============================================
@@ -96,8 +96,13 @@ impl auth_service::domain::auth_credential::EmailService for MockEmailService {
         &self,
         to: &str,
         token: &str,
-    ) -> Result<(), auth_service::application::services::authentication::error::AuthApplicationError> {
-        tracing::info!("MockEmailService: Sending verification email to {} with token {}", to, token);
+    ) -> Result<(), auth_service::application::services::authentication::error::AuthApplicationError>
+    {
+        tracing::info!(
+            "MockEmailService: Sending verification email to {} with token {}",
+            to,
+            token
+        );
         Ok(())
     }
 }
@@ -275,17 +280,13 @@ impl TestHarness {
             .start()
             .await
             .expect("start redis container");
-        let redis_host = redis_container
-            .get_host()
-            .await
-            .expect("get redis host");
+        let redis_host = redis_container.get_host().await.expect("get redis host");
         let redis_port = redis_container
             .get_host_port_ipv4(6379)
             .await
             .expect("get redis port");
         let redis_url = format!("redis://{}:{}", redis_host, redis_port);
-        let redis_client =
-            redis::Client::open(redis_url.as_str()).expect("create redis client");
+        let redis_client = redis::Client::open(redis_url.as_str()).expect("create redis client");
         let redis_conn = redis::aio::ConnectionManager::new(redis_client)
             .await
             .expect("create redis connection manager");
@@ -353,12 +354,7 @@ impl TestHarness {
             email_service.clone(),
         ));
 
-        let auth_state = AuthState::new(
-            auth_service,
-            jwt_manager,
-            credential_repo,
-            session_repo,
-        );
+        let auth_state = AuthState::new(auth_service, jwt_manager, credential_repo, session_repo);
 
         let metrics = get_or_init_metrics();
 
@@ -382,10 +378,12 @@ impl TestHarness {
         let cors = CorsLayer::permissive();
         let trace = TraceLayer::new_for_http();
 
-        let router =
-            auth_service::presentation::http::routes::create_router(
-                app_state, health_check, cors, trace,
-            );
+        let router = auth_service::presentation::http::routes::create_router(
+            app_state,
+            health_check,
+            cors,
+            trace,
+        );
 
         Self {
             router,

@@ -1,9 +1,9 @@
-use std::sync::Arc;
-use std::time::Duration;
+use crate::application::services::authentication::clear_token_service::ClearExpiredTokens;
 use async_trait::async_trait;
 use common::infrastructure::background::BackgroundTask;
+use std::sync::Arc;
+use std::time::Duration;
 use tracing::info;
-use crate::application::services::authentication::clear_token_service::ClearExpiredTokens;
 
 const CLEANUP_INTERVAL: Duration = Duration::from_secs(60 * 60);
 

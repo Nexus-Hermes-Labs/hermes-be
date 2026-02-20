@@ -58,6 +58,7 @@ impl GuildRole {
     }
 
     /// Create the default @everyone role for a new guild
+    #[must_use]
     pub fn new_everyone(guild_id: Uuid) -> Self {
         let now = Utc::now();
         Self {
@@ -84,7 +85,8 @@ impl GuildRole {
 
     /// Reconstruct from database
     #[allow(clippy::too_many_arguments)]
-    pub fn from_persisted(
+    #[must_use]
+    pub const fn from_persisted(
         id: Uuid,
         guild_id: Uuid,
         name: String,
@@ -117,57 +119,68 @@ impl GuildRole {
     // ============================================
 
     /// Returns the role's unique identifier.
-    pub fn id(&self) -> Uuid {
+    #[must_use]
+    pub const fn id(&self) -> Uuid {
         self.id
     }
 
     /// Returns the ID of the guild this role belongs to.
-    pub fn guild_id(&self) -> Uuid {
+    #[must_use]
+    pub const fn guild_id(&self) -> Uuid {
         self.guild_id
     }
 
     /// Returns the role display name.
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.name
     }
 
     /// Returns the role color (RGB integer; 0 = no color / default grey).
-    pub fn color(&self) -> RoleColor {
+    #[must_use]
+    pub const fn color(&self) -> RoleColor {
         self.color
     }
 
     /// Returns the current permissions bitfield for this role.
-    pub fn permissions(&self) -> Permissions {
+    #[must_use]
+    pub const fn permissions(&self) -> Permissions {
         self.permissions
     }
 
     /// Returns the display position in the role hierarchy (higher = more priority).
-    pub fn position(&self) -> i32 {
+    #[must_use]
+    pub const fn position(&self) -> i32 {
         self.position
     }
 
     /// Returns `true` if members with this role appear in a dedicated section in the member list.
-    pub fn hoist(&self) -> bool {
+    #[must_use]
+    pub const fn hoist(&self) -> bool {
         self.hoist
     }
 
     /// Returns `true` if all members can @mention this role.
-    pub fn mentionable(&self) -> bool {
+    #[must_use]
+    pub const fn mentionable(&self) -> bool {
         self.mentionable
     }
 
     /// Returns `true` for the auto-created `@everyone` role that cannot be deleted.
-    pub fn is_default(&self) -> bool {
+    #[must_use]
+    pub const fn is_default(&self) -> bool {
         self.is_default
     }
 
     /// Returns the timestamp when this role was created.
-    pub fn created_at(&self) -> DateTime<Utc> {
+    #[must_use]
+    pub const fn created_at(&self) -> DateTime<Utc> {
         self.created_at
     }
 
     /// Returns the timestamp of the most recent update to this role.
-    pub fn updated_at(&self) -> DateTime<Utc> {
+    #[must_use]
+    pub const fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
 
@@ -214,7 +227,7 @@ impl GuildRole {
     // HELPERS
     // ============================================
 
-    fn validate_name(name: &str) -> Result<(), GuildRoleError> {
+    const fn validate_name(name: &str) -> Result<(), GuildRoleError> {
         if name.is_empty() || name.len() > 100 {
             return Err(GuildRoleError::InvalidNameLength);
         }
@@ -223,6 +236,7 @@ impl GuildRole {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

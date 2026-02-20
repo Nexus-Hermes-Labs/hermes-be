@@ -44,9 +44,10 @@ impl ServiceConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Environment {
+    #[default]
     Development,
     Staging,
     Production,
@@ -73,11 +74,5 @@ impl fmt::Display for Environment {
             Environment::Staging => write!(f, "staging"),
             Environment::Production => write!(f, "production"),
         }
-    }
-}
-
-impl Default for Environment {
-    fn default() -> Self {
-        Environment::Development
     }
 }

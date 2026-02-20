@@ -52,10 +52,7 @@ impl Repository<UserPrivacySettings, Uuid> for PostgresUserPrivacyRepository {
     }
 
     async fn find_all(&self) -> Result<Vec<UserPrivacySettings>, Self::Error> {
-        let sql = format!(
-            "SELECT {} FROM user_privacy_settings",
-            USER_PRIVACY_COLUMNS
-        );
+        let sql = format!("SELECT {} FROM user_privacy_settings", USER_PRIVACY_COLUMNS);
         let rows = sqlx::query_as::<_, UserPrivacySettingsRow>(&sql)
             .fetch_all(&self.pool)
             .await?;
@@ -195,7 +192,7 @@ mod tests {
     /// Helper: creates a user profile (which auto-creates privacy settings via trigger).
     async fn create_profile(pool: &PgPool) -> Uuid {
         let profile_repo = PostgresUserProfileRepository::new(pool.clone());
-        let username = Username::new(&format!("user_{}", &Uuid::new_v4().to_string()[..8])).unwrap();
+        let username = Username::new(format!("user_{}", &Uuid::new_v4().to_string()[..8])).unwrap();
         let profile = UserProfile::new(username, "Test User".to_string()).unwrap();
         let id = profile.id();
         BaseRepo::save(&profile_repo, &profile).await.unwrap();

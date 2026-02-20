@@ -70,10 +70,7 @@ impl From<UserPrivacySettings> for PrivacySettingsResponse {
     fn from(settings: UserPrivacySettings) -> Self {
         Self {
             allow_dms_from: settings.allow_dms_from().as_str().to_string(),
-            allow_friend_requests_from: settings
-                .allow_friend_requests_from()
-                .as_str()
-                .to_string(),
+            allow_friend_requests_from: settings.allow_friend_requests_from().as_str().to_string(),
             show_online_status: settings.show_online_status(),
             show_current_activity: settings.show_current_activity(),
             show_profile_to_non_friends: settings.show_profile_to_non_friends(),

@@ -3,6 +3,7 @@ mod guild_invite;
 mod guild_member;
 mod guild_role;
 
+use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
 use axum::Router;
 use common::middleware::authentication::auth_middleware;
@@ -11,7 +12,6 @@ use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-use crate::presentation::http::docs::ApiDoc;
 
 pub fn create_router(
     app_state: AppState,

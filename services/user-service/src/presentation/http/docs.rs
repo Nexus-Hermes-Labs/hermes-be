@@ -1,8 +1,8 @@
 use utoipa::OpenApi;
 
+use crate::presentation::dto::user_privacy::*;
 use crate::presentation::dto::user_profile::{request::*, response::*};
 use crate::presentation::dto::user_relationship::*;
-use crate::presentation::dto::user_privacy::*;
 use crate::presentation::http::handlers::*;
 
 #[derive(OpenApi)]
@@ -67,7 +67,7 @@ use crate::presentation::http::handlers::*;
     ),
     components(
         schemas(
-            ProfileResponse, CustomStatusResponse, ProfileListResponse, 
+            ProfileResponse, CustomStatusResponse, ProfileListResponse,
             UsernameAvailabilityResponse, OnlineUsersResponse,
             CreateProfileRequest, UpdateProfileRequest, ChangeUsernameRequest,
             UpdateStatusRequest, SetCustomStatusRequest, SearchUsersRequest,

@@ -25,6 +25,7 @@ impl InviteCode {
     }
 
     /// Returns the underlying code string slice.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }

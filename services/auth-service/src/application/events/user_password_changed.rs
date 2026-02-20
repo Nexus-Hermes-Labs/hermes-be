@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
+use common::domain::event::IntoEventEnvelope;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use common::domain::event::IntoEventEnvelope;
 
 /// Event published when user_profile changes their password
 ///

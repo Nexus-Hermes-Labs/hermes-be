@@ -1,6 +1,9 @@
 use crate::presentation::http::handlers;
-use axum::{routing::{get, post}, Router};
 use crate::state::app_state::AppState;
+use axum::{
+    routing::{get, post},
+    Router,
+};
 
 /// Public authentication routes (no token required)
 pub fn public_routes() -> Router<AppState> {

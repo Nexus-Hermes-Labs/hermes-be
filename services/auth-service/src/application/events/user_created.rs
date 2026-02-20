@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
+use common::domain::event::IntoEventEnvelope;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use common::domain::event::IntoEventEnvelope;
 
 /// Event published when a new user_profile successfully registers
 ///
@@ -33,12 +33,7 @@ pub struct UserCreatedEvent {
 }
 
 impl UserCreatedEvent {
-    pub fn new(
-        user_id: Uuid,
-        email: String,
-        username: String,
-        display_name: String,
-    ) -> Self {
+    pub fn new(user_id: Uuid, email: String, username: String, display_name: String) -> Self {
         Self {
             user_id,
             email,

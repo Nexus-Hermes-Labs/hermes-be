@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::domain::user_profile::{UserProfile, UserProfileRepository, Username, UserStatus};
+use crate::domain::user_profile::{UserProfile, UserProfileRepository, UserStatus, Username};
 use crate::domain::user_relationship::UserRelationshipRepository;
 
 use super::error::UserProfileServiceError;

@@ -315,8 +315,7 @@ mod tests {
     /// Helper: creates a user profile and returns its ID.
     async fn create_profile(pool: &PgPool) -> Uuid {
         let profile_repo = PostgresUserProfileRepository::new(pool.clone());
-        let username =
-            Username::new(&format!("user_{}", &Uuid::new_v4().to_string()[..8])).unwrap();
+        let username = Username::new(format!("user_{}", &Uuid::new_v4().to_string()[..8])).unwrap();
         let profile = UserProfile::new(username, "Test User".to_string()).unwrap();
         let id = profile.id();
         BaseRepo::save(&profile_repo, &profile).await.unwrap();
@@ -427,7 +426,7 @@ mod tests {
             .unwrap());
     }
 
-        #[tokio::test]
+    #[tokio::test]
     async fn test_cannot_decline_friend_request() {
         let db = TestDb::new(Path::new("migrations")).await;
         let repo = PostgresUserRelationshipRepository::new(db.pool().clone());
@@ -599,23 +598,46 @@ mod tests {
         // A and B are friends
         let request = UserRelationship::create_request(user_a, user_b, "Hi".to_string()).unwrap();
         repo.save(&request).await.unwrap();
-        
-        let mut b_incoming = repo.find_by_user_and_target(user_b, user_a).await.unwrap().unwrap();
+
+        let mut b_incoming = repo
+            .find_by_user_and_target(user_b, user_a)
+            .await
+            .unwrap()
+            .unwrap();
         b_incoming.accept().unwrap();
         repo.update(&b_incoming).await.unwrap();
-        
+
         // Verify friendship
-        assert!(repo.find_by_user_and_target(user_a, user_b).await.unwrap().unwrap().is_friend());
-        assert!(repo.find_by_user_and_target(user_b, user_a).await.unwrap().unwrap().is_friend());
+        assert!(repo
+            .find_by_user_and_target(user_a, user_b)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_friend());
+        assert!(repo
+            .find_by_user_and_target(user_b, user_a)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_friend());
 
         // A blocks B
-        let mut a_side = repo.find_by_user_and_target(user_a, user_b).await.unwrap().unwrap();
+        let mut a_side = repo
+            .find_by_user_and_target(user_a, user_b)
+            .await
+            .unwrap()
+            .unwrap();
         a_side.block().unwrap();
         repo.update(&a_side).await.unwrap();
 
         // A's side is blocked
-        assert!(repo.find_by_user_and_target(user_a, user_b).await.unwrap().unwrap().is_blocked());
-        
+        assert!(repo
+            .find_by_user_and_target(user_a, user_b)
+            .await
+            .unwrap()
+            .unwrap()
+            .is_blocked());
+
         // B's side SHOULD BE DELETED
         let b_side = repo.find_by_user_and_target(user_b, user_a).await.unwrap();
         assert!(b_side.is_none());

@@ -164,11 +164,8 @@ mod tests {
 
     #[test]
     fn test_event_serialization() {
-        let event = UsernameChangedEvent::new(
-            Uuid::new_v4(),
-            "oldname".to_string(),
-            "newname".to_string(),
-        );
+        let event =
+            UsernameChangedEvent::new(Uuid::new_v4(), "oldname".to_string(), "newname".to_string());
 
         let json = serde_json::to_string(&event).unwrap();
         let deserialized: UsernameChangedEvent = serde_json::from_str(&json).unwrap();

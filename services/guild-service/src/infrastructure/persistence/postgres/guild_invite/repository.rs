@@ -8,14 +8,15 @@ use crate::domain::guild_invite::{GuildInvite, GuildInviteRepository, InviteCode
 
 use super::models::GuildInviteRow;
 
-/// PostgreSQL implementation of GuildInviteRepository
+/// `PostgreSQL` implementation of `GuildInviteRepository`
 #[derive(Debug)]
 pub struct PostgresGuildInviteRepository {
     pool: PgPool,
 }
 
 impl PostgresGuildInviteRepository {
-    pub fn new(pool: PgPool) -> Self {
+    #[must_use]
+    pub const fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -25,10 +26,10 @@ impl GuildInviteRepository for PostgresGuildInviteRepository {
     async fn save(&self, invite: &GuildInvite) -> Result<(), RepositoryError> {
         let row = GuildInviteRow::from(invite);
         sqlx::query(
-            r#"
+            r"
             INSERT INTO guild_invites (code, guild_id, creator_id, max_uses, uses, expires_at, revoked, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-            "#,
+            ",
         )
         .bind(&row.code)
         .bind(row.guild_id)
@@ -47,12 +48,12 @@ impl GuildInviteRepository for PostgresGuildInviteRepository {
     async fn update(&self, invite: &GuildInvite) -> Result<(), RepositoryError> {
         let row = GuildInviteRow::from(invite);
         sqlx::query(
-            r#"
+            r"
             UPDATE guild_invites
             SET uses      = $2,
                 revoked   = $3
             WHERE code = $1
-            "#,
+            ",
         )
         .bind(&row.code)
         .bind(row.uses)
@@ -63,7 +64,10 @@ impl GuildInviteRepository for PostgresGuildInviteRepository {
         Ok(())
     }
 
-    async fn find_by_code(&self, code: &InviteCode) -> Result<Option<GuildInvite>, RepositoryError> {
+    async fn find_by_code(
+        &self,
+        code: &InviteCode,
+    ) -> Result<Option<GuildInvite>, RepositoryError> {
         let row = sqlx::query_as::<_, GuildInviteRow>(
             "SELECT code, guild_id, creator_id, max_uses, uses, expires_at, revoked, created_at FROM guild_invites WHERE code = $1",
         )

@@ -22,10 +22,7 @@ pub trait GuildRepository: Repository<Guild, Uuid, Error = RepositoryError> + Se
     // ============================================
 
     /// Get all guilds owned by a user
-    async fn find_by_owner(
-        &self,
-        owner_id: Uuid,
-    ) -> Result<Vec<Guild>, Self::Error>;
+    async fn find_by_owner(&self, owner_id: Uuid) -> Result<Vec<Guild>, Self::Error>;
 
     // ============================================
     // SEARCH & DISCOVERY
@@ -40,24 +37,15 @@ pub trait GuildRepository: Repository<Guild, Uuid, Error = RepositoryError> + Se
     ) -> Result<Vec<Guild>, Self::Error>;
 
     /// Get guilds by multiple IDs (batch lookup)
-    async fn find_by_ids(
-        &self,
-        ids: Vec<Uuid>,
-    ) -> Result<Vec<Guild>, Self::Error>;
+    async fn find_by_ids(&self, ids: Vec<Uuid>) -> Result<Vec<Guild>, Self::Error>;
 
     // ============================================
     // MEMBER COUNT
     // ============================================
 
     /// Atomically increment member count
-    async fn increment_member_count(
-        &self,
-        guild_id: Uuid,
-    ) -> Result<(), Self::Error>;
+    async fn increment_member_count(&self, guild_id: Uuid) -> Result<(), Self::Error>;
 
     /// Atomically decrement member count
-    async fn decrement_member_count(
-        &self,
-        guild_id: Uuid,
-    ) -> Result<(), Self::Error>;
+    async fn decrement_member_count(&self, guild_id: Uuid) -> Result<(), Self::Error>;
 }

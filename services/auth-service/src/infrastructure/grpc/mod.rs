@@ -1,5 +1,5 @@
-pub mod user_profile_grpc_client;
 mod error;
+pub mod user_profile_grpc_client;
 
-pub use user_profile_grpc_client::UserGrpcClient;
 pub use error::UserGrpcError;
+pub use user_profile_grpc_client::UserGrpcClient;

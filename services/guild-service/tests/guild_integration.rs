@@ -1,4 +1,5 @@
 #![allow(missing_docs)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 mod common;
 
@@ -31,7 +32,7 @@ async fn create_guild_returns_201() {
     assert_eq!(body["name"], "Test Guild");
     assert_eq!(body["description"], "A test guild");
     assert_eq!(body["owner_id"], owner_id.to_string());
-    assert_eq!(body["visibility"], "public");
+    assert_eq!(body["visibility"], "private");
     assert!(body["guild_id"].is_string());
 }
 
@@ -257,7 +258,7 @@ async fn search_guilds_returns_matching_results() {
     let token = harness.token_for(owner_id);
 
     // Create two guilds with distinct names
-    make_authenticated_request(
+    let (_, created) = make_authenticated_request(
         harness.router.clone(),
         Method::POST,
         "/api/v1/guilds",
@@ -265,6 +266,18 @@ async fn search_guilds_returns_matching_results() {
         &token,
     )
     .await;
+    let guild_id = created["guild_id"].as_str().unwrap();
+
+    // Make it public so it appears in search
+    make_authenticated_request(
+        harness.router.clone(),
+        Method::PATCH,
+        &format!("/api/v1/guilds/{guild_id}"),
+        Some(json!({ "visibility": "public" })),
+        &token,
+    )
+    .await;
+
     make_authenticated_request(
         harness.router.clone(),
         Method::POST,
@@ -549,10 +562,7 @@ async fn delete_default_role_returns_400() {
     .await;
 
     assert_eq!(status, StatusCode::BAD_REQUEST);
-    assert!(body["message"]
-        .as_str()
-        .unwrap()
-        .contains("@everyone"));
+    assert!(body["message"].as_str().unwrap().contains("@everyone"));
 }
 
 // ============================================================
@@ -831,7 +841,7 @@ async fn member_can_leave_guild() {
 // ============================================================
 
 /// Helper that creates a guild and seeds the owner as a member,
-/// returning (guild_id_string, owner_token).
+/// returning (`guild_id_string`, `owner_token`).
 async fn create_guild_with_member_owner(harness: &TestHarness) -> (String, String) {
     let owner_id = Uuid::new_v4();
     let token = harness.token_for(owner_id);

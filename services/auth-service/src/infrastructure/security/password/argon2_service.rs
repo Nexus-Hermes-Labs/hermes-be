@@ -4,7 +4,9 @@ use argon2::{
 };
 use thiserror::Error;
 
-use crate::domain::auth_credential::{PasswordHash as DomainPasswordHash, PasswordService, AuthCredentialError};
+use crate::domain::auth_credential::{
+    AuthCredentialError, PasswordHash as DomainPasswordHash, PasswordService,
+};
 
 // ============================================
 // ARGON2 PASSWORD SERVICE
@@ -85,7 +87,10 @@ impl PasswordService for Argon2PasswordService {
             .map_err(|e| AuthCredentialError::InvalidHashFormat(e.to_string()))?;
 
         // Verify the password
-        match self.hasher.verify_password(password.as_bytes(), &parsed_hash) {
+        match self
+            .hasher
+            .verify_password(password.as_bytes(), &parsed_hash)
+        {
             Ok(()) => Ok(true),
             Err(argon2::password_hash::Error::Password) => Ok(false),
             Err(e) => Err(AuthCredentialError::VerificationFailed(e.to_string())),
@@ -207,12 +212,12 @@ mod tests {
 
         // Durations should be roughly similar (within 50ms)
         // Note: This is a basic check, not cryptographically rigorous
-        let diff = if correct_duration > wrong_duration {
-            correct_duration - wrong_duration
-        } else {
-            wrong_duration - correct_duration
-        };
+        let diff = correct_duration.abs_diff(wrong_duration);
 
-        assert!(diff.as_millis() < 50, "Timing difference too large: {:?}", diff);
+        assert!(
+            diff.as_millis() < 50,
+            "Timing difference too large: {:?}",
+            diff
+        );
     }
 }
