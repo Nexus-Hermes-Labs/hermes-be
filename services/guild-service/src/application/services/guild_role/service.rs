@@ -7,12 +7,15 @@ use crate::domain::guild_role::{GuildRole, GuildRoleRepository, Permissions, Rol
 use super::error::GuildRoleServiceError;
 
 /// Guild Role Application Service
+///
+/// Manages the role hierarchy within a guild: creating, updating, and deleting roles.
 pub struct GuildRoleService {
     guild_repo: Arc<dyn GuildRepository>,
     role_repo: Arc<dyn GuildRoleRepository>,
 }
 
 impl GuildRoleService {
+    /// Create a new `GuildRoleService` with the required repository dependencies.
     pub fn new(
         guild_repo: Arc<dyn GuildRepository>,
         role_repo: Arc<dyn GuildRoleRepository>,

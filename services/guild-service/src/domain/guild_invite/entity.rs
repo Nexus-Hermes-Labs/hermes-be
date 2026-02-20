@@ -80,34 +80,42 @@ impl GuildInvite {
     // GETTERS
     // ============================================
 
+    /// Returns the invite code value object.
     pub fn code(&self) -> &InviteCode {
         &self.code
     }
 
+    /// Returns the ID of the guild this invite grants access to.
     pub fn guild_id(&self) -> Uuid {
         self.guild_id
     }
 
+    /// Returns the ID of the member who created the invite.
     pub fn creator_id(&self) -> Uuid {
         self.creator_id
     }
 
+    /// Returns the maximum number of allowed uses, or `None` for unlimited.
     pub fn max_uses(&self) -> Option<i32> {
         self.max_uses
     }
 
+    /// Returns the number of times this invite has been used so far.
     pub fn uses(&self) -> i32 {
         self.uses
     }
 
+    /// Returns the expiry timestamp, or `None` if the invite never expires.
     pub fn expires_at(&self) -> Option<DateTime<Utc>> {
         self.expires_at
     }
 
+    /// Returns `true` if the invite has been explicitly revoked.
     pub fn is_revoked(&self) -> bool {
         self.revoked
     }
 
+    /// Returns the timestamp when the invite was created.
     pub fn created_at(&self) -> DateTime<Utc> {
         self.created_at
     }
@@ -116,15 +124,19 @@ impl GuildInvite {
     // BUSINESS LOGIC
     // ============================================
 
-    /// Check validity without consuming a use
+    /// Returns `true` if the invite can still be used (not revoked, not expired, not exhausted).
+    ///
+    /// Use this for read-only checks. To actually consume a use, call [`use_invite`](Self::use_invite).
     pub fn is_valid(&self) -> bool {
         !self.revoked && !self.is_expired() && !self.is_exhausted()
     }
 
+    /// Returns `true` if the invite's expiry timestamp is in the past.
     pub fn is_expired(&self) -> bool {
         self.expires_at.map_or(false, |exp| exp <= Utc::now())
     }
 
+    /// Returns `true` if `uses` has reached `max_uses`.
     pub fn is_exhausted(&self) -> bool {
         self.max_uses.map_or(false, |max| self.uses >= max)
     }

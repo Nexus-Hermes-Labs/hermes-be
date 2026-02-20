@@ -17,6 +17,7 @@ pub struct GuildService {
 }
 
 impl GuildService {
+    /// Create a new `GuildService` with the required repository dependencies.
     pub fn new(
         guild_repo: Arc<dyn GuildRepository>,
         member_repo: Arc<dyn GuildMemberRepository>,

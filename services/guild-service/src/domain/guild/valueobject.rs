@@ -16,6 +16,10 @@ use super::error::GuildError;
 pub struct GuildName(String);
 
 impl GuildName {
+    /// Validate and create a new `GuildName`.
+    ///
+    /// Returns [`GuildError::InvalidNameLength`] if the trimmed value is outside 2–100 characters,
+    /// or [`GuildError::InvalidNameFormat`] if it contains control characters.
     pub fn new(value: impl Into<String>) -> Result<Self, GuildError> {
         let value = value.into().trim().to_string();
 
@@ -31,6 +35,7 @@ impl GuildName {
         Ok(Self(value))
     }
 
+    /// Returns the underlying string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -64,6 +69,7 @@ pub enum GuildVisibility {
 }
 
 impl GuildVisibility {
+    /// Returns the lowercase string representation used in the API and database (`"public"` / `"private"`).
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Public => "public",
@@ -71,6 +77,7 @@ impl GuildVisibility {
         }
     }
 
+    /// Returns `true` if the guild is publicly discoverable.
     pub fn is_public(&self) -> bool {
         matches!(self, Self::Public)
     }

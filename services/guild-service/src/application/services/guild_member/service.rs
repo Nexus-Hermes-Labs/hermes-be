@@ -7,12 +7,15 @@ use crate::domain::guild_member::{GuildMember, GuildMemberRepository};
 use super::error::GuildMemberServiceError;
 
 /// Guild Member Application Service
+///
+/// Handles membership lifecycle: joining, leaving, kicking, and role assignment.
 pub struct GuildMemberService {
     guild_repo: Arc<dyn GuildRepository>,
     member_repo: Arc<dyn GuildMemberRepository>,
 }
 
 impl GuildMemberService {
+    /// Create a new `GuildMemberService` with the required repository dependencies.
     pub fn new(
         guild_repo: Arc<dyn GuildRepository>,
         member_repo: Arc<dyn GuildMemberRepository>,

@@ -24,6 +24,7 @@ impl InviteCode {
         Self(code.into())
     }
 
+    /// Returns the underlying code string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }

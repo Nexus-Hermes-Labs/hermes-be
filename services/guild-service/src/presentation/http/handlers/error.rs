@@ -9,16 +9,22 @@ use crate::application::{
     GuildInviteServiceError, GuildMemberServiceError, GuildRoleServiceError, GuildServiceError,
 };
 
-/// API Error response body
+/// JSON body returned to the client when an API error occurs.
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
+    /// Machine-readable error code (e.g. `"not_found"`, `"validation_error"`).
     pub error: String,
+    /// Human-readable description of what went wrong.
     pub message: String,
+    /// Optional structured details (e.g. per-field validation errors).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<serde_json::Value>,
 }
 
-/// Typed API error
+/// Typed API error that implements [`axum::response::IntoResponse`].
+///
+/// Construct via the convenience factories (`bad_request`, `not_found`, …)
+/// rather than calling `new` directly.
 #[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
@@ -28,6 +34,7 @@ pub struct ApiError {
 }
 
 impl ApiError {
+    /// Create an `ApiError` with an explicit HTTP status, error code, and message.
     pub fn new(
         status: StatusCode,
         error: impl Into<String>,
@@ -41,26 +48,32 @@ impl ApiError {
         }
     }
 
+    /// HTTP 400 – the request body or query parameters are invalid.
     pub fn bad_request(message: impl Into<String>) -> Self {
         Self::new(StatusCode::BAD_REQUEST, "bad_request", message)
     }
 
+    /// HTTP 404 – the requested resource does not exist.
     pub fn not_found(message: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_FOUND, "not_found", message)
     }
 
+    /// HTTP 409 – the request conflicts with existing state (e.g. duplicate resource).
     pub fn conflict(message: impl Into<String>) -> Self {
         Self::new(StatusCode::CONFLICT, "conflict", message)
     }
 
+    /// HTTP 403 – the authenticated user lacks permission to perform the action.
     pub fn forbidden(message: impl Into<String>) -> Self {
         Self::new(StatusCode::FORBIDDEN, "forbidden", message)
     }
 
+    /// HTTP 422 – the request body is syntactically valid but fails domain validation.
     pub fn unprocessable(message: impl Into<String>) -> Self {
         Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation_error", message)
     }
 
+    /// HTTP 500 – an unexpected server-side error occurred.
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -175,6 +188,7 @@ impl From<validator::ValidationErrors> for ApiError {
 }
 
 impl ApiError {
+    /// Attach structured details to the error response (e.g. per-field validation errors).
     pub fn with_details(mut self, details: serde_json::Value) -> Self {
         self.details = Some(details);
         self

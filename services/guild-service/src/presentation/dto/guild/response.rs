@@ -5,17 +5,28 @@ use uuid::Uuid;
 
 use crate::domain::Guild;
 
+/// API response representing a single guild.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct GuildResponse {
+    /// Unique guild identifier.
     pub guild_id: Uuid,
+    /// User ID of the guild owner.
     pub owner_id: Uuid,
+    /// Guild display name.
     pub name: String,
+    /// Optional guild description.
     pub description: Option<String>,
+    /// URL of the guild icon image.
     pub icon_url: Option<String>,
+    /// URL of the guild banner image.
     pub banner_url: Option<String>,
+    /// Visibility setting: `"public"` or `"private"`.
     pub visibility: String,
+    /// Cached count of active members.
     pub member_count: i32,
+    /// Timestamp when the guild was created.
     pub created_at: DateTime<Utc>,
+    /// Timestamp of the most recent guild update.
     pub updated_at: DateTime<Utc>,
 }
 
@@ -36,10 +47,15 @@ impl From<Guild> for GuildResponse {
     }
 }
 
+/// Paginated list of guilds returned from a search.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct GuildListResponse {
+    /// Guilds in the current page.
     pub guilds: Vec<GuildResponse>,
+    /// Total number of results matching the query (before pagination).
     pub total: i64,
+    /// Maximum number of results requested.
     pub limit: i64,
+    /// Number of results skipped.
     pub offset: i64,
 }

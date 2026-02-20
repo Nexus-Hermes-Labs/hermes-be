@@ -3,16 +3,21 @@ use std::sync::Arc;
 
 /// Guild domain state
 ///
-/// Contains pre-composed guild services.
+/// Holds all pre-composed guild application services, shared across handlers via `AppState`.
 #[derive(Clone)]
 pub struct GuildState {
+    /// Handles guild CRUD and ownership management.
     pub guild_service: Arc<GuildService>,
+    /// Handles membership lifecycle (join, leave, kick, role assignment).
     pub member_service: Arc<GuildMemberService>,
+    /// Manages the role hierarchy within guilds.
     pub role_service: Arc<GuildRoleService>,
+    /// Manages invite creation, redemption, and revocation.
     pub invite_service: Arc<GuildInviteService>,
 }
 
 impl GuildState {
+    /// Compose a `GuildState` from pre-built application services.
     pub fn new(
         guild_service: Arc<GuildService>,
         member_service: Arc<GuildMemberService>,

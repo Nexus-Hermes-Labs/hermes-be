@@ -10,6 +10,10 @@ use super::error::GuildMemberError;
 pub struct MemberNickname(String);
 
 impl MemberNickname {
+    /// Validate and create a new `MemberNickname`.
+    ///
+    /// Returns [`GuildMemberError::InvalidNicknameLength`] if the trimmed value is empty or
+    /// exceeds 32 characters, or [`GuildMemberError::InvalidNicknameFormat`] for control chars.
     pub fn new(value: impl Into<String>) -> Result<Self, GuildMemberError> {
         let value = value.into().trim().to_string();
 
@@ -24,6 +28,7 @@ impl MemberNickname {
         Ok(Self(value))
     }
 
+    /// Returns the underlying string slice.
     pub fn as_str(&self) -> &str {
         &self.0
     }

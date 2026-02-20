@@ -8,6 +8,8 @@ use crate::domain::guild_member::{GuildMember, GuildMemberRepository};
 use super::error::GuildInviteServiceError;
 
 /// Guild Invite Application Service
+///
+/// Handles the full invite lifecycle: creation, lookup, redemption, and revocation.
 pub struct GuildInviteService {
     guild_repo: Arc<dyn GuildRepository>,
     invite_repo: Arc<dyn GuildInviteRepository>,
@@ -15,6 +17,7 @@ pub struct GuildInviteService {
 }
 
 impl GuildInviteService {
+    /// Create a new `GuildInviteService` with the required repository dependencies.
     pub fn new(
         guild_repo: Arc<dyn GuildRepository>,
         invite_repo: Arc<dyn GuildInviteRepository>,

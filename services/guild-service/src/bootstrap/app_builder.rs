@@ -21,7 +21,11 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::info;
 
-/// Application builder - handles dependency composition
+/// Builder for composing the guild-service application.
+///
+/// Collects infrastructure dependencies (database, Redis, metrics) via a fluent
+/// API, then wires them together with repositories, services, and HTTP/gRPC servers
+/// in [`AppBuilder::build`].
 pub struct AppBuilder {
     service_name: Option<&'static str>,
     db_pool: Option<PgPool>,
@@ -30,6 +34,7 @@ pub struct AppBuilder {
 }
 
 impl AppBuilder {
+    /// Create a new, unconfigured `AppBuilder`.
     pub fn new() -> Self {
         Self {
             service_name: None,
@@ -39,21 +44,25 @@ impl AppBuilder {
         }
     }
 
+    /// Set the logical service name (used in tracing and metrics labels).
     pub fn with_service_name(mut self, service_name: &'static str) -> Self {
         self.service_name = Some(service_name);
         self
     }
 
+    /// Provide the PostgreSQL connection pool.
     pub fn with_database(mut self, pool: PgPool) -> Self {
         self.db_pool = Some(pool);
         self
     }
 
+    /// Provide the Redis async connection manager.
     pub fn with_redis(mut self, redis: redis::aio::ConnectionManager) -> Self {
         self.redis = Some(redis);
         self
     }
 
+    /// Provide the Prometheus metrics collector.
     pub fn with_metrics(mut self, metrics: Metrics) -> Self {
         self.metrics = Some(metrics);
         self

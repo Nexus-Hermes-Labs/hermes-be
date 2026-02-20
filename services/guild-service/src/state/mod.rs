@@ -8,10 +8,12 @@ use axum::extract::FromRef;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 
-/// Application state shared across HTTP handlers and gRPC services
+/// Application state shared across HTTP handlers and gRPC services.
 #[derive(Clone)]
 pub struct AppState {
+    /// Guild-domain services (guild, member, role, invite).
     pub guild: GuildState,
+    /// Cross-cutting infrastructure (database, Redis, metrics, JWT).
     pub shared: SharedState,
 }
 

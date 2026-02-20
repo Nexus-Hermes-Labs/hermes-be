@@ -116,46 +116,57 @@ impl GuildRole {
     // GETTERS
     // ============================================
 
+    /// Returns the role's unique identifier.
     pub fn id(&self) -> Uuid {
         self.id
     }
 
+    /// Returns the ID of the guild this role belongs to.
     pub fn guild_id(&self) -> Uuid {
         self.guild_id
     }
 
+    /// Returns the role display name.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the role color (RGB integer; 0 = no color / default grey).
     pub fn color(&self) -> RoleColor {
         self.color
     }
 
+    /// Returns the current permissions bitfield for this role.
     pub fn permissions(&self) -> Permissions {
         self.permissions
     }
 
+    /// Returns the display position in the role hierarchy (higher = more priority).
     pub fn position(&self) -> i32 {
         self.position
     }
 
+    /// Returns `true` if members with this role appear in a dedicated section in the member list.
     pub fn hoist(&self) -> bool {
         self.hoist
     }
 
+    /// Returns `true` if all members can @mention this role.
     pub fn mentionable(&self) -> bool {
         self.mentionable
     }
 
+    /// Returns `true` for the auto-created `@everyone` role that cannot be deleted.
     pub fn is_default(&self) -> bool {
         self.is_default
     }
 
+    /// Returns the timestamp when this role was created.
     pub fn created_at(&self) -> DateTime<Utc> {
         self.created_at
     }
 
+    /// Returns the timestamp of the most recent update to this role.
     pub fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }

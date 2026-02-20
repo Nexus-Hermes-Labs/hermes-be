@@ -112,62 +112,77 @@ impl Guild {
     // GETTERS
     // ============================================
 
+    /// Returns the guild's unique identifier.
     pub fn id(&self) -> Uuid {
         self.id
     }
 
+    /// Returns the user ID of the current guild owner.
     pub fn owner_id(&self) -> Uuid {
         self.owner_id
     }
 
+    /// Returns the validated guild name.
     pub fn name(&self) -> &GuildName {
         &self.name
     }
 
+    /// Returns the guild description, if one has been set.
     pub fn description(&self) -> Option<&str> {
         self.description.as_deref()
     }
 
+    /// Returns the guild icon URL, if one has been set.
     pub fn icon_url(&self) -> Option<&str> {
         self.icon_url.as_deref()
     }
 
+    /// Returns the guild banner URL, if one has been set.
     pub fn banner_url(&self) -> Option<&str> {
         self.banner_url.as_deref()
     }
 
+    /// Returns the current visibility setting (`Public` or `Private`).
     pub fn visibility(&self) -> GuildVisibility {
         self.visibility
     }
 
+    /// Returns the cached count of active members.
     pub fn member_count(&self) -> i32 {
         self.member_count
     }
 
+    /// Returns the maximum number of members allowed in this guild.
     pub fn max_members(&self) -> i32 {
         self.max_members
     }
 
+    /// Returns the timestamp when the guild was created.
     pub fn created_at(&self) -> DateTime<Utc> {
         self.created_at
     }
 
+    /// Returns the timestamp of the most recent guild update.
     pub fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
 
+    /// Returns `true` if the guild has been soft-deleted.
     pub fn is_deleted(&self) -> bool {
         self.deleted_at.is_some()
     }
 
+    /// Returns `true` if the guild has **not** been deleted.
     pub fn is_active(&self) -> bool {
         self.deleted_at.is_none()
     }
 
+    /// Returns `true` if `user_id` is the current owner of this guild.
     pub fn is_owner(&self, user_id: Uuid) -> bool {
         self.owner_id == user_id
     }
 
+    /// Returns `true` when `member_count` has reached `max_members`.
     pub fn is_full(&self) -> bool {
         self.member_count >= self.max_members
     }

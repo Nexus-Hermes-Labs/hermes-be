@@ -9,6 +9,7 @@ use crate::domain::guild_invite::{GuildInvite, GuildInviteRepository, InviteCode
 use super::models::GuildInviteRow;
 
 /// PostgreSQL implementation of GuildInviteRepository
+#[derive(Debug)]
 pub struct PostgresGuildInviteRepository {
     pool: PgPool,
 }

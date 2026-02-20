@@ -80,34 +80,42 @@ impl GuildMember {
     // GETTERS
     // ============================================
 
+    /// Returns the ID of the guild this membership belongs to.
     pub fn guild_id(&self) -> Uuid {
         self.guild_id
     }
 
+    /// Returns the ID of the member's user account.
     pub fn user_id(&self) -> Uuid {
         self.user_id
     }
 
+    /// Returns the server-specific nickname, if one has been set.
     pub fn nickname(&self) -> Option<&MemberNickname> {
         self.nickname.as_ref()
     }
 
+    /// Returns the slice of role IDs currently assigned to this member.
     pub fn role_ids(&self) -> &[Uuid] {
         &self.role_ids
     }
 
+    /// Returns the timestamp when the user joined the guild.
     pub fn joined_at(&self) -> DateTime<Utc> {
         self.joined_at
     }
 
+    /// Returns the timestamp of the most recent update to this membership record.
     pub fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
     }
 
+    /// Returns `true` if the member has not left or been kicked.
     pub fn is_active(&self) -> bool {
         self.left_at.is_none()
     }
 
+    /// Returns `true` if the given `role_id` is currently assigned to this member.
     pub fn has_role(&self, role_id: Uuid) -> bool {
         self.role_ids.contains(&role_id)
     }
