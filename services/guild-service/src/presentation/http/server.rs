@@ -21,10 +21,7 @@ pub struct Server {
 
 impl Server {
     #[must_use]
-    pub const fn new(
-        app_state: AppState,
-        health_check: Arc<HealthCheck>,
-    ) -> Self {
+    pub const fn new(app_state: AppState, health_check: Arc<HealthCheck>) -> Self {
         Self {
             app_state,
             health_check,

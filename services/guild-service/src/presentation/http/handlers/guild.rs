@@ -94,10 +94,7 @@ pub async fn update_guild(
 
     let visibility = request
         .visibility
-        .map(|v| {
-            v.parse::<GuildVisibility>()
-                .map_err(ApiError::bad_request)
-        })
+        .map(|v| v.parse::<GuildVisibility>().map_err(ApiError::bad_request))
         .transpose()?;
 
     let guild = state

@@ -86,9 +86,7 @@ impl TestHarness {
             .get_host_port_ipv4(5432)
             .await
             .expect("get pg port");
-        let pg_url = format!(
-            "postgres://postgres:postgres@{pg_host}:{pg_port}/postgres",
-        );
+        let pg_url = format!("postgres://postgres:postgres@{pg_host}:{pg_port}/postgres");
 
         let pool = PgPool::connect(&pg_url)
             .await
