@@ -69,6 +69,7 @@ pub struct UpdateVisibilityRequest {
 #[serde(deny_unknown_fields)]
 pub struct UpdateContentSettingsRequest {
     pub allow_nsfw_content: Option<bool>,
+    #[validate(range(min = 0, max = 2))]
     #[schema(minimum = 0, maximum = 2)]
     pub content_filter_level: Option<i16>, // 0: Off, 1: Medium, 2: Strict
 }

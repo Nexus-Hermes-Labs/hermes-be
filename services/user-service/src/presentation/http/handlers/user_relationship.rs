@@ -164,6 +164,7 @@ pub async fn remove_friend(
         (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
+        (status = 409, description = "Cannot block oneself"),
         (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"

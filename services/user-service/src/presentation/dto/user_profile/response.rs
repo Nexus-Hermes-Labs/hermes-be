@@ -76,10 +76,19 @@ pub struct ProfileListResponse {
 // USERNAME AVAILABILITY RESPONSE
 // ============================================
 
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UsernameAvailability {
+    Available,
+    Taken,
+    Invalid,
+}
+
 #[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct UsernameAvailabilityResponse {
     pub username: String,
-    pub available: bool,
+    pub status: UsernameAvailability,
 }
 
 // ============================================

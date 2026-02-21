@@ -37,7 +37,7 @@ pub struct CreateProfileRequest {
 pub struct UpdateProfileRequest {
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
-    #[schema(min_length = 1, max_length = 100)]
+    #[schema(min_length = 1, max_length = 100, pattern = r"^[^\x00]+$")]
     pub display_name: Option<String>,
 
     #[validate(length(max = 500, message = "Bio must be max 500 characters"))]
@@ -45,11 +45,11 @@ pub struct UpdateProfileRequest {
     pub bio: Option<String>,
 
     #[validate(url(message = "Avatar URL must be valid"))]
-    #[schema(min_length = 1)]
+    #[schema(min_length = 1, format = "uri")]
     pub avatar_url: Option<String>,
 
     #[validate(url(message = "Banner URL must be valid"))]
-    #[schema(min_length = 1)]
+    #[schema(min_length = 1, format = "uri")]
     pub banner_url: Option<String>,
 }
 
@@ -130,8 +130,9 @@ pub struct SearchUsersRequest {
     pub limit: i64,
 
     #[serde(default)]
-    #[validate(range(min = 0))]
-    #[schema(minimum = 0, format = "int64")]
+    #[validate(range(min = 0, max = 1_000_000_000))]
+    #[schema(minimum = 0, maximum = 1_000_000_000, format = "int64")]
+    #[param(minimum = 0, maximum = 1_000_000_000)]
     pub offset: i64,
 }
 

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use super::error::UserProfileServiceError;
 use crate::domain::user_profile::{UserProfile, UserProfileRepository, UserStatus, Username};
 use crate::domain::user_relationship::UserRelationshipRepository;
-
-use super::error::UserProfileServiceError;
+use crate::presentation::dto::user_profile::response::UsernameAvailability;
 
 /// User Profile Application Service
 ///
@@ -340,16 +340,25 @@ impl UserProfileService {
     }
 
     /// Check username availability
-    pub async fn is_username_available(
+    pub async fn check_username(
         &self,
         username: String,
-    ) -> Result<bool, UserProfileServiceError> {
-        let username = Username::new(&username)
-            .map_err(|e| UserProfileServiceError::InvalidUsername(e.to_string()))?;
+    ) -> Result<UsernameAvailability, UserProfileServiceError> {
+        let username = match Username::new(&username) {
+            Ok(u) => u,
+            Err(_) => return Ok(UsernameAvailability::Invalid),
+        };
 
-        self.repository
+        let available = self
+            .repository
             .is_username_available(&username)
             .await
-            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))
+            .map_err(|e| UserProfileServiceError::RepositoryError(e.to_string()))?;
+
+        Ok(if available {
+            UsernameAvailability::Available
+        } else {
+            UsernameAvailability::Taken
+        })
     }
 }

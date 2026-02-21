@@ -68,16 +68,18 @@ pub async fn get_profile_by_username(
     auth_user: Option<AuthenticatedUser>,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
-    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
-        return Err(ApiError::validation(
-            "Username must be between 3 and 32 characters and contain only lowercase letters, numbers, and underscores",
-        ));
-    }
     let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
     let service = &state.user.user_profile_service;
-    let profile = service
+    let profile = match service
         .get_profile_by_username(username, requester_id)
-        .await?;
+        .await
+    {
+        Ok(p) => p,
+        Err(crate::application::services::UserProfileServiceError::InvalidUsername(_)) => {
+            return Err(ApiError::not_found("Profile not found"))
+        }
+        Err(e) => return Err(ApiError::from(e)),
+    };
     Ok(Json(ProfileResponse::from(profile)))
 }
 
@@ -344,7 +346,9 @@ pub async fn search_users(
     request.validate()?;
 
     if request.query.contains('\0') {
-        return Err(ApiError::bad_request("Search query contains invalid characters"));
+        return Err(ApiError::bad_request(
+            "Search query contains invalid characters",
+        ));
     }
 
     let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
@@ -417,16 +421,20 @@ pub async fn check_username_availability(
     State(state): State<AppState>,
     Path(username): Path<String>,
 ) -> Result<Json<UsernameAvailabilityResponse>, ApiError> {
-    if username.len() < 3 || username.len() > 32 || !username.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_') {
-        return Err(ApiError::validation(
-            "Username must be between 3 and 32 characters and contain only lowercase letters, numbers, and underscores",
-        ));
-    }
+    let req = CheckUsernameRequest { username };
+
+    req.validate()
+        .map_err(|e| ApiError::validation(e.to_string()))?;
+
     let service = &state.user.user_profile_service;
-    let available = service.is_username_available(username.clone()).await?;
+
+    let status = service
+        .check_username(req.username.clone())
+        .await
+        .map_err(ApiError::from)?;
 
     Ok(Json(UsernameAvailabilityResponse {
-        username,
-        available,
+        username: req.username,
+        status,
     }))
 }

@@ -377,7 +377,7 @@ async fn test_check_username_availability() {
     .await;
 
     assert_eq!(status, StatusCode::OK, "body: {body}");
-    assert_eq!(body["available"], true);
+    assert_eq!(body["status"], "available");
 
     // Take it
     create_profile(&harness, "available_name", "Taken Now").await;
@@ -392,7 +392,7 @@ async fn test_check_username_availability() {
     .await;
 
     assert_eq!(status, StatusCode::OK, "body: {body}");
-    assert_eq!(body["available"], false);
+    assert_eq!(body["status"], "taken");
 }
 
 #[tokio::test]

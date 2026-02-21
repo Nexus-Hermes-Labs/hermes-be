@@ -162,6 +162,9 @@ impl From<UserRelationshipServiceError> for ApiError {
             UserRelationshipServiceError::CannotSendFriendRequest => {
                 ApiError::forbidden("Cannot send friend request due to privacy settings")
             }
+            UserRelationshipServiceError::DomainError(
+                crate::domain::user_relationship::UserRelationshipError::SelfRelationship,
+            ) => ApiError::conflict("Cannot have a relationship with oneself"),
             UserRelationshipServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
             UserRelationshipServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);

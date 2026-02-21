@@ -1,4 +1,5 @@
 use axum::{
+    body::Bytes,
     extract::{Path, Query, State},
     http::StatusCode,
     Json,
@@ -389,8 +390,16 @@ pub async fn update_visibility(
 pub async fn update_content_settings(
     State(state): State<AppState>,
     AuthenticatedUser(claims): AuthenticatedUser,
-    Json(request): Json<UpdateContentSettingsRequest>,
+    body: Bytes,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
+    let v: serde_json::Value = serde_json::from_slice(&body)
+        .map_err(|_| ApiError::bad_request("Failed to parse the request body as JSON"))?;
+    if !v.is_object() {
+        return Err(ApiError::bad_request("Expected a JSON object"));
+    }
+    let request: UpdateContentSettingsRequest = serde_json::from_value(v)
+        .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    request.validate()?;
     let user_id = extract_user_id(&claims)?;
     let filter_level = request
         .content_filter_level
@@ -802,6 +811,7 @@ pub async fn remove_friend(
         (status = 400, description = "Invalid JSON or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
+        (status = 409, description = "Cannot block oneself"),
         (status = 422, description = "Validation failed")
     ),
     security(

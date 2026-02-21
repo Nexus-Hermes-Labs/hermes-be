@@ -30,8 +30,9 @@ pub struct Pagination {
     #[param(minimum = 1, maximum = 100)]
     pub limit: i64,
     #[serde(default)]
-    #[validate(range(min = 0))]
-    #[schema(minimum = 0, format = "int64")]
+    #[validate(range(min = 0, max = 1_000_000_000))]
+    #[schema(minimum = 0, maximum = 1_000_000_000, format = "int64")]
+    #[param(minimum = 0, maximum = 1_000_000_000)]
     pub offset: i64,
 }
 
