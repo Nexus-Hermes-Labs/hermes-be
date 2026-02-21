@@ -11,6 +11,7 @@ static USERNAME_REGEX: Lazy<regex::Regex> =
     Lazy::new(|| regex::Regex::new(r"^[a-z0-9_]+$").unwrap());
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateProfileRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
     #[validate(regex(
@@ -32,6 +33,7 @@ pub struct CreateProfileRequest {
 // ============================================
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateProfileRequest {
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
@@ -56,6 +58,7 @@ pub struct UpdateProfileRequest {
 // ============================================
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ChangeUsernameRequest {
     #[validate(length(min = 3, max = 32, message = "Username must be 3-32 characters"))]
     #[validate(regex(
@@ -85,6 +88,7 @@ pub enum UserStatusInput {
 // ============================================
 
 #[derive(Debug, Deserialize, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateStatusRequest {
     pub status: UserStatusInput,
 }
@@ -94,11 +98,14 @@ pub struct UpdateStatusRequest {
 // ============================================
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct SetCustomStatusRequest {
     #[validate(length(max = 128, message = "Custom status text must be max 128 characters"))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
     pub text: Option<String>,
 
     #[validate(length(max = 50, message = "Custom status emoji must be max 50 characters"))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
     pub emoji: Option<String>,
 
     #[schema(min_length = 20)]
@@ -112,17 +119,19 @@ pub struct SetCustomStatusRequest {
 #[derive(Debug, Deserialize, ToSchema, utoipa::IntoParams, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct SearchUsersRequest {
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(min_length = 1)]
     pub query: String,
 
     #[serde(default = "default_limit_search")]
     #[validate(range(min = 1, max = 100))]
-    #[schema(minimum = 1, maximum = 100)]
+    #[schema(minimum = 1, maximum = 100, format = "int64")]
     #[param(minimum = 1, maximum = 100)]
     pub limit: i64,
 
     #[serde(default)]
     #[validate(range(min = 0))]
-    #[schema(minimum = 0)]
+    #[schema(minimum = 0, format = "int64")]
     pub offset: i64,
 }
 
@@ -135,8 +144,15 @@ fn default_limit_search() -> i64 {
 // ============================================
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CheckUsernameRequest {
     #[validate(length(min = 3, max = 32))]
+    #[validate(regex(
+        path = "*USERNAME_REGEX",
+        message = "Username can only contain lowercase letters, numbers, and underscores"
+    ))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(min_length = 3, max_length = 32, pattern = "^[a-z0-9_]+$")]
     pub username: String,
 }
 

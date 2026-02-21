@@ -19,7 +19,7 @@ pub struct UserPrivacyHandler;
 // PRIVACY SETTINGS
 // ============================================
 
-/// GET /users/:user_id/privacy
+/// GET /api/v1/users/{user_id}/privacy
 #[utoipa::path(
     get,
     path = "/api/v1/users/{user_id}/privacy",
@@ -43,7 +43,7 @@ pub async fn get_privacy_settings(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PUT /users/:user_id/privacy/dm
+/// PUT /api/v1/users/{user_id}/privacy/dm
 #[utoipa::path(
     put,
     path = "/api/v1/users/{user_id}/privacy/dm",
@@ -53,7 +53,7 @@ pub async fn get_privacy_settings(
     request_body = UpdateDmPrivacyRequest,
     responses(
         (status = 200, description = "DM privacy updated", body = PrivacySettingsResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Privacy settings not found"),
         (status = 422, description = "Validation failed")
@@ -78,7 +78,7 @@ pub async fn update_dm_privacy(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PUT /users/:user_id/privacy/friend-requests
+/// PUT /api/v1/users/{user_id}/privacy/friend-requests
 #[utoipa::path(
     put,
     path = "/api/v1/users/{user_id}/privacy/friend-requests",
@@ -88,7 +88,7 @@ pub async fn update_dm_privacy(
     request_body = UpdateFriendRequestPrivacyRequest,
     responses(
         (status = 200, description = "Friend request privacy updated", body = PrivacySettingsResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Privacy settings not found"),
         (status = 422, description = "Validation failed")
@@ -114,7 +114,7 @@ pub async fn update_friend_request_privacy(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PATCH /users/:user_id/privacy/visibility
+/// PATCH /api/v1/users/{user_id}/privacy/visibility
 #[utoipa::path(
     patch,
     path = "/api/v1/users/{user_id}/privacy/visibility",
@@ -124,7 +124,7 @@ pub async fn update_friend_request_privacy(
     request_body = UpdateVisibilityRequest,
     responses(
         (status = 200, description = "Visibility updated", body = PrivacySettingsResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Privacy settings not found"),
         (status = 422, description = "Validation failed")
@@ -149,7 +149,7 @@ pub async fn update_visibility(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PATCH /users/:user_id/privacy/content
+/// PATCH /api/v1/users/{user_id}/privacy/content
 #[utoipa::path(
     patch,
     path = "/api/v1/users/{user_id}/privacy/content",
@@ -159,7 +159,7 @@ pub async fn update_visibility(
     request_body = UpdateContentSettingsRequest,
     responses(
         (status = 200, description = "Content settings updated", body = PrivacySettingsResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Privacy settings not found"),
         (status = 422, description = "Validation failed")
@@ -188,7 +188,7 @@ pub async fn update_content_settings(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// POST /users/:user_id/privacy/preset
+/// POST /api/v1/users/{user_id}/privacy/preset
 #[utoipa::path(
     post,
     path = "/api/v1/users/{user_id}/privacy/preset",
@@ -198,7 +198,7 @@ pub async fn update_content_settings(
     request_body = ApplyPresetRequest,
     responses(
         (status = 200, description = "Privacy preset applied", body = PrivacySettingsResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Privacy settings not found"),
         (status = 422, description = "Validation failed")

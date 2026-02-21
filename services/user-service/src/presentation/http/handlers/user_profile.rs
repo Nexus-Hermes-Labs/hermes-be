@@ -21,7 +21,7 @@ pub struct UserProfileHandler;
 // PROFILE MANAGEMENT
 // ============================================
 
-/// GET /users/:user_id
+/// GET /api/v1/users/{user_id}
 #[utoipa::path(
     get,
     path = "/api/v1/users/{user_id}",
@@ -47,7 +47,7 @@ pub async fn get_profile(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// GET /users/username/:username
+/// GET /api/v1/users/username/{username}
 #[utoipa::path(
     get,
     path = "/api/v1/users/username/{username}",
@@ -56,7 +56,7 @@ pub async fn get_profile(
     ),
     responses(
         (status = 200, description = "Profile found", body = ProfileResponse),
-        (status = 400, description = "Invalid username format"),
+        (status = 400, description = "Invalid username format or malformed request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
@@ -81,7 +81,7 @@ pub async fn get_profile_by_username(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// POST /users
+/// POST /api/v1/users
 #[utoipa::path(
     post,
     path = "/api/v1/users",
@@ -125,7 +125,7 @@ pub async fn create_profile(
     Ok((StatusCode::CREATED, Json(ProfileResponse::from(profile))))
 }
 
-/// PATCH /users/:user_id
+/// PATCH /api/v1/users/{user_id}
 #[utoipa::path(
     patch,
     path = "/api/v1/users/{user_id}",
@@ -163,7 +163,7 @@ pub async fn update_profile(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// PUT /users/:user_id/username
+/// PUT /api/v1/users/{user_id}/username
 #[utoipa::path(
     put,
     path = "/api/v1/users/{user_id}/username",
@@ -173,7 +173,7 @@ pub async fn update_profile(
     request_body = ChangeUsernameRequest,
     responses(
         (status = 200, description = "Username changed", body = ProfileResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 409, description = "Username already taken"),
@@ -196,7 +196,7 @@ pub async fn change_username(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// DELETE /users/:user_id
+/// DELETE /api/v1/users/{user_id}
 #[utoipa::path(
     delete,
     path = "/api/v1/users/{user_id}",
@@ -224,7 +224,7 @@ pub async fn delete_profile(
 // PRESENCE
 // ============================================
 
-/// PUT /users/:user_id/status
+/// PUT /api/v1/users/{user_id}/status
 #[utoipa::path(
     put,
     path = "/api/v1/users/{user_id}/status",
@@ -234,7 +234,7 @@ pub async fn delete_profile(
     request_body = UpdateStatusRequest,
     responses(
         (status = 200, description = "Status updated", body = ProfileResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
@@ -260,7 +260,7 @@ pub async fn update_status(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// PUT /users/:user_id/custom-status
+/// PUT /api/v1/users/{user_id}/custom-status
 #[utoipa::path(
     put,
     path = "/api/v1/users/{user_id}/custom-status",
@@ -270,7 +270,7 @@ pub async fn update_status(
     request_body = SetCustomStatusRequest,
     responses(
         (status = 200, description = "Custom status updated", body = ProfileResponse),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
@@ -292,7 +292,7 @@ pub async fn set_custom_status(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// DELETE /users/:user_id/custom-status
+/// DELETE /api/v1/users/{user_id}/custom-status
 #[utoipa::path(
     delete,
     path = "/api/v1/users/{user_id}/custom-status",
@@ -320,7 +320,7 @@ pub async fn clear_custom_status(
 // SEARCH & DISCOVERY
 // ============================================
 
-/// GET /users/search?query=...&limit=10&offset=0
+/// GET /api/v1/users/search?query=...&limit=10&offset=0
 #[utoipa::path(
     get,
     path = "/api/v1/users/search",
@@ -331,6 +331,7 @@ pub async fn clear_custom_status(
         (status = 200, description = "Users found", body = ProfileListResponse),
         (status = 400, description = "Invalid query parameters"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Not found"),
         (status = 422, description = "Validation failed")
     ),
     tag = "user-profile"
@@ -363,7 +364,7 @@ pub async fn search_users(
     }))
 }
 
-/// GET /users/online?limit=10&offset=0
+/// GET /api/v1/users/online?limit=10&offset=0
 #[utoipa::path(
     get,
     path = "/api/v1/users/online",
@@ -374,6 +375,7 @@ pub async fn search_users(
         (status = 200, description = "Online users found", body = OnlineUsersResponse),
         (status = 400, description = "Invalid query parameters"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Not found"),
         (status = 422, description = "Validation failed")
     ),
     tag = "user-profile"
@@ -396,7 +398,7 @@ pub async fn get_online_users(
     Ok(Json(OnlineUsersResponse { users, total }))
 }
 
-/// GET /users/check-username/:username
+/// GET /api/v1/users/check-username/:username
 #[utoipa::path(
     get,
     path = "/api/v1/users/check-username/{username}",
@@ -405,7 +407,7 @@ pub async fn get_online_users(
     ),
     responses(
         (status = 200, description = "Username availability checked", body = UsernameAvailabilityResponse),
-        (status = 400, description = "Invalid username format"),
+        (status = 400, description = "Invalid username format or malformed request"),
         (status = 401, description = "Unauthorized"),
         (status = 422, description = "Validation failed")
     ),

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use validator::Validate;
 
 use crate::domain::user_privacy::UserPrivacySettings;
 
@@ -20,7 +21,8 @@ pub enum DmPrivacyInput {
 // UPDATE DM PRIVACY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateDmPrivacyRequest {
     pub allow_dms_from: DmPrivacyInput,
 }
@@ -41,7 +43,8 @@ pub enum FriendRequestPrivacyInput {
 // UPDATE FRIEND REQUEST PRIVACY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateFriendRequestPrivacyRequest {
     pub allow_friend_requests_from: FriendRequestPrivacyInput,
 }
@@ -50,7 +53,8 @@ pub struct UpdateFriendRequestPrivacyRequest {
 // UPDATE VISIBILITY REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateVisibilityRequest {
     pub show_online_status: Option<bool>,
     pub show_current_activity: Option<bool>,
@@ -61,7 +65,8 @@ pub struct UpdateVisibilityRequest {
 // UPDATE CONTENT SETTINGS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateContentSettingsRequest {
     pub allow_nsfw_content: Option<bool>,
     #[schema(minimum = 0, maximum = 2)]
@@ -84,7 +89,8 @@ pub enum PrivacyPresetInput {
 // APPLY PRESET REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct ApplyPresetRequest {
     pub preset: PrivacyPresetInput,
 }

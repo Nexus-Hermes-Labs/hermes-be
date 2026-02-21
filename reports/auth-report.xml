@@ -1,46 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites disabled="0" errors="2" failures="0" tests="8" time="12.379081181989022">
-	<testsuite disabled="0" errors="2" failures="0" name="schemathesis" skipped="8" tests="8" time="12.379081181989022" hostname="565ca9a862f7">
-		<testcase name="POST /api/v1/auth/login" time="1.636021">
-			<error type="error">Network Error
-
-Connection failed
-
-    Connection aborted. Remote end closed connection without response
-
-Reproduce with:
-
-    curl -X GET -H 'Content-Type: application/json' -d '{"device_name": null, "email": "000@0.AA", "password": "0"}' http://host.docker.internal:8081/api/v1/auth/login</error>
+<testsuites disabled="0" errors="0" failures="0" tests="8" time="6.01527478297794">
+	<testsuite disabled="0" errors="0" failures="0" name="schemathesis" skipped="8" tests="8" time="6.01527478297794" hostname="ed39400b99a6">
+		<testcase name="POST /api/v1/auth/login" time="1.137944">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/auth/logout" time="1.094798">
+		<testcase name="POST /api/v1/auth/logout" time="0.576987">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/auth/refresh" time="1.284655">
-			<error type="error">Network Error
-
-Connection failed
-
-    Connection aborted. Remote end closed connection without response
-
-Reproduce with:
-
-    curl -X PUT -H 'Content-Type: application/json' -d '{"refresh_token": "0"}' http://host.docker.internal:8081/api/v1/auth/refresh</error>
+		<testcase name="POST /api/v1/auth/refresh" time="0.675790">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/auth/register" time="6.488276">
+		<testcase name="POST /api/v1/auth/register" time="2.604401">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/auth/verify-email" time="1.748935">
+		<testcase name="GET /api/v1/auth/verify-email" time="0.966586">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health" time="0.049686">
+		<testcase name="GET /health" time="0.019022">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health/live" time="0.037209">
+		<testcase name="GET /health/live" time="0.017142">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health/ready" time="0.039501">
+		<testcase name="GET /health/ready" time="0.017404">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
 	</testsuite>

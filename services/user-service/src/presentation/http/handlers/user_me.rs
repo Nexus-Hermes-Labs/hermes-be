@@ -28,7 +28,7 @@ pub struct UserMeHandler;
 // PROFILE
 // ============================================
 
-/// GET /@me
+/// GET /api/v1/users/@me
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me",
@@ -52,13 +52,14 @@ pub async fn get_profile(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// PATCH /@me
+/// PATCH /api/v1/users/@me
 #[utoipa::path(
     patch,
     path = "/api/v1/users/@me",
     request_body = UpdateProfileRequest,
     responses(
         (status = 200, description = "Profile updated", body = ProfileResponse),
+        (status = 400, description = "Invalid input or malformed request"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
@@ -88,12 +89,13 @@ pub async fn update_profile(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// DELETE /@me
+/// DELETE /api/v1/users/@me
 #[utoipa::path(
     delete,
     path = "/api/v1/users/@me",
     responses(
         (status = 204, description = "Profile deleted"),
+        (status = 400, description = "Invalid request or malformed input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found")
     ),
@@ -112,13 +114,14 @@ pub async fn delete_profile(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// PUT /@me/username
+/// PUT /api/v1/users/@me/username
 #[utoipa::path(
     put,
     path = "/api/v1/users/@me/username",
     request_body = ChangeUsernameRequest,
     responses(
         (status = 200, description = "Username changed", body = ProfileResponse),
+        (status = 400, description = "Invalid input or JSON body"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 409, description = "Username already taken"),
@@ -143,14 +146,14 @@ pub async fn change_username(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// PUT /@me/status
+/// PUT /api/v1/users/@me/status
 #[utoipa::path(
     put,
     path = "/api/v1/users/@me/status",
     request_body = UpdateStatusRequest,
     responses(
         (status = 200, description = "Status updated", body = ProfileResponse),
-        (status = 400, description = "Invalid JSON body"),
+        (status = 400, description = "Invalid input or JSON body"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
@@ -165,6 +168,7 @@ pub async fn update_status(
     AuthenticatedUser(claims): AuthenticatedUser,
     Json(request): Json<UpdateStatusRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
+    request.validate()?;
     let user_id = extract_user_id(&claims)?;
     let status = match request.status {
         UserStatusInput::Online => UserStatus::Online,
@@ -177,13 +181,14 @@ pub async fn update_status(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// PUT /@me/custom-status
+/// PUT /api/v1/users/@me/custom-status
 #[utoipa::path(
     put,
     path = "/api/v1/users/@me/custom-status",
     request_body = SetCustomStatusRequest,
     responses(
         (status = 200, description = "Custom status updated", body = ProfileResponse),
+        (status = 400, description = "Invalid input or JSON body"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
@@ -207,12 +212,13 @@ pub async fn set_custom_status(
     Ok(Json(ProfileResponse::from(profile)))
 }
 
-/// DELETE /@me/custom-status
+/// DELETE /api/v1/users/@me/custom-status
 #[utoipa::path(
     delete,
     path = "/api/v1/users/@me/custom-status",
     responses(
         (status = 204, description = "Custom status cleared"),
+        (status = 400, description = "Invalid request or malformed input"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Profile not found")
     ),
@@ -235,13 +241,14 @@ pub async fn clear_custom_status(
 // PRIVACY
 // ============================================
 
-/// GET /@me/privacy
+/// GET /api/v1/users/@me/privacy
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me/privacy",
     responses(
         (status = 200, description = "Authenticated user privacy settings", body = PrivacySettingsResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found")
     ),
     security(
         ("bearer_auth" = [])
@@ -258,7 +265,7 @@ pub async fn get_privacy_settings(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PUT /@me/privacy/dm
+/// PUT /api/v1/users/@me/privacy/dm
 #[utoipa::path(
     put,
     path = "/api/v1/users/@me/privacy/dm",
@@ -267,6 +274,7 @@ pub async fn get_privacy_settings(
         (status = 200, description = "DM privacy updated", body = PrivacySettingsResponse),
         (status = 400, description = "Invalid JSON body"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
     ),
     security(
@@ -291,7 +299,7 @@ pub async fn update_dm_privacy(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PUT /@me/privacy/friend-requests
+/// PUT /api/v1/users/@me/privacy/friend-requests
 #[utoipa::path(
     put,
     path = "/api/v1/users/@me/privacy/friend-requests",
@@ -300,6 +308,7 @@ pub async fn update_dm_privacy(
         (status = 200, description = "Friend request privacy updated", body = PrivacySettingsResponse),
         (status = 400, description = "Invalid JSON body"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
     ),
     security(
@@ -325,14 +334,16 @@ pub async fn update_friend_request_privacy(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PATCH /@me/privacy/visibility
+/// PATCH /api/v1/users/@me/privacy/visibility
 #[utoipa::path(
     patch,
     path = "/api/v1/users/@me/privacy/visibility",
     request_body = UpdateVisibilityRequest,
     responses(
         (status = 200, description = "Visibility updated", body = PrivacySettingsResponse),
+        (status = 400, description = "Invalid JSON body"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
     ),
     security(
@@ -358,14 +369,16 @@ pub async fn update_visibility(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// PATCH /@me/privacy/content
+/// PATCH /api/v1/users/@me/privacy/content
 #[utoipa::path(
     patch,
     path = "/api/v1/users/@me/privacy/content",
     request_body = UpdateContentSettingsRequest,
     responses(
         (status = 200, description = "Content settings updated", body = PrivacySettingsResponse),
+        (status = 400, description = "Invalid JSON body"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
     ),
     security(
@@ -393,7 +406,7 @@ pub async fn update_content_settings(
     Ok(Json(PrivacySettingsResponse::from(settings)))
 }
 
-/// POST /@me/privacy/preset
+/// POST /api/v1/users/@me/privacy/preset
 #[utoipa::path(
     post,
     path = "/api/v1/users/@me/privacy/preset",
@@ -402,6 +415,7 @@ pub async fn update_content_settings(
         (status = 200, description = "Privacy preset applied", body = PrivacySettingsResponse),
         (status = 400, description = "Invalid JSON body"),
         (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
         (status = 422, description = "Validation failed")
     ),
     security(
@@ -429,215 +443,7 @@ pub async fn apply_preset(
 // RELATIONSHIPS
 // ============================================
 
-/// POST /@me/relationships/request
-#[utoipa::path(
-    post,
-    path = "/api/v1/users/@me/relationships/request",
-    request_body = RelationshipRequest,
-    responses(
-        (status = 200, description = "Friend request sent", body = RelationshipResponse),
-        (status = 400, description = "Invalid JSON"),
-        (status = 401, description = "Unauthorized"),
-        (status = 403, description = "Blocked or privacy settings prevent request"),
-        (status = 404, description = "User not found"),
-        (status = 422, description = "Validation failed")
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "user-me"
-)]
-pub async fn send_friend_request(
-    State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
-    Json(payload): Json<RelationshipRequest>,
-) -> Result<Json<RelationshipResponse>, ApiError> {
-    payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
-    let relationship = state
-        .user
-        .relationship_service
-        .send_friend_request(user_id, payload.target_user_id, payload.message)
-        .await?;
-    Ok(Json(RelationshipResponse {
-        user_id: relationship.user_id(),
-        target_user_id: relationship.target_user_id(),
-        r#type: relationship.relationship_type().to_string(),
-        message: relationship.message().map(|s| s.to_string()),
-    }))
-}
-
-/// PUT /@me/relationships/request/accept
-#[utoipa::path(
-    put,
-    path = "/api/v1/users/@me/relationships/request/accept",
-    request_body = RelationshipRequest,
-    responses(
-        (status = 200, description = "Friend request accepted", body = RelationshipResponse),
-        (status = 400, description = "Invalid JSON"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found"),
-        (status = 422, description = "Validation failed")
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "user-me"
-)]
-pub async fn accept_friend_request(
-    State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
-    Json(payload): Json<RelationshipRequest>,
-) -> Result<Json<RelationshipResponse>, ApiError> {
-    payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
-    let relationship = state
-        .user
-        .relationship_service
-        .accept_friend_request(user_id, payload.target_user_id)
-        .await?;
-    Ok(Json(RelationshipResponse {
-        user_id: relationship.user_id(),
-        target_user_id: relationship.target_user_id(),
-        r#type: relationship.relationship_type().to_string(),
-        message: relationship.message().map(|s| s.to_string()),
-    }))
-}
-
-/// PUT /@me/relationships/request/decline
-#[utoipa::path(
-    put,
-    path = "/api/v1/users/@me/relationships/request/decline",
-    request_body = RelationshipRequest,
-    responses(
-        (status = 204, description = "Friend request declined"),
-        (status = 400, description = "Invalid JSON"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found"),
-        (status = 422, description = "Validation failed")
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "user-me"
-)]
-pub async fn decline_friend_request(
-    State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
-    Json(payload): Json<RelationshipRequest>,
-) -> Result<StatusCode, ApiError> {
-    payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
-    state
-        .user
-        .relationship_service
-        .decline_friend_request(user_id, payload.target_user_id)
-        .await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-/// DELETE /@me/relationships/friend/:target_user_id
-#[utoipa::path(
-    delete,
-    path = "/api/v1/users/@me/relationships/friend/{target_user_id}",
-    params(
-        ("target_user_id" = Uuid, Path, description = "Target User ID")
-    ),
-    responses(
-        (status = 204, description = "Friend removed"),
-        (status = 400, description = "Invalid User ID"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "user-me"
-)]
-pub async fn remove_friend(
-    State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
-    Path(target_user_id): Path<Uuid>,
-) -> Result<StatusCode, ApiError> {
-    let user_id = extract_user_id(&claims)?;
-    state
-        .user
-        .relationship_service
-        .remove_friend(user_id, target_user_id)
-        .await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-/// POST /@me/relationships/block
-#[utoipa::path(
-    post,
-    path = "/api/v1/users/@me/relationships/block",
-    request_body = RelationshipRequest,
-    responses(
-        (status = 200, description = "User blocked", body = RelationshipResponse),
-        (status = 400, description = "Invalid JSON"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "User not found"),
-        (status = 422, description = "Validation failed")
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "user-me"
-)]
-pub async fn block_user(
-    State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
-    Json(payload): Json<RelationshipRequest>,
-) -> Result<Json<RelationshipResponse>, ApiError> {
-    payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
-    let relationship = state
-        .user
-        .relationship_service
-        .block_user(user_id, payload.target_user_id)
-        .await?;
-    Ok(Json(RelationshipResponse {
-        user_id: relationship.user_id(),
-        target_user_id: relationship.target_user_id(),
-        r#type: relationship.relationship_type().to_string(),
-        message: relationship.message().map(|s| s.to_string()),
-    }))
-}
-
-/// DELETE /@me/relationships/block/:target_user_id
-#[utoipa::path(
-    delete,
-    path = "/api/v1/users/@me/relationships/block/{target_user_id}",
-    params(
-        ("target_user_id" = Uuid, Path, description = "Target User ID")
-    ),
-    responses(
-        (status = 204, description = "User unblocked"),
-        (status = 400, description = "Invalid User ID"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "user-me"
-)]
-pub async fn unblock_user(
-    State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
-    Path(target_user_id): Path<Uuid>,
-) -> Result<StatusCode, ApiError> {
-    let user_id = extract_user_id(&claims)?;
-    state
-        .user
-        .relationship_service
-        .unblock_user(user_id, target_user_id)
-        .await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-/// GET /@me/relationships/friends
+/// GET /api/v1/users/@me/relationships/friends
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me/relationships/friends",
@@ -680,7 +486,7 @@ pub async fn get_friends(
     Ok(Json(response))
 }
 
-/// GET /@me/relationships/incoming
+/// GET /api/v1/users/@me/relationships/incoming
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me/relationships/incoming",
@@ -723,7 +529,7 @@ pub async fn get_incoming_requests(
     Ok(Json(response))
 }
 
-/// GET /@me/relationships/outgoing
+/// GET /api/v1/users/@me/relationships/outgoing
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me/relationships/outgoing",
@@ -766,7 +572,7 @@ pub async fn get_outgoing_requests(
     Ok(Json(response))
 }
 
-/// GET /@me/relationships/blocked
+/// GET /api/v1/users/@me/relationships/blocked
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me/relationships/blocked",
@@ -809,7 +615,7 @@ pub async fn get_blocked_users(
     Ok(Json(response))
 }
 
-/// GET /@me/relationships/:target_user_id
+/// GET /api/v1/users/@me/relationships/{target_user_id}
 #[utoipa::path(
     get,
     path = "/api/v1/users/@me/relationships/{target_user_id}",
@@ -845,6 +651,214 @@ pub async fn get_relationship(
         r#type: relationship.relationship_type().to_string(),
         message: relationship.message().map(|s| s.to_string()),
     }))
+}
+
+/// POST /api/v1/users/@me/relationships/request
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/@me/relationships/request",
+    request_body = RelationshipRequest,
+    responses(
+        (status = 200, description = "Friend request sent", body = RelationshipResponse),
+        (status = 400, description = "Invalid JSON or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Blocked or privacy settings prevent request"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "user-me"
+)]
+pub async fn send_friend_request(
+    State(state): State<AppState>,
+    AuthenticatedUser(claims): AuthenticatedUser,
+    Json(payload): Json<RelationshipRequest>,
+) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
+    let user_id = extract_user_id(&claims)?;
+    let relationship = state
+        .user
+        .relationship_service
+        .send_friend_request(user_id, payload.target_user_id, payload.message)
+        .await?;
+    Ok(Json(RelationshipResponse {
+        user_id: relationship.user_id(),
+        target_user_id: relationship.target_user_id(),
+        r#type: relationship.relationship_type().to_string(),
+        message: relationship.message().map(|s| s.to_string()),
+    }))
+}
+
+/// PUT /api/v1/users/@me/relationships/request/accept
+#[utoipa::path(
+    put,
+    path = "/api/v1/users/@me/relationships/request/accept",
+    request_body = RelationshipRequest,
+    responses(
+        (status = 200, description = "Friend request accepted", body = RelationshipResponse),
+        (status = 400, description = "Invalid JSON or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Relationship not found"),
+        (status = 422, description = "Validation failed")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "user-me"
+)]
+pub async fn accept_friend_request(
+    State(state): State<AppState>,
+    AuthenticatedUser(claims): AuthenticatedUser,
+    Json(payload): Json<RelationshipRequest>,
+) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
+    let user_id = extract_user_id(&claims)?;
+    let relationship = state
+        .user
+        .relationship_service
+        .accept_friend_request(user_id, payload.target_user_id)
+        .await?;
+    Ok(Json(RelationshipResponse {
+        user_id: relationship.user_id(),
+        target_user_id: relationship.target_user_id(),
+        r#type: relationship.relationship_type().to_string(),
+        message: relationship.message().map(|s| s.to_string()),
+    }))
+}
+
+/// PUT /api/v1/users/@me/relationships/request/decline
+#[utoipa::path(
+    put,
+    path = "/api/v1/users/@me/relationships/request/decline",
+    request_body = RelationshipRequest,
+    responses(
+        (status = 204, description = "Friend request declined"),
+        (status = 400, description = "Invalid JSON or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Relationship not found"),
+        (status = 422, description = "Validation failed")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "user-me"
+)]
+pub async fn decline_friend_request(
+    State(state): State<AppState>,
+    AuthenticatedUser(claims): AuthenticatedUser,
+    Json(payload): Json<RelationshipRequest>,
+) -> Result<StatusCode, ApiError> {
+    payload.validate()?;
+    let user_id = extract_user_id(&claims)?;
+    state
+        .user
+        .relationship_service
+        .decline_friend_request(user_id, payload.target_user_id)
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/users/@me/relationships/friend/{target_user_id}
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/@me/relationships/friend/{target_user_id}",
+    params(
+        ("target_user_id" = Uuid, Path, description = "Target User ID")
+    ),
+    responses(
+        (status = 204, description = "Friend removed"),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Relationship not found")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "user-me"
+)]
+pub async fn remove_friend(
+    State(state): State<AppState>,
+    AuthenticatedUser(claims): AuthenticatedUser,
+    Path(target_user_id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    let user_id = extract_user_id(&claims)?;
+    state
+        .user
+        .relationship_service
+        .remove_friend(user_id, target_user_id)
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/users/@me/relationships/block
+#[utoipa::path(
+    post,
+    path = "/api/v1/users/@me/relationships/block",
+    request_body = RelationshipRequest,
+    responses(
+        (status = 200, description = "User blocked", body = RelationshipResponse),
+        (status = 400, description = "Invalid JSON or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "user-me"
+)]
+pub async fn block_user(
+    State(state): State<AppState>,
+    AuthenticatedUser(claims): AuthenticatedUser,
+    Json(payload): Json<RelationshipRequest>,
+) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
+    let user_id = extract_user_id(&claims)?;
+    let relationship = state
+        .user
+        .relationship_service
+        .block_user(user_id, payload.target_user_id)
+        .await?;
+    Ok(Json(RelationshipResponse {
+        user_id: relationship.user_id(),
+        target_user_id: relationship.target_user_id(),
+        r#type: relationship.relationship_type().to_string(),
+        message: relationship.message().map(|s| s.to_string()),
+    }))
+}
+
+/// DELETE /api/v1/users/@me/relationships/block/{target_user_id}
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/@me/relationships/block/{target_user_id}",
+    params(
+        ("target_user_id" = Uuid, Path, description = "Target User ID")
+    ),
+    responses(
+        (status = 204, description = "User unblocked"),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Relationship not found")
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "user-me"
+)]
+pub async fn unblock_user(
+    State(state): State<AppState>,
+    AuthenticatedUser(claims): AuthenticatedUser,
+    Path(target_user_id): Path<Uuid>,
+) -> Result<StatusCode, ApiError> {
+    let user_id = extract_user_id(&claims)?;
+    state
+        .user
+        .relationship_service
+        .unblock_user(user_id, target_user_id)
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ============================================

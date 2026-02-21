@@ -65,7 +65,7 @@ pub async fn send_friend_request(
         (status = 200, description = "Friend request accepted", body = RelationshipResponse),
         (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found"),
+        (status = 404, description = "Relationship or User not found"),
         (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
@@ -102,7 +102,7 @@ pub async fn accept_friend_request(
         (status = 204, description = "Friend request declined"),
         (status = 400, description = "Invalid User ID or input"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found"),
+        (status = 404, description = "Relationship or User not found"),
         (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
@@ -134,7 +134,7 @@ pub async fn decline_friend_request(
         (status = 204, description = "Friend removed"),
         (status = 400, description = "Invalid User ID"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
+        (status = 404, description = "Relationship or User not found")
     ),
     tag = "user-relationship"
 )]
@@ -200,7 +200,7 @@ pub async fn block_user(
         (status = 204, description = "User unblocked"),
         (status = 400, description = "Invalid User ID"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
+        (status = 404, description = "Relationship or User not found")
     ),
     tag = "user-relationship"
 )]
@@ -229,7 +229,7 @@ pub async fn unblock_user(
         (status = 200, description = "Relationship found", body = RelationshipResponse),
         (status = 400, description = "Invalid User ID"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
+        (status = 404, description = "Relationship or User not found")
     ),
     tag = "user-relationship"
 )]
@@ -262,7 +262,7 @@ pub async fn get_relationship(
     ),
     responses(
         (status = 200, description = "Friends list", body = [RelationshipResponse]),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or query parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
         (status = 422, description = "Validation failed")
@@ -304,7 +304,7 @@ pub async fn get_friends(
     ),
     responses(
         (status = 200, description = "Incoming friend requests", body = [RelationshipResponse]),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or query parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
         (status = 422, description = "Validation failed")
@@ -346,7 +346,7 @@ pub async fn get_incoming_requests(
     ),
     responses(
         (status = 200, description = "Outgoing friend requests", body = [RelationshipResponse]),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or query parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
         (status = 422, description = "Validation failed")
@@ -388,7 +388,7 @@ pub async fn get_outgoing_requests(
     ),
     responses(
         (status = 200, description = "Blocked users list", body = [RelationshipResponse]),
-        (status = 400, description = "Invalid User ID"),
+        (status = 400, description = "Invalid User ID or query parameters"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "User not found"),
         (status = 422, description = "Validation failed")
