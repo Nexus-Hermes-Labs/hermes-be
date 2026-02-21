@@ -237,9 +237,10 @@ pub async fn unblock_user(
 )]
 pub async fn get_relationship(
     State(state): State<AppState>,
-    Path(path): Path<(Uuid, Uuid)>,
+    Path((user_id, target_user_id)): Path<(StrictUuid, StrictUuid)>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
-    let (user_id, target_user_id) = path;
+    let StrictUuid(user_id) = user_id;
+    let StrictUuid(target_user_id) = target_user_id;
 
     let relationship = state
         .user
