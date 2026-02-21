@@ -6,9 +6,7 @@ use axum::{
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::presentation::dto::guild_member::request::{
-    AssignRoleRequest, KickMemberRequest, Pagination,
-};
+use crate::presentation::dto::guild_member::request::{AssignRoleRequest, KickMemberRequest, Pagination};
 use crate::presentation::dto::guild_member::response::{
     GuildMemberListResponse, GuildMemberResponse,
 };
@@ -17,7 +15,7 @@ use common::middleware::authentication::AuthenticatedUser;
 
 use super::error::ApiError;
 
-/// GET /api/v1/guilds/:guild_id/members
+/// GET `/api/v1/guilds/:guild_id/members`
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/members",
@@ -52,7 +50,7 @@ pub async fn list_members(
     }))
 }
 
-/// GET /api/v1/guilds/:guild_id/members/:user_id
+/// GET `/api/v1/guilds/:guild_id/members/:user_id`
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}",
@@ -80,7 +78,7 @@ pub async fn get_member(
     Ok(Json(GuildMemberResponse::from(member)))
 }
 
-/// DELETE /api/v1/guilds/:guild_id/members/:user_id
+/// DELETE `/api/v1/guilds/:guild_id/members/:user_id`
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}",
@@ -118,7 +116,7 @@ pub async fn kick_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// DELETE /api/v1/guilds/:guild_id/members/@me
+/// DELETE `/api/v1/guilds/:guild_id/members/@me`
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/members/@me",
@@ -149,7 +147,7 @@ pub async fn leave_guild(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// PUT /api/v1/guilds/:guild_id/members/:user_id/roles
+/// PUT `/api/v1/guilds/:guild_id/members/:user_id/roles`
 #[utoipa::path(
     put,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}/roles",
@@ -186,7 +184,7 @@ pub async fn assign_role(
     Ok(Json(GuildMemberResponse::from(member)))
 }
 
-/// DELETE /api/v1/guilds/:guild_id/members/:user_id/roles/:role_id
+/// DELETE `/api/v1/guilds/:guild_id/members/:user_id/roles/:role_id`
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}/roles/{role_id}",

@@ -14,7 +14,7 @@ pub struct ChannelState {
 impl ChannelState {
     /// Compose a `ChannelState` from a pre-built application service.
     #[must_use]
-    pub fn new(channel_service: Arc<ChannelService>) -> Self {
+    pub const fn new(channel_service: Arc<ChannelService>) -> Self {
         Self { channel_service }
     }
 }

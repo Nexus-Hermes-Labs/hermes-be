@@ -22,7 +22,10 @@ use crate::presentation::dto::guild_role::response::*;
 use crate::presentation::http::handlers::{
     guild::*, guild_invite::*, guild_member::*, guild_role::*,
 };
-use common::observability::health::*;
+use common::observability::health::{
+    __path_health_handler, __path_liveness_handler, __path_readiness_handler, ComponentHealth,
+    HealthChecks, HealthResponse,
+};
 
 /// `OpenAPI` documentation for the guild service.
 #[allow(clippy::needless_for_each)]

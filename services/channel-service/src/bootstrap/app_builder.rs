@@ -76,7 +76,7 @@ impl AppBuilder {
     }
 
     /// Build the complete application with all dependencies.
-    pub async fn build(
+    pub fn build(
         self,
     ) -> Result<(Server, ChannelServiceServer<ChannelServiceGrpc>), BootstrapError> {
         let _service_name = self.service_name.ok_or_else(|| {

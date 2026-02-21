@@ -33,7 +33,7 @@ impl GuildName {
         }
 
         // Require at least one alphanumeric character
-        if !value.chars().any(|c| c.is_alphanumeric()) {
+        if !value.chars().any(char::is_alphanumeric) {
             return Err(GuildError::InvalidNameFormat);
         }
 

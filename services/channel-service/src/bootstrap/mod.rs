@@ -52,8 +52,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
         .with_database(db_pool)
         .with_redis(redis_manager)
         .with_metrics(metrics)
-        .build()
-        .await?;
+        .build()?;
 
     info!("🎯 Application ready!");
 

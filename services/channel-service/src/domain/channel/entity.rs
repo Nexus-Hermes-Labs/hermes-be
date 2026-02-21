@@ -21,7 +21,7 @@ pub struct Channel {
     // SETTINGS
     // ============================================
     name: ChannelName,
-    channel_type: ChannelType,
+    r#type: ChannelType,
     description: Option<String>,
     position: i32,
 
@@ -60,7 +60,7 @@ impl Channel {
             guild_id,
             parent_id,
             name,
-            channel_type,
+            r#type: channel_type,
             description,
             position,
             created_at: now,
@@ -89,7 +89,7 @@ impl Channel {
             guild_id,
             parent_id,
             name,
-            channel_type,
+            r#type: channel_type,
             description,
             position,
             created_at,
@@ -129,7 +129,7 @@ impl Channel {
     /// Returns the channel type.
     #[must_use]
     pub const fn channel_type(&self) -> ChannelType {
-        self.channel_type
+        self.r#type
     }
 
     /// Returns the channel description, if one has been set.
@@ -238,7 +238,7 @@ mod tests {
     fn test_update_channel() {
         let mut ch = make_channel();
         let new_name = ChannelName::new("announcements").unwrap();
-        ch.update(Some(new_name.clone()), None, None, Some(5))
+        ch.update(Some(new_name), None, None, Some(5))
             .unwrap();
         assert_eq!(ch.name().as_str(), "announcements");
         assert_eq!(ch.position(), 5);

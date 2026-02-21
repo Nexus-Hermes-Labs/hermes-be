@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct SharedState {
-    /// PostgreSQL connection pool
+    /// `PostgreSQL` connection pool
     pub db: PgPool,
     /// Redis async connection manager
     pub redis: redis::aio::ConnectionManager,

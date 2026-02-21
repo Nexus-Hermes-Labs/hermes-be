@@ -13,7 +13,7 @@ use common::middleware::authentication::AuthenticatedUser;
 
 use super::error::ApiError;
 
-/// POST /api/v1/guilds/{guild_id}/channels
+/// POST `/api/v1/guilds/{guild_id}/channels`
 #[utoipa::path(
     post,
     path = "/api/v1/guilds/{guild_id}/channels",
@@ -59,7 +59,7 @@ pub async fn create_channel(
     Ok((StatusCode::CREATED, Json(ChannelResponse::from(channel))))
 }
 
-/// GET /api/v1/guilds/{guild_id}/channels
+/// GET `/api/v1/guilds/{guild_id}/channels`
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/channels",
@@ -87,7 +87,7 @@ pub async fn list_guild_channels(
     }))
 }
 
-/// GET /api/v1/channels/{channel_id}
+/// GET `/api/v1/channels/{channel_id}`
 #[utoipa::path(
     get,
     path = "/api/v1/channels/{channel_id}",
@@ -110,7 +110,7 @@ pub async fn get_channel(
     Ok(Json(ChannelResponse::from(channel)))
 }
 
-/// PATCH /api/v1/channels/{channel_id}
+/// PATCH `/api/v1/channels/{channel_id}`
 #[utoipa::path(
     patch,
     path = "/api/v1/channels/{channel_id}",
@@ -156,7 +156,7 @@ pub async fn update_channel(
     Ok(Json(ChannelResponse::from(channel)))
 }
 
-/// DELETE /api/v1/channels/{channel_id}
+/// DELETE `/api/v1/channels/{channel_id}`
 #[utoipa::path(
     delete,
     path = "/api/v1/channels/{channel_id}",

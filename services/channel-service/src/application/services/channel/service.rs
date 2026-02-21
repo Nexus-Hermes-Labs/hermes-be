@@ -122,6 +122,7 @@ impl ChannelService {
     /// Update a channel's settings.
     ///
     /// Verifies that `requester_id` is the guild owner before applying changes.
+    #[allow(clippy::too_many_arguments)]
     pub async fn update_channel(
         &self,
         channel_id: Uuid,

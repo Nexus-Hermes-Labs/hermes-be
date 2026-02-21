@@ -8,7 +8,10 @@ use crate::presentation::dto::channel::response::*;
 
 #[allow(clippy::wildcard_imports)]
 use crate::presentation::http::handlers::channel::*;
-use common::observability::health::*;
+use common::observability::health::{
+    __path_health_handler, __path_liveness_handler, __path_readiness_handler, ComponentHealth,
+    HealthChecks, HealthResponse,
+};
 
 /// `OpenAPI` documentation for the channel service.
 #[allow(clippy::needless_for_each)]

@@ -71,7 +71,6 @@ impl ChannelServiceTrait for ChannelServiceGrpc {
         // For gRPC, use guild_id as requester for now (internal service call)
         // The actual creator_id would be passed via metadata in production
         let channel_type = match req.r#type {
-            0 => "text",
             1 => "voice",
             2 => "category",
             3 => "announcement",

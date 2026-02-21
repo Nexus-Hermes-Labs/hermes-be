@@ -1,16 +1,16 @@
 use uuid::Uuid;
 
-/// Domain events emitted by the channel aggregate (for NATS publication)
+/// Events related to channels
 #[derive(Debug, Clone)]
 pub enum ChannelEvent {
     /// A new channel was created in a guild
-    ChannelCreated {
+    Created {
         channel_id: Uuid,
         guild_id: Uuid,
-        channel_type: String,
+        name: String,
     },
-    /// Channel settings were updated
-    ChannelUpdated { channel_id: Uuid, guild_id: Uuid },
+    /// A channel's metadata was updated
+    Updated { channel_id: Uuid, guild_id: Uuid },
     /// A channel was deleted
-    ChannelDeleted { channel_id: Uuid, guild_id: Uuid },
+    Deleted { channel_id: Uuid, guild_id: Uuid },
 }
