@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package channel.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// ============================================
+// CHANNEL SERVICE
+// ============================================
+
+/// Channel management service (channels, categories, overwrites)
+service ChannelService {
+  // ============================================
+  // CHANNEL MANAGEMENT
+  // ============================================
+
+  /// Create a new channel in a guild
+  rpc CreateChannel(CreateChannelRequest) returns (ChannelResponse);
+
+  /// Get channel by ID
+  rpc GetChannel(GetChannelRequest) returns (ChannelResponse);
+
+  /// List all channels in a guild
+  rpc ListGuildChannels(ListGuildChannelsRequest) returns (ListGuildChannelsResponse);
+
+  /// Update channel settings
+  rpc UpdateChannel(UpdateChannelRequest) returns (ChannelResponse);
+
+  /// Delete channel
+  rpc DeleteChannel(DeleteChannelRequest) returns (google.protobuf.Empty);
+}
+
+// ============================================
+// MESSAGES
+// ============================================
+
+enum ChannelType {
+  TEXT = 0;
+  VOICE = 1;
+  CATEGORY = 2;
+  ANNOUNCEMENT = 3;
+}
+
+message CreateChannelRequest {
+  string guild_id = 1;
+  string name = 2;
+  ChannelType type = 3;
+  optional string parent_id = 4;
+  optional string description = 5;
+}
+
+message GetChannelRequest {
+  string channel_id = 1;
+}
+
+message ListGuildChannelsRequest {
+  string guild_id = 1;
+}
+
+message ListGuildChannelsResponse {
+  repeated ChannelResponse channels = 1;
+}
+
+message UpdateChannelRequest {
+  string channel_id = 1;
+  optional string name = 2;
+  optional string parent_id = 3;
+  optional string description = 4;
+  optional int32 position = 5;
+}
+
+message DeleteChannelRequest {
+  string channel_id = 1;
+}
+
+message ChannelResponse {
+  string id = 1;
+  string guild_id = 2;
+  optional string parent_id = 3;
+  string name = 4;
+  ChannelType type = 5;
+  optional string description = 6;
+  int32 position = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
