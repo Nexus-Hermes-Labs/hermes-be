@@ -24,6 +24,7 @@ pub struct CreateProfileRequest {
 
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[validate(custom(function = "common::utils::validator::validate_no_control_chars"))]
     #[schema(min_length = 1, max_length = 100)]
     pub display_name: String,
 }
@@ -37,7 +38,8 @@ pub struct CreateProfileRequest {
 pub struct UpdateProfileRequest {
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
-    #[schema(min_length = 1, max_length = 100, pattern = r"^[^\x00]+$")]
+    #[validate(custom(function = "common::utils::validator::validate_no_control_chars"))]
+    #[schema(min_length = 1, max_length = 100, pattern = r"^[^\x00-\x1f\x80-\x9f]+$")]
     pub display_name: Option<String>,
 
     #[validate(length(max = 500, message = "Bio must be max 500 characters"))]

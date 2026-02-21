@@ -1,178 +1,177 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites disabled="0" errors="0" failures="4" tests="57" time="32.14312757098378">
-	<testsuite disabled="0" errors="0" failures="4" name="schemathesis" skipped="56" tests="57" time="32.14312757098378" hostname="f4ac7966bdd9">
-		<testcase name="POST /api/v1/users" time="0.899757">
+<testsuites disabled="0" errors="0" failures="2" tests="57" time="30.10435562197381">
+	<testsuite disabled="0" errors="0" failures="2" name="schemathesis" skipped="56" tests="57" time="30.10435562197381" hostname="3e0fbf00caa8">
+		<testcase name="POST /api/v1/users" time="0.344506">
+			<failure type="failure" message="1. Test Case ID: 6POlY5&#10;&#10;- API rejected schema-compliant request&#10;&#10;    Valid data should have been accepted&#10;    Expected: 2xx, 401, 403, 404, 409, 5xx&#10;&#10;[422] Unprocessable Content:&#10;&#10;    `{&quot;error&quot;:&quot;validation_error&quot;,&quot;message&quot;:&quot;Validation failed&quot;,&quot;details&quot;:{&quot;validation_errors&quot;:{&quot;display_name&quot;:[{&quot;code&quot;:&quot;no_control_chars&quot;,&quot;message&quot;:null,&quot;params&quot;:{&quot;value&quot;:&quot;\u0002񉳿«&quot;}}]}}}`&#10;&#10;Reproduce with:&#10;&#10;    curl -X POST -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{&quot;display_name&quot;: &quot;\u0002\ud8e7\udcff\u00ab&quot;, &quot;username&quot;: &quot;ei54t4idvm79uv9yo6u0x41o&quot;}' http://host.docker.internal:8082/api/v1/users"/>
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/users/@me/privacy/preset" time="0.968883">
+		<testcase name="POST /api/v1/users/@me/privacy/preset" time="0.829353">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/users/@me/relationships/block" time="0.377515">
+		<testcase name="POST /api/v1/users/@me/relationships/block" time="0.411822">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/users/@me/relationships/request" time="0.464868">
+		<testcase name="POST /api/v1/users/@me/relationships/request" time="0.337744">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/users/{user_id}/privacy/preset" time="0.570419">
+		<testcase name="POST /api/v1/users/{user_id}/privacy/preset" time="0.514724">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/users/{user_id}/relationships/block" time="0.576399">
+		<testcase name="POST /api/v1/users/{user_id}/relationships/block" time="0.555586">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/users/{user_id}/relationships/request" time="0.516345">
+		<testcase name="POST /api/v1/users/{user_id}/relationships/request" time="0.478974">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/custom-status" time="0.646045">
+		<testcase name="PUT /api/v1/users/@me/custom-status" time="0.548993">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/privacy/dm" time="0.803392">
+		<testcase name="PUT /api/v1/users/@me/privacy/dm" time="0.852834">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/privacy/friend-requests" time="0.967603">
+		<testcase name="PUT /api/v1/users/@me/privacy/friend-requests" time="0.949687">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/relationships/request/accept" time="0.456480">
+		<testcase name="PUT /api/v1/users/@me/relationships/request/accept" time="0.398277">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/relationships/request/decline" time="0.379929">
+		<testcase name="PUT /api/v1/users/@me/relationships/request/decline" time="0.381800">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/status" time="0.844987">
+		<testcase name="PUT /api/v1/users/@me/status" time="0.858169">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/@me/username" time="0.459913">
+		<testcase name="PUT /api/v1/users/@me/username" time="0.486528">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/custom-status" time="0.574610">
+		<testcase name="PUT /api/v1/users/{user_id}/custom-status" time="0.772175">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/privacy/dm" time="0.683916">
+		<testcase name="PUT /api/v1/users/{user_id}/privacy/dm" time="0.511454">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/privacy/friend-requests" time="0.592747">
+		<testcase name="PUT /api/v1/users/{user_id}/privacy/friend-requests" time="0.498185">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/relationships/request/accept" time="0.503917">
+		<testcase name="PUT /api/v1/users/{user_id}/relationships/request/accept" time="0.570866">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/relationships/request/decline" time="0.619005">
+		<testcase name="PUT /api/v1/users/{user_id}/relationships/request/decline" time="0.466151">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/status" time="0.694732">
+		<testcase name="PUT /api/v1/users/{user_id}/status" time="0.491077">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PUT /api/v1/users/{user_id}/username" time="0.794002">
+		<testcase name="PUT /api/v1/users/{user_id}/username" time="0.489619">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me" time="0.034275">
+		<testcase name="GET /api/v1/users/@me" time="0.028179">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me/privacy" time="0.043438">
+		<testcase name="GET /api/v1/users/@me/privacy" time="0.036218">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me/relationships/blocked" time="1.045048">
+		<testcase name="GET /api/v1/users/@me/relationships/blocked" time="0.985308">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me/relationships/friends" time="0.964431">
+		<testcase name="GET /api/v1/users/@me/relationships/friends" time="0.952743">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me/relationships/incoming" time="0.919955">
+		<testcase name="GET /api/v1/users/@me/relationships/incoming" time="0.927049">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me/relationships/outgoing" time="0.953687">
+		<testcase name="GET /api/v1/users/@me/relationships/outgoing" time="0.913944">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/@me/relationships/{target_user_id}" time="0.376940">
+		<testcase name="GET /api/v1/users/@me/relationships/{target_user_id}" time="0.349829">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/check-username/{username}" time="0.410392">
-			<failure type="failure" message="1. Test Case ID: Xb5HNx&#10;&#10;- API rejected schema-compliant request&#10;&#10;    Valid data should have been accepted&#10;    Expected: 2xx, 401, 403, 404, 409, 5xx&#10;&#10;[422] Unprocessable Content:&#10;&#10;    `{&quot;error&quot;:&quot;validation_error&quot;,&quot;message&quot;:&quot;username: Validation error: length [{\&quot;value\&quot;: String(\&quot;0\&quot;), \&quot;min\&quot;: Number(3), \&quot;max\&quot;: Number(32)}]&quot;}`&#10;&#10;Reproduce with:&#10;&#10;    curl -X GET -H 'Authorization: [Filtered]' http://host.docker.internal:8082/api/v1/users/check-username/0"/>
+		<testcase name="GET /api/v1/users/check-username/{username}" time="0.030912">
+			<failure type="failure" message="1. Test Case ID: UVtqxK&#10;&#10;- API accepted schema-violating request&#10;&#10;    Invalid data should have been rejected&#10;    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx&#10;    Invalid component: parameter `username` in path - value not matching the '^[a-z0-9_]+$' pattern&#10;&#10;[200] OK:&#10;&#10;    `{&quot;username&quot;:&quot;\u0001PÈì&quot;,&quot;status&quot;:&quot;invalid&quot;}`&#10;&#10;Reproduce with:&#10;&#10;    curl -X GET -H 'Authorization: [Filtered]' http://host.docker.internal:8082/api/v1/users/check-username/%01P%C3%88%C3%AC"/>
+			<failure type="failure" message="1. Test Case ID: UVtqxK&#10;&#10;- API accepted schema-violating request&#10;&#10;    Invalid data should have been rejected&#10;    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx&#10;    Invalid component: parameter `username` in path - value not matching the '^[a-z0-9_]+$' pattern&#10;&#10;[200] OK:&#10;&#10;    `{&quot;username&quot;:&quot;\u0001PÈì&quot;,&quot;status&quot;:&quot;invalid&quot;}`&#10;&#10;Reproduce with:&#10;&#10;    curl -X GET -H 'Authorization: [Filtered]' http://host.docker.internal:8082/api/v1/users/check-username/%01P%C3%88%C3%AC"/>
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/online" time="0.764303">
+		<testcase name="GET /api/v1/users/online" time="0.814170">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/search" time="0.920057">
+		<testcase name="GET /api/v1/users/search" time="1.038786">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/username/{username}" time="0.328326">
+		<testcase name="GET /api/v1/users/username/{username}" time="0.321735">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}/privacy" time="0.243309">
+		<testcase name="GET /api/v1/users/{user_id}/privacy" time="0.319898">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}/relationships/blocked" time="0.983731">
+		<testcase name="GET /api/v1/users/{user_id}/relationships/blocked" time="0.629169">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}/relationships/friends" time="0.951526">
+		<testcase name="GET /api/v1/users/{user_id}/relationships/friends" time="0.622248">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}/relationships/incoming" time="0.958552">
+		<testcase name="GET /api/v1/users/{user_id}/relationships/incoming" time="0.637824">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}/relationships/outgoing" time="0.911059">
+		<testcase name="GET /api/v1/users/{user_id}/relationships/outgoing" time="0.662511">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}/relationships/{target_user_id}" time="0.374237">
+		<testcase name="GET /api/v1/users/{user_id}/relationships/{target_user_id}" time="0.275063">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health" time="0.025546">
+		<testcase name="GET /health" time="0.027022">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health/live" time="0.022692">
+		<testcase name="GET /health/live" time="0.024279">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health/ready" time="0.023961">
+		<testcase name="GET /health/ready" time="0.025493">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PATCH /api/v1/users/@me" time="0.806123">
+		<testcase name="PATCH /api/v1/users/@me" time="0.725328">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PATCH /api/v1/users/@me/privacy/content" time="0.831233">
+		<testcase name="PATCH /api/v1/users/@me/privacy/content" time="0.751538">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PATCH /api/v1/users/@me/privacy/visibility" time="0.914666">
+		<testcase name="PATCH /api/v1/users/@me/privacy/visibility" time="0.735638">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PATCH /api/v1/users/{user_id}/privacy/content" time="0.485768">
+		<testcase name="PATCH /api/v1/users/{user_id}/privacy/content" time="0.415814">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PATCH /api/v1/users/{user_id}/privacy/visibility" time="0.584919">
+		<testcase name="PATCH /api/v1/users/{user_id}/privacy/visibility" time="0.521403">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/@me" time="0.027474">
+		<testcase name="DELETE /api/v1/users/@me" time="0.024378">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/@me/custom-status" time="0.031791">
+		<testcase name="DELETE /api/v1/users/@me/custom-status" time="0.025463">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/@me/relationships/friend/{target_user_id}" time="0.378006">
+		<testcase name="DELETE /api/v1/users/@me/relationships/friend/{target_user_id}" time="0.263506">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/{user_id}/custom-status" time="0.242208">
+		<testcase name="DELETE /api/v1/users/{user_id}/custom-status" time="0.302317">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/{user_id}/relationships/friend/{target_user_id}" time="0.309906">
+		<testcase name="DELETE /api/v1/users/{user_id}/relationships/friend/{target_user_id}" time="0.272525">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/@me/relationships/block/{target_user_id}" time="0.384181">
+		<testcase name="DELETE /api/v1/users/@me/relationships/block/{target_user_id}" time="0.375073">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/{user_id}/relationships/block/{target_user_id}" time="0.316265">
+		<testcase name="DELETE /api/v1/users/{user_id}/relationships/block/{target_user_id}" time="0.305195">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/users/{user_id}" time="0.060724">
-			<failure type="failure" message="1. Test Case ID: fHvgvj&#10;&#10;- API accepted schema-violating request&#10;&#10;    Invalid data should have been rejected&#10;    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx&#10;    Invalid component: schema mutated&#10;&#10;[200] OK:&#10;&#10;    `{&quot;user_id&quot;:&quot;09477809-a094-48a7-a327-3473b67ac24e&quot;,&quot;username&quot;:&quot;738&quot;,&quot;display_name&quot;:&quot;³\u0016ñ\u001d󤕶6&quot;,&quot;avatar_url&quot;:null,&quot;banner_url&quot;:null,&quot;bio&quot;:null,&quot;status&quot;:&quot;offline&quot;,&quot;custom_status&quot;:null,&quot;created_at&quot;:&quot;2026-02-21T22:32:48.968672Z&quot;}`&#10;&#10;Reproduce with:&#10;&#10;    curl -X GET -H 'Authorization: [Filtered]' http://host.docker.internal:8082/api/v1/users/09477809-a094-48a7-a327-3473b67ac24e"/>
+		<testcase name="GET /api/v1/users/{user_id}" time="0.265982">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="PATCH /api/v1/users/{user_id}" time="0.310548">
-			<failure type="failure" message="1. Test Case ID: yyxKYH&#10;&#10;- API accepted schema-violating request&#10;&#10;    Invalid data should have been rejected&#10;    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx&#10;    Invalid component: schema mutated&#10;&#10;[200] OK:&#10;&#10;    `{&quot;user_id&quot;:&quot;09477809-a094-48a7-a327-3473b67ac24e&quot;,&quot;username&quot;:&quot;738&quot;,&quot;display_name&quot;:&quot;³É@ù\u00153m􍂛b^W&quot;,&quot;avatar_url&quot;:&quot;https://k.n.la&quot;,&quot;banner_url&quot;:&quot;https://yr3719A.tOOLS&quot;,&quot;bio&quot;:null,&quot;status&quot;:&quot;offline&quot;,&quot;custom_status&quot;:null,&quot;created_at&quot;:&quot;2026-02-21T22:32:48.968672Z&quot;}`&#10;&#10;Reproduce with:&#10;&#10;    curl -X PATCH -H 'Authorization: [Filtered]' -H 'Content-Type: application/json' -d '{&quot;display_name&quot;: &quot;\u00b3\u00c9\u0090@\u00f9\u00153m\udbf4\udc9bb^W&quot;, &quot;banner_url&quot;: &quot;https://yr3719A.tOOLS&quot;, &quot;bio&quot;: null, &quot;avatar_url&quot;: &quot;https://k.n.la&quot;}' http://host.docker.internal:8082/api/v1/users/09477809-a094-48a7-a327-3473b67ac24e"/>
+		<testcase name="PATCH /api/v1/users/{user_id}" time="0.685193">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="DELETE /api/v1/users/{user_id}" time="0.074794">
-			<failure type="failure" message="1. Test Case ID: FpjVgE&#10;&#10;- API accepted schema-violating request&#10;&#10;    Invalid data should have been rejected&#10;    Expected: 400, 401, 403, 404, 406, 422, 428, 5xx&#10;    Invalid component: schema mutated&#10;&#10;[204] No Content:&#10;&#10;    &lt;EMPTY&gt;&#10;&#10;Reproduce with:&#10;&#10;    curl -X DELETE -H 'Authorization: [Filtered]' http://host.docker.internal:8082/api/v1/users/a1cea6c3-b304-4a1c-bf58-ac197a97d682"/>
+		<testcase name="DELETE /api/v1/users/{user_id}" time="0.312538">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="Stateful tests" time="1.733592"/>
+		<testcase name="Stateful tests" time="2.751560"/>
 	</testsuite>
 </testsuites>

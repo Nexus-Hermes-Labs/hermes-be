@@ -21,6 +21,7 @@ use crate::presentation::dto::user_relationship::{
 use crate::state::AppState;
 
 use super::error::ApiError;
+use super::strict_uuid::StrictUuid;
 
 /// HTTP handlers for `@me` routes — authenticated user operating on their own data
 pub struct UserMeHandler;
@@ -645,7 +646,7 @@ pub async fn get_blocked_users(
 pub async fn get_relationship(
     State(state): State<AppState>,
     AuthenticatedUser(claims): AuthenticatedUser,
-    Path(target_user_id): Path<Uuid>,
+    Path(StrictUuid(target_user_id)): Path<StrictUuid>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     let user_id = extract_user_id(&claims)?;
     let relationship = state
@@ -790,7 +791,7 @@ pub async fn decline_friend_request(
 pub async fn remove_friend(
     State(state): State<AppState>,
     AuthenticatedUser(claims): AuthenticatedUser,
-    Path(target_user_id): Path<Uuid>,
+    Path(StrictUuid(target_user_id)): Path<StrictUuid>,
 ) -> Result<StatusCode, ApiError> {
     let user_id = extract_user_id(&claims)?;
     state
@@ -860,7 +861,7 @@ pub async fn block_user(
 pub async fn unblock_user(
     State(state): State<AppState>,
     AuthenticatedUser(claims): AuthenticatedUser,
-    Path(target_user_id): Path<Uuid>,
+    Path(StrictUuid(target_user_id)): Path<StrictUuid>,
 ) -> Result<StatusCode, ApiError> {
     let user_id = extract_user_id(&claims)?;
     state

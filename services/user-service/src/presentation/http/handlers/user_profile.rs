@@ -3,6 +3,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
+#[allow(unused_imports)] // needed by utoipa params attributes for schema generation
 use uuid::Uuid;
 use validator::Validate;
 
@@ -13,6 +14,7 @@ use crate::state::AppState;
 use common::middleware::authentication::AuthenticatedUser;
 
 use super::error::ApiError;
+use super::strict_uuid::StrictUuid;
 
 /// HTTP handlers for user profile operations
 pub struct UserProfileHandler;
@@ -39,7 +41,7 @@ pub struct UserProfileHandler;
 pub async fn get_profile(
     State(state): State<AppState>,
     auth_user: Option<AuthenticatedUser>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
     let service = &state.user.user_profile_service;
@@ -146,7 +148,7 @@ pub async fn create_profile(
 )]
 pub async fn update_profile(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<UpdateProfileRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
@@ -185,7 +187,7 @@ pub async fn update_profile(
 )]
 pub async fn change_username(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<ChangeUsernameRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
@@ -215,7 +217,7 @@ pub async fn change_username(
 )]
 pub async fn delete_profile(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
 ) -> Result<StatusCode, ApiError> {
     let service = &state.user.user_profile_service;
     service.delete_profile(user_id).await?;
@@ -245,7 +247,7 @@ pub async fn delete_profile(
 )]
 pub async fn update_status(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<UpdateStatusRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
@@ -281,7 +283,7 @@ pub async fn update_status(
 )]
 pub async fn set_custom_status(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<SetCustomStatusRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
@@ -311,7 +313,7 @@ pub async fn set_custom_status(
 )]
 pub async fn clear_custom_status(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
 ) -> Result<StatusCode, ApiError> {
     let service = &state.user.user_profile_service;
     service.clear_custom_status(user_id).await?;
@@ -421,20 +423,12 @@ pub async fn check_username_availability(
     State(state): State<AppState>,
     Path(username): Path<String>,
 ) -> Result<Json<UsernameAvailabilityResponse>, ApiError> {
-    let req = CheckUsernameRequest { username };
-
-    req.validate()
-        .map_err(|e| ApiError::validation(e.to_string()))?;
-
     let service = &state.user.user_profile_service;
 
     let status = service
-        .check_username(req.username.clone())
+        .check_username(username.clone())
         .await
         .map_err(ApiError::from)?;
 
-    Ok(Json(UsernameAvailabilityResponse {
-        username: req.username,
-        status,
-    }))
+    Ok(Json(UsernameAvailabilityResponse { username, status }))
 }

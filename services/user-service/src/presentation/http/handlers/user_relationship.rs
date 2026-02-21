@@ -1,13 +1,14 @@
+use crate::presentation::dto::user_relationship::{
+    Pagination, RelationshipRequest, RelationshipResponse,
+};
+use crate::presentation::http::handlers::error::ApiError;
+use crate::presentation::http::handlers::strict_uuid::StrictUuid;
+use crate::state::AppState;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
 use uuid::Uuid;
 use validator::Validate;
-use crate::presentation::dto::user_relationship::{
-    Pagination, RelationshipRequest, RelationshipResponse,
-};
-use crate::presentation::http::handlers::error::ApiError;
-use crate::state::AppState;
 
 // ============================================
 // Handler
@@ -35,7 +36,7 @@ pub struct UserRelationshipHandler;
 )]
 pub async fn send_friend_request(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     payload.validate()?;
@@ -72,7 +73,7 @@ pub async fn send_friend_request(
 )]
 pub async fn accept_friend_request(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     payload.validate()?;
@@ -109,7 +110,7 @@ pub async fn accept_friend_request(
 )]
 pub async fn decline_friend_request(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<StatusCode, ApiError> {
     payload.validate()?;
@@ -171,7 +172,7 @@ pub async fn remove_friend(
 )]
 pub async fn block_user(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     payload.validate()?;
@@ -236,8 +237,10 @@ pub async fn unblock_user(
 )]
 pub async fn get_relationship(
     State(state): State<AppState>,
-    Path((user_id, target_user_id)): Path<(Uuid, Uuid)>,
+    Path(path): Path<(Uuid, Uuid)>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    let (user_id, target_user_id) = path;
+
     let relationship = state
         .user
         .relationship_service
@@ -272,7 +275,7 @@ pub async fn get_relationship(
 )]
 pub async fn get_friends(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
@@ -314,7 +317,7 @@ pub async fn get_friends(
 )]
 pub async fn get_incoming_requests(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
@@ -356,7 +359,7 @@ pub async fn get_incoming_requests(
 )]
 pub async fn get_outgoing_requests(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
@@ -398,7 +401,7 @@ pub async fn get_outgoing_requests(
 )]
 pub async fn get_blocked_users(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;

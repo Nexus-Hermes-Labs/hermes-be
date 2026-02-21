@@ -2,6 +2,7 @@ use axum::{
     extract::{Path, State},
     Json,
 };
+#[allow(unused_imports)] // needed by utoipa params attributes for schema generation
 use uuid::Uuid;
 
 use crate::domain::user_privacy::{
@@ -11,6 +12,7 @@ use crate::presentation::dto::user_privacy::*;
 use crate::state::AppState;
 
 use super::error::ApiError;
+use super::strict_uuid::StrictUuid;
 
 /// HTTP handlers for user privacy operations
 pub struct UserPrivacyHandler;
@@ -36,7 +38,7 @@ pub struct UserPrivacyHandler;
 )]
 pub async fn get_privacy_settings(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let service = &state.user.user_privacy_service;
     let settings = service.get_privacy_settings(user_id).await?;
@@ -62,7 +64,7 @@ pub async fn get_privacy_settings(
 )]
 pub async fn update_dm_privacy(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<UpdateDmPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let privacy = match request.allow_dms_from {
@@ -97,7 +99,7 @@ pub async fn update_dm_privacy(
 )]
 pub async fn update_friend_request_privacy(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<UpdateFriendRequestPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let privacy = match request.allow_friend_requests_from {
@@ -133,7 +135,7 @@ pub async fn update_friend_request_privacy(
 )]
 pub async fn update_visibility(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<UpdateVisibilityRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let service = &state.user.user_privacy_service;
@@ -168,7 +170,7 @@ pub async fn update_visibility(
 )]
 pub async fn update_content_settings(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<UpdateContentSettingsRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let filter_level = request
@@ -207,7 +209,7 @@ pub async fn update_content_settings(
 )]
 pub async fn apply_preset(
     State(state): State<AppState>,
-    Path(user_id): Path<Uuid>,
+    Path(StrictUuid(user_id)): Path<StrictUuid>,
     Json(request): Json<ApplyPresetRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let preset = match request.preset {

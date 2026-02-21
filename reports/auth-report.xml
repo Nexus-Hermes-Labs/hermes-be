@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<testsuites disabled="0" errors="0" failures="0" tests="8" time="6.01527478297794">
-	<testsuite disabled="0" errors="0" failures="0" name="schemathesis" skipped="8" tests="8" time="6.01527478297794" hostname="ed39400b99a6">
-		<testcase name="POST /api/v1/auth/login" time="1.137944">
+<testsuites disabled="0" errors="0" failures="0" tests="8" time="8.455540926996036">
+	<testsuite disabled="0" errors="0" failures="0" name="schemathesis" skipped="8" tests="8" time="8.455540926996036" hostname="dde7d0df5adc">
+		<testcase name="POST /api/v1/auth/login" time="1.040168">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/auth/logout" time="0.576987">
+		<testcase name="POST /api/v1/auth/logout" time="0.583476">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/auth/refresh" time="0.675790">
+		<testcase name="POST /api/v1/auth/refresh" time="0.652586">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="POST /api/v1/auth/register" time="2.604401">
+		<testcase name="POST /api/v1/auth/register" time="5.403972">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /api/v1/auth/verify-email" time="0.966586">
+		<testcase name="GET /api/v1/auth/verify-email" time="0.723708">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health" time="0.019022">
+		<testcase name="GET /health" time="0.018924">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health/live" time="0.017142">
+		<testcase name="GET /health/live" time="0.015802">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
-		<testcase name="GET /health/ready" time="0.017404">
+		<testcase name="GET /health/ready" time="0.016904">
 			<skipped type="skipped">No examples in schema</skipped>
 		</testcase>
 	</testsuite>
