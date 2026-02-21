@@ -17,9 +17,13 @@ pub struct CreateProfileRequest {
         path = "*USERNAME_REGEX",
         message = "Username can only contain lowercase letters, numbers, and underscores"
     ))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(min_length = 3, max_length = 32, pattern = "^[a-z0-9_]+$")]
     pub username: String,
 
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(min_length = 1, max_length = 100)]
     pub display_name: String,
 }
 
@@ -30,15 +34,20 @@ pub struct CreateProfileRequest {
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateProfileRequest {
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(min_length = 1, max_length = 100)]
     pub display_name: Option<String>,
 
     #[validate(length(max = 500, message = "Bio must be max 500 characters"))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
     pub bio: Option<String>,
 
     #[validate(url(message = "Avatar URL must be valid"))]
+    #[schema(min_length = 1)]
     pub avatar_url: Option<String>,
 
     #[validate(url(message = "Banner URL must be valid"))]
+    #[schema(min_length = 1)]
     pub banner_url: Option<String>,
 }
 
@@ -53,16 +62,31 @@ pub struct ChangeUsernameRequest {
         path = "*USERNAME_REGEX",
         message = "Username can only contain lowercase letters, numbers, and underscores"
     ))]
+    #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(min_length = 3, max_length = 32, pattern = "^[a-z0-9_]+$")]
     pub new_username: String,
+}
+
+// ============================================
+// USER STATUS INPUT ENUM
+// ============================================
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum UserStatusInput {
+    Online,
+    Offline,
+    Idle,
+    Dnd,
 }
 
 // ============================================
 // UPDATE STATUS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, Validate)]
 pub struct UpdateStatusRequest {
-    pub status: String, // "online", "offline", "idle", "dnd"
+    pub status: UserStatusInput,
 }
 
 // ============================================
@@ -77,6 +101,7 @@ pub struct SetCustomStatusRequest {
     #[validate(length(max = 50, message = "Custom status emoji must be max 50 characters"))]
     pub emoji: Option<String>,
 
+    #[schema(min_length = 20)]
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
@@ -84,18 +109,24 @@ pub struct SetCustomStatusRequest {
 // SEARCH USERS REQUEST
 // ============================================
 
-#[derive(Debug, Deserialize, ToSchema, utoipa::IntoParams)]
+#[derive(Debug, Deserialize, ToSchema, utoipa::IntoParams, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct SearchUsersRequest {
     pub query: String,
 
-    #[serde(default = "default_limit")]
+    #[serde(default = "default_limit_search")]
+    #[validate(range(min = 1, max = 100))]
+    #[schema(minimum = 1, maximum = 100)]
+    #[param(minimum = 1, maximum = 100)]
     pub limit: i64,
 
     #[serde(default)]
+    #[validate(range(min = 0))]
+    #[schema(minimum = 0)]
     pub offset: i64,
 }
 
-fn default_limit() -> i64 {
+fn default_limit_search() -> i64 {
     10
 }
 

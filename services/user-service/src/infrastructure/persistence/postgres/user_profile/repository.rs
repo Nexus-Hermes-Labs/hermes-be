@@ -212,7 +212,7 @@ impl UserProfileRepository for PostgresUserProfileRepository {
             r#"
             SELECT EXISTS(
                 SELECT 1 FROM user_profiles
-                WHERE username = $1 AND deleted_at IS NULL
+                WHERE username = $1
             )
             "#,
         )

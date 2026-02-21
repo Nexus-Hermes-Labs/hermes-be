@@ -92,15 +92,20 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // ========================================
     // 7. RUN SERVERS (HTTP + gRPC concurrently)
     // ========================================
+    let http_port = config().service.port;
+    let grpc_port = config().service.grpc_port.ok_or_else(|| {
+        BootstrapError::Initialization("gRPC port not configured (APP_SERVICE__GRPC_PORT)".to_string())
+    })?;
+
     info!(
         "🌐 Starting HTTP server on {}:{}",
         config().service.host,
-        config().service.port
+        http_port
     );
     info!(
         "🔗 Starting gRPC server on {}:{}",
         config().service.host,
-        config().service.grpc_port.unwrap_or(0)
+        grpc_port
     );
 
     let mut sig_term = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
@@ -120,7 +125,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     });
 
     let grpc_addr =
-        std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
+        std::net::SocketAddr::from(([0, 0, 0, 0], grpc_port));
     let grpc_shutdown_rx = shutdown_rx.clone();
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()

@@ -14,6 +14,7 @@ use validator::Validate;
 pub struct RefreshTokenRequest {
     /// Valid refresh token received from login/register
     #[validate(length(min = 1, message = "Refresh token is required"))]
+    #[schema(min_length = 1)]
     pub refresh_token: String,
 }
 

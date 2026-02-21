@@ -297,7 +297,7 @@ impl AuthService {
 
         credential
             .verify_email(token)
-            .map_err(|e| AuthApplicationError::Internal(e.to_string()))?;
+            .map_err(|_| AuthApplicationError::InvalidToken)?;
 
         self.credential_repo.update(&credential).await?;
 

@@ -22,7 +22,10 @@ use super::error::ApiError;
     request_body = CreateRoleRequest,
     responses(
         (status = 201, description = "Role created", body = GuildRoleResponse),
+        (status = 400, description = "Invalid Guild ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guild-roles"
 )]
@@ -57,6 +60,8 @@ pub async fn create_role(
     params(("guild_id" = Uuid, Path, description = "Guild ID")),
     responses(
         (status = 200, description = "Roles listed", body = Vec<GuildRoleResponse>),
+        (status = 400, description = "Invalid Guild ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Guild not found"),
     ),
     tag = "guild-roles"
@@ -81,6 +86,8 @@ pub async fn list_roles(
     ),
     responses(
         (status = 200, description = "Role found", body = GuildRoleResponse),
+        (status = 400, description = "Invalid Guild ID or Role ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Role not found"),
     ),
     tag = "guild-roles"
@@ -104,8 +111,11 @@ pub async fn get_role(
     request_body = UpdateRoleRequest,
     responses(
         (status = 200, description = "Role updated", body = GuildRoleResponse),
+        (status = 400, description = "Invalid Guild ID or Role ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
         (status = 404, description = "Role not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guild-roles"
 )]
@@ -151,6 +161,8 @@ pub async fn update_role(
     ),
     responses(
         (status = 204, description = "Role deleted"),
+        (status = 400, description = "Invalid Guild ID or Role ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
         (status = 404, description = "Role not found"),
     ),

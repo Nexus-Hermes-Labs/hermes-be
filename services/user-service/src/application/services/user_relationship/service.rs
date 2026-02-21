@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::application::services::UserPrivacyService;
 use crate::domain::user_privacy::FriendRequestPrivacy;
+use crate::domain::user_profile::UserProfileRepository;
 use crate::domain::user_relationship::{
     RelationshipType, UserRelationship, UserRelationshipRepository,
 };
@@ -25,16 +26,19 @@ use super::error::UserRelationshipServiceError;
 pub struct UserRelationshipService {
     repository: Arc<dyn UserRelationshipRepository>,
     privacy_service: Arc<UserPrivacyService>,
+    user_profile_repo: Arc<dyn UserProfileRepository>,
 }
 
 impl UserRelationshipService {
     pub fn new(
         repository: Arc<dyn UserRelationshipRepository>,
         privacy_service: Arc<UserPrivacyService>,
+        user_profile_repo: Arc<dyn UserProfileRepository>,
     ) -> Self {
         Self {
             repository,
             privacy_service,
+            user_profile_repo,
         }
     }
 
@@ -52,6 +56,32 @@ impl UserRelationshipService {
         target_user_id: Uuid,
         message: String,
     ) -> Result<UserRelationship, UserRelationshipServiceError> {
+        if user_id == target_user_id {
+            return Err(UserRelationshipServiceError::CannotSendFriendRequest);
+        }
+
+        // Verify requester exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
+        // Verify target user exists
+        if !self
+            .user_profile_repo
+            .exists(target_user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound {
+                user_id: target_user_id,
+            });
+        }
+
         // Check privacy settings of the target user
         let privacy_settings = self
             .privacy_service
@@ -121,6 +151,16 @@ impl UserRelationshipService {
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<UserRelationship, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         let mut relationship = self
             .repository
             .find_by_user_and_target(user_id, target_user_id)
@@ -148,6 +188,16 @@ impl UserRelationshipService {
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<(), UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         let mut relationship = self
             .repository
             .find_by_user_and_target(user_id, target_user_id)
@@ -178,6 +228,16 @@ impl UserRelationshipService {
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<(), UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         let relationship = self
             .repository
             .find_by_user_and_target(user_id, target_user_id)
@@ -210,12 +270,44 @@ impl UserRelationshipService {
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<UserRelationship, UserRelationshipServiceError> {
+        if user_id == target_user_id {
+            return Err(UserRelationshipServiceError::DomainError(
+                crate::domain::user_relationship::UserRelationshipError::SelfRelationship,
+            ));
+        }
+
+        // Verify requester exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
+        // Verify target user exists
+        if !self
+            .user_profile_repo
+            .exists(target_user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound {
+                user_id: target_user_id,
+            });
+        }
+
         if let Some(mut relationship) = self
             .repository
             .find_by_user_and_target(user_id, target_user_id)
             .await?
         {
             // Relationship exists, transition it to blocked
+            if relationship.is_blocked() {
+                return Ok(relationship);
+            }
+
             relationship
                 .block()
                 .map_err(UserRelationshipServiceError::DomainError)?;
@@ -245,6 +337,16 @@ impl UserRelationshipService {
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<(), UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         let relationship = self
             .repository
             .find_by_user_and_target(user_id, target_user_id)
@@ -274,6 +376,16 @@ impl UserRelationshipService {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<UserRelationship>, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         self.repository
             .find_all_by_user(user_id, Some(RelationshipType::Friend), limit, offset)
             .await
@@ -287,6 +399,16 @@ impl UserRelationshipService {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<UserRelationship>, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         self.repository
             .find_all_by_user(
                 user_id,
@@ -305,6 +427,16 @@ impl UserRelationshipService {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<UserRelationship>, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         self.repository
             .find_all_by_user(
                 user_id,
@@ -323,6 +455,16 @@ impl UserRelationshipService {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<UserRelationship>, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         self.repository
             .find_all_by_user(user_id, Some(RelationshipType::Blocked), limit, offset)
             .await
@@ -335,6 +477,16 @@ impl UserRelationshipService {
         user_id: Uuid,
         target_user_id: Uuid,
     ) -> Result<Option<UserRelationship>, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         self.repository
             .find_by_user_and_target(user_id, target_user_id)
             .await
@@ -347,6 +499,16 @@ impl UserRelationshipService {
         user_id: Uuid,
         relationship_type: Option<RelationshipType>,
     ) -> Result<i64, UserRelationshipServiceError> {
+        // Verify user exists
+        if !self
+            .user_profile_repo
+            .exists(user_id)
+            .await
+            .map_err(|e| UserRelationshipServiceError::RepositoryError(e.to_string()))?
+        {
+            return Err(UserRelationshipServiceError::UserNotFound { user_id });
+        }
+
         self.repository
             .count_by_user(user_id, relationship_type)
             .await

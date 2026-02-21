@@ -22,6 +22,7 @@ use crate::presentation::dto::guild_role::response::*;
 use crate::presentation::http::handlers::{
     guild::*, guild_invite::*, guild_member::*, guild_role::*,
 };
+use common::observability::health::*;
 
 /// `OpenAPI` documentation for the guild service.
 #[allow(clippy::needless_for_each)]
@@ -53,6 +54,10 @@ use crate::presentation::http::handlers::{
         use_invite,
         revoke_invite,
         list_invites,
+        // Health
+        health_handler,
+        liveness_handler,
+        readiness_handler
     ),
     components(schemas(
         CreateGuildRequest,
@@ -68,12 +73,16 @@ use crate::presentation::http::handlers::{
         GuildRoleResponse,
         CreateInviteRequest,
         InviteResponse,
+        HealthResponse,
+        HealthChecks,
+        ComponentHealth
     )),
     tags(
         (name = "guilds", description = "Guild management"),
         (name = "guild-members", description = "Guild membership"),
         (name = "guild-roles", description = "Role management"),
         (name = "guild-invites", description = "Invite management"),
+        (name = "health", description = "Health check endpoints")
     ),
     info(
         title = "Guild Service API",

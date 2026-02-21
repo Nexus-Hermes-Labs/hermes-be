@@ -27,8 +27,13 @@ impl GuildName {
             return Err(GuildError::InvalidNameLength);
         }
 
-        // Reject control characters
-        if value.chars().any(char::is_control) {
+        // Reject control characters and null bytes
+        if value.chars().any(|c| char::is_control(c) || c == '\0') {
+            return Err(GuildError::InvalidNameFormat);
+        }
+
+        // Require at least one alphanumeric character
+        if !value.chars().any(|c| c.is_alphanumeric()) {
             return Err(GuildError::InvalidNameFormat);
         }
 

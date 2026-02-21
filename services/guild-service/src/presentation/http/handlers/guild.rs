@@ -25,6 +25,7 @@ use super::error::ApiError;
         (status = 201, description = "Guild created", body = GuildResponse),
         (status = 400, description = "Invalid input"),
         (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guilds"
 )]
@@ -34,6 +35,10 @@ pub async fn create_guild(
     Json(request): Json<CreateGuildRequest>,
 ) -> Result<(StatusCode, Json<GuildResponse>), ApiError> {
     request.validate()?;
+
+    if request.name.contains('\0') {
+        return Err(ApiError::bad_request("Guild name contains invalid characters"));
+    }
 
     let owner_id = auth_user
         .0
@@ -54,6 +59,8 @@ pub async fn create_guild(
     params(("guild_id" = Uuid, Path, description = "Guild ID")),
     responses(
         (status = 200, description = "Guild found", body = GuildResponse),
+        (status = 400, description = "Invalid Guild ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Guild not found"),
     ),
     tag = "guilds"
@@ -74,8 +81,11 @@ pub async fn get_guild(
     request_body = UpdateGuildRequest,
     responses(
         (status = 200, description = "Guild updated", body = GuildResponse),
+        (status = 400, description = "Invalid Guild ID or input"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
         (status = 404, description = "Guild not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guilds"
 )]
@@ -86,6 +96,18 @@ pub async fn update_guild(
     Json(request): Json<UpdateGuildRequest>,
 ) -> Result<Json<GuildResponse>, ApiError> {
     request.validate()?;
+
+    if let Some(ref name) = request.name {
+        if name.contains('\0') {
+            return Err(ApiError::bad_request("Guild name contains invalid characters"));
+        }
+    }
+
+    if let Some(ref desc) = request.description {
+        if desc.contains('\0') {
+            return Err(ApiError::bad_request("Guild description contains invalid characters"));
+        }
+    }
 
     let requester_id = auth_user
         .0
@@ -121,6 +143,8 @@ pub async fn update_guild(
     params(("guild_id" = Uuid, Path, description = "Guild ID")),
     responses(
         (status = 204, description = "Guild deleted"),
+        (status = 400, description = "Invalid Guild ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
         (status = 404, description = "Guild not found"),
     ),
@@ -150,6 +174,9 @@ pub async fn delete_guild(
     params(SearchGuildsRequest),
     responses(
         (status = 200, description = "Guilds found", body = GuildListResponse),
+        (status = 400, description = "Missing query or invalid characters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guilds"
 )]
@@ -157,6 +184,12 @@ pub async fn search_guilds(
     State(state): State<AppState>,
     Query(request): Query<SearchGuildsRequest>,
 ) -> Result<Json<GuildListResponse>, ApiError> {
+    request.validate()?;
+
+    if request.query.contains('\0') {
+        return Err(ApiError::bad_request("Search query contains invalid characters"));
+    }
+
     let guilds = state
         .guild
         .guild_service

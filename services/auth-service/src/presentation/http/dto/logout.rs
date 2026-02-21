@@ -14,6 +14,7 @@ use validator::Validate;
 pub struct LogoutRequest {
     /// Refresh token to revoke (required)
     #[validate(length(min = 1, message = "Refresh token is required"))]
+    #[schema(min_length = 1)]
     pub refresh_token: String,
 
     /// If true, revoke ALL user_profile sessions (logout from all devices)

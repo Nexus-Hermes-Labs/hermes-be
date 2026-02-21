@@ -127,13 +127,14 @@ impl TestHarness {
         let relationship_repo = Arc::new(PostgresUserRelationshipRepository::new(pool.clone()));
 
         let user_profile_service = Arc::new(UserProfileService::new(
-            user_profile_repo,
+            user_profile_repo.clone(),
             relationship_repo.clone(),
         ));
         let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
         let relationship_service = Arc::new(UserRelationshipService::new(
             relationship_repo,
             user_privacy_service.clone(),
+            user_profile_repo,
         ));
 
         let user_state = UserState::new(

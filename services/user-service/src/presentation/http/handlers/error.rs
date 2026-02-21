@@ -108,7 +108,9 @@ impl From<UserProfileServiceError> for ApiError {
             UserProfileServiceError::UsernameAlreadyTaken => {
                 ApiError::conflict("Username is already taken")
             }
-            UserProfileServiceError::InvalidUsername(msg) => ApiError::validation(msg),
+            UserProfileServiceError::InvalidUsername(msg) => {
+                ApiError::new(StatusCode::UNPROCESSABLE_ENTITY, "validation_error", msg)
+            }
             UserProfileServiceError::DomainError(e) => ApiError::bad_request(e.to_string()),
             UserProfileServiceError::RepositoryError(e) => {
                 tracing::error!("Repository error: {}", e);

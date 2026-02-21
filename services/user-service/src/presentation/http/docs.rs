@@ -4,6 +4,7 @@ use crate::presentation::dto::user_privacy::*;
 use crate::presentation::dto::user_profile::{request::*, response::*};
 use crate::presentation::dto::user_relationship::*;
 use crate::presentation::http::handlers::*;
+use common::observability::health::*;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -64,21 +65,28 @@ use crate::presentation::http::handlers::*;
         user_me::get_outgoing_requests,
         user_me::get_blocked_users,
         user_me::get_relationship,
+
+        health_handler,
+        liveness_handler,
+        readiness_handler
     ),
     components(
         schemas(
             ProfileResponse, CustomStatusResponse, ProfileListResponse,
             UsernameAvailabilityResponse, OnlineUsersResponse,
             CreateProfileRequest, UpdateProfileRequest, ChangeUsernameRequest,
-            UpdateStatusRequest, SetCustomStatusRequest, SearchUsersRequest,
+            UpdateStatusRequest, UserStatusInput, SetCustomStatusRequest, SearchUsersRequest,
             RelationshipRequest, RelationshipResponse, Pagination,
-            UpdateDmPrivacyRequest, UpdateFriendRequestPrivacyRequest,
+            UpdateDmPrivacyRequest, DmPrivacyInput,
+            UpdateFriendRequestPrivacyRequest, FriendRequestPrivacyInput,
             UpdateVisibilityRequest, UpdateContentSettingsRequest,
-            ApplyPresetRequest, PrivacySettingsResponse
+            ApplyPresetRequest, PrivacyPresetInput, PrivacySettingsResponse,
+            HealthResponse, HealthChecks, ComponentHealth
         )
     ),
     tags(
-        (name = "user-service", description = "User Profile and Relationship Management API")
+        (name = "user-service", description = "User Profile and Relationship Management API"),
+        (name = "health", description = "Health check endpoints")
     ),
     modifiers(&SecurityAddon)
 )]

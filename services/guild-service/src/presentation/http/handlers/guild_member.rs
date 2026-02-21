@@ -1,11 +1,12 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
 use uuid::Uuid;
+use validator::Validate;
 
-use crate::presentation::dto::guild_member::request::{AssignRoleRequest, KickMemberRequest};
+use crate::presentation::dto::guild_member::request::{AssignRoleRequest, KickMemberRequest, Pagination};
 use crate::presentation::dto::guild_member::response::{
     GuildMemberListResponse, GuildMemberResponse,
 };
@@ -14,25 +15,33 @@ use common::middleware::authentication::AuthenticatedUser;
 
 use super::error::ApiError;
 
-/// GET /`api/v1/guilds/:guild_id/members`
+/// GET /api/v1/guilds/:guild_id/members
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/members",
-    params(("guild_id" = Uuid, Path, description = "Guild ID")),
+    params(
+        ("guild_id" = Uuid, Path, description = "Guild ID"),
+        Pagination
+    ),
     responses(
         (status = 200, description = "Members listed", body = GuildMemberListResponse),
+        (status = 400, description = "Invalid Guild ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Guild not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guild-members"
 )]
 pub async fn list_members(
     State(state): State<AppState>,
     Path(guild_id): Path<Uuid>,
+    Query(pagination): Query<Pagination>,
 ) -> Result<Json<GuildMemberListResponse>, ApiError> {
+    pagination.validate()?;
     let members = state
         .guild
         .member_service
-        .list_members(guild_id, 100, 0)
+        .list_members(guild_id, pagination.limit, pagination.offset)
         .await?;
     let total = i64::try_from(members.len()).unwrap_or(i64::MAX);
     Ok(Json(GuildMemberListResponse {
@@ -41,7 +50,7 @@ pub async fn list_members(
     }))
 }
 
-/// GET /`api/v1/guilds/:guild_id/members/:user_id`
+/// GET /api/v1/guilds/:guild_id/members/:user_id
 #[utoipa::path(
     get,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}",
@@ -51,6 +60,8 @@ pub async fn list_members(
     ),
     responses(
         (status = 200, description = "Member found", body = GuildMemberResponse),
+        (status = 400, description = "Invalid Guild ID or User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Member not found"),
     ),
     tag = "guild-members"
@@ -67,7 +78,7 @@ pub async fn get_member(
     Ok(Json(GuildMemberResponse::from(member)))
 }
 
-/// DELETE /`api/v1/guilds/:guild_id/members/:user_id`
+/// DELETE /api/v1/guilds/:guild_id/members/:user_id
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}",
@@ -78,8 +89,11 @@ pub async fn get_member(
     request_body = KickMemberRequest,
     responses(
         (status = 204, description = "Member kicked"),
+        (status = 400, description = "Invalid Guild ID or User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
         (status = 404, description = "Member not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guild-members"
 )]
@@ -87,8 +101,9 @@ pub async fn kick_member(
     State(state): State<AppState>,
     auth_user: AuthenticatedUser,
     Path((guild_id, user_id)): Path<(Uuid, Uuid)>,
-    Json(_request): Json<KickMemberRequest>,
+    Json(request): Json<KickMemberRequest>,
 ) -> Result<StatusCode, ApiError> {
+    request.validate()?;
     let requester_id = auth_user
         .0
         .user_id()
@@ -101,14 +116,17 @@ pub async fn kick_member(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// DELETE /`api/v1/guilds/:guild_id/members/@me`
+/// DELETE /api/v1/guilds/:guild_id/members/@me
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/members/@me",
     params(("guild_id" = Uuid, Path, description = "Guild ID")),
     responses(
         (status = 204, description = "Left guild"),
+        (status = 400, description = "Invalid Guild ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Owner cannot leave"),
+        (status = 404, description = "Guild not found")
     ),
     tag = "guild-members"
 )]
@@ -129,7 +147,7 @@ pub async fn leave_guild(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// PUT /`api/v1/guilds/:guild_id/members/:user_id/roles`
+/// PUT /api/v1/guilds/:guild_id/members/:user_id/roles
 #[utoipa::path(
     put,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}/roles",
@@ -140,8 +158,11 @@ pub async fn leave_guild(
     request_body = AssignRoleRequest,
     responses(
         (status = 200, description = "Role assigned", body = GuildMemberResponse),
+        (status = 400, description = "Invalid Guild ID or User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
         (status = 404, description = "Member not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "guild-members"
 )]
@@ -163,7 +184,7 @@ pub async fn assign_role(
     Ok(Json(GuildMemberResponse::from(member)))
 }
 
-/// DELETE /`api/v1/guilds/:guild_id/members/:user_id/roles/:role_id`
+/// DELETE /api/v1/guilds/:guild_id/members/:user_id/roles/:role_id
 #[utoipa::path(
     delete,
     path = "/api/v1/guilds/{guild_id}/members/{user_id}/roles/{role_id}",
@@ -174,7 +195,10 @@ pub async fn assign_role(
     ),
     responses(
         (status = 200, description = "Role removed", body = GuildMemberResponse),
+        (status = 400, description = "Invalid Guild ID, User ID or Role ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Forbidden"),
+        (status = 404, description = "Guild, Member or Role not found")
     ),
     tag = "guild-members"
 )]

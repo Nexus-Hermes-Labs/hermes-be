@@ -28,6 +28,8 @@ pub struct UserPrivacyHandler;
     ),
     responses(
         (status = 200, description = "Privacy settings found", body = PrivacySettingsResponse),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Privacy settings not found")
     ),
     tag = "user-privacy"
@@ -51,7 +53,10 @@ pub async fn get_privacy_settings(
     request_body = UpdateDmPrivacyRequest,
     responses(
         (status = 200, description = "DM privacy updated", body = PrivacySettingsResponse),
-        (status = 404, description = "Privacy settings not found")
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Privacy settings not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-privacy"
 )]
@@ -60,10 +65,12 @@ pub async fn update_dm_privacy(
     Path(user_id): Path<Uuid>,
     Json(request): Json<UpdateDmPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let privacy = request
-        .allow_dms_from
-        .parse::<DmPrivacy>()
-        .map_err(ApiError::validation)?;
+    let privacy = match request.allow_dms_from {
+        DmPrivacyInput::Everyone => DmPrivacy::Everyone,
+        DmPrivacyInput::Friends => DmPrivacy::Friends,
+        DmPrivacyInput::ServerMembers => DmPrivacy::ServerMembers,
+        DmPrivacyInput::None => DmPrivacy::None,
+    };
 
     let service = &state.user.user_privacy_service;
     let settings = service.update_dm_privacy(user_id, privacy).await?;
@@ -81,7 +88,10 @@ pub async fn update_dm_privacy(
     request_body = UpdateFriendRequestPrivacyRequest,
     responses(
         (status = 200, description = "Friend request privacy updated", body = PrivacySettingsResponse),
-        (status = 404, description = "Privacy settings not found")
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Privacy settings not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-privacy"
 )]
@@ -90,10 +100,11 @@ pub async fn update_friend_request_privacy(
     Path(user_id): Path<Uuid>,
     Json(request): Json<UpdateFriendRequestPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let privacy = request
-        .allow_friend_requests_from
-        .parse::<FriendRequestPrivacy>()
-        .map_err(ApiError::validation)?;
+    let privacy = match request.allow_friend_requests_from {
+        FriendRequestPrivacyInput::Everyone => FriendRequestPrivacy::Everyone,
+        FriendRequestPrivacyInput::FriendsOfFriends => FriendRequestPrivacy::FriendsOfFriends,
+        FriendRequestPrivacyInput::None => FriendRequestPrivacy::None,
+    };
 
     let service = &state.user.user_privacy_service;
     let settings = service
@@ -113,7 +124,10 @@ pub async fn update_friend_request_privacy(
     request_body = UpdateVisibilityRequest,
     responses(
         (status = 200, description = "Visibility updated", body = PrivacySettingsResponse),
-        (status = 404, description = "Privacy settings not found")
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Privacy settings not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-privacy"
 )]
@@ -145,7 +159,10 @@ pub async fn update_visibility(
     request_body = UpdateContentSettingsRequest,
     responses(
         (status = 200, description = "Content settings updated", body = PrivacySettingsResponse),
-        (status = 404, description = "Privacy settings not found")
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Privacy settings not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-privacy"
 )]
@@ -181,7 +198,10 @@ pub async fn update_content_settings(
     request_body = ApplyPresetRequest,
     responses(
         (status = 200, description = "Privacy preset applied", body = PrivacySettingsResponse),
-        (status = 404, description = "Privacy settings not found")
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Privacy settings not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-privacy"
 )]
@@ -190,11 +210,10 @@ pub async fn apply_preset(
     Path(user_id): Path<Uuid>,
     Json(request): Json<ApplyPresetRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let preset = match request.preset.as_str() {
-        "public" => PrivacyPreset::Public,
-        "friends_only" => PrivacyPreset::FriendsOnly,
-        "private" => PrivacyPreset::Private,
-        _ => return Err(ApiError::validation("Invalid preset")),
+    let preset = match request.preset {
+        PrivacyPresetInput::Public => PrivacyPreset::Public,
+        PrivacyPresetInput::FriendsOnly => PrivacyPreset::FriendsOnly,
+        PrivacyPresetInput::Private => PrivacyPreset::Private,
     };
 
     let service = &state.user.user_privacy_service;

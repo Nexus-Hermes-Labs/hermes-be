@@ -4,6 +4,7 @@ use crate::domain::guild::GuildRepository;
 use crate::domain::guild_invite::GuildInviteRepository;
 use crate::domain::guild_member::GuildMemberRepository;
 use crate::domain::guild_role::GuildRoleRepository;
+use crate::infrastructure::grpc::UserGrpcClient;
 use crate::infrastructure::persistence::{
     PostgresGuildInviteRepository, PostgresGuildMemberRepository, PostgresGuildRepository,
     PostgresGuildRoleRepository,
@@ -111,6 +112,26 @@ impl AppBuilder {
             })?,
         );
 
+        // Connect (lazily) to user-service gRPC for member validation
+        let user_grpc_url = config()
+            .grpc_endpoints
+            .user_service
+            .as_deref()
+            .ok_or_else(|| {
+                BootstrapError::Configuration(
+                    "APP_GRPC_ENDPOINTS__USER_SERVICE is not set".to_string(),
+                )
+            })?
+            .to_string();
+
+        let user_grpc_client = Arc::new(
+            UserGrpcClient::new(user_grpc_url).map_err(|e| {
+                BootstrapError::Infrastructure(format!(
+                    "Invalid user-service gRPC endpoint: {e}"
+                ))
+            })?,
+        );
+
         info!("✅ Infrastructure layer ready");
 
         // ========================================
@@ -163,6 +184,7 @@ impl AppBuilder {
             redis,
             metrics,
             jwt_manager,
+            user_grpc_client,
         };
 
         let app_state = AppState {

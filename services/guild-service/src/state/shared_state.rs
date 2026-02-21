@@ -1,3 +1,4 @@
+use crate::infrastructure::grpc::UserGrpcClient;
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::Metrics;
 use sqlx::PgPool;
@@ -15,4 +16,6 @@ pub struct SharedState {
     pub metrics: Metrics,
     /// JWT manager for issuing and verifying access/refresh tokens.
     pub jwt_manager: Arc<JwtManager>,
+    /// Lazy gRPC client for user-service (profile lookups, existence checks).
+    pub user_grpc_client: Arc<UserGrpcClient>,
 }

@@ -184,16 +184,17 @@ impl UserService for UserServiceGrpc {
         let req = request.into_inner();
 
         let (limit, offset) = if let Some(pagination) = &req.pagination {
-            let page = pagination.page.max(1);
-            let page_size = pagination.page_size.clamp(1, 100);
-            (i64::from(page_size), i64::from((page - 1) * page_size))
+            let page = pagination.page.max(1) as i64;
+            let page_size = pagination.page_size.clamp(1, 100) as i64;
+            (page_size, (page - 1) * page_size)
         } else {
             (20_i64, 0_i64)
         };
 
         let requester_id = req
             .requester_id
-            .map(|id| Uuid::parse_str(&id))
+            .as_deref()
+            .map(Uuid::parse_str)
             .transpose()
             .map_err(|_| Status::invalid_argument("Invalid requester_id format"))?;
 
@@ -202,7 +203,6 @@ impl UserService for UserServiceGrpc {
             .search_users(req.query, limit, offset, requester_id)
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
-
         let proto_profiles: Vec<UserProfileResponse> =
             profiles.iter().map(to_proto_response).collect();
 

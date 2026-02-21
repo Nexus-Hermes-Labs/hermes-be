@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-seed-user db-seed-guild db-reset dev test build format lint check install
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-seed-user db-seed-guild db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell
 
 # Colors for output
 BLUE := \033[0;34m
@@ -12,9 +12,11 @@ COMPOSE := docker-compose
 AUTH_MIGRATION_PATH := services/auth-service/migrations
 USER_MIGRATION_PATH := services/user-service/migrations
 GUILD_MIGRATION_PATH := services/guild-service/migrations
+CHANNEL_MIGRATION_PATH := services/channel-service/migrations
 AUTH_SEED_PATH := services/auth-service/seeds/dev
 USER_SEED_PATH := services/user-service/seeds/dev
 GUILD_SEED_PATH := services/guild-service/seeds/dev
+CHANNEL_SEED_PATH := services/channel-service/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
 
 ##@ Help
@@ -38,7 +40,7 @@ setup: docker-up ## Initial project setup
 	@cp -n .env.example .env || true
 	@make db-migrate
 	@make db-seed
-	@echo ""¡
+	@echo ""
 	@echo -e "$(GREEN)✅ Setup complete!$(NC)"
 	@echo -e "$(YELLOW)Edit .env file if needed.$(NC)"
 	@echo -e "$(YELLOW)Run 'make build' to build all services.$(NC)"
@@ -134,7 +136,7 @@ proto-clean-user:
 
 ##@ Database
 
-db-migrate: db-migrate-auth db-migrate-user db-migrate-guild ## Run all database migrations
+db-migrate: db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel ## Run all database migrations
 	@echo -e "$(GREEN)✅ All migrations completed$(NC)"
 
 db-migrate-auth: ## Run auth-service migrations
@@ -152,7 +154,12 @@ db-migrate-guild: ## Run guild-service migrations
 	@sqlx migrate run --source $(GUILD_MIGRATION_PATH) --ignore-missing
 	@echo -e "$(GREEN)✅ Guild migrations completed$(NC)"
 
-db-seed: db-seed-auth db-seed-user db-seed-guild ## Run all database seeds
+db-migrate-channel: ## Run channel-service migrations
+	@echo -e "$(BLUE)📦 Running channel-service migrations...$(NC)"
+	@sqlx migrate run --source $(CHANNEL_MIGRATION_PATH) --ignore-missing
+	@echo -e "$(GREEN)✅ Channel migrations completed$(NC)"
+
+db-seed: db-seed-auth db-seed-user db-seed-guild db-seed-channel ## Run all database seeds
 	@echo -e "$(GREEN)✅ All seeds completed$(NC)"
 
 db-seed-auth: ## Run auth-service seeds
@@ -181,6 +188,17 @@ db-seed-guild: ## Run guild-service seeds
 		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
 	done
 	@echo -e "$(GREEN)✅ Guild database seeded$(NC)"
+
+db-seed-channel: ## Run channel-service seeds
+	@echo -e "$(BLUE)🌱 Seeding channel database...$(NC)"
+	@set -e; \
+	if [ -d "$(CHANNEL_SEED_PATH)" ]; then \
+		for file in $$(ls $(CHANNEL_SEED_PATH)/*.sql | sort); do \
+			echo "Running $$file"; \
+			psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
+		done; \
+	fi
+	@echo -e "$(GREEN)✅ Channel database seeded$(NC)"
 
 db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database
 	@echo -e "$(GREEN)✅ Database reset completed$(NC)"
@@ -364,6 +382,27 @@ shell-redis: ## Shell into Redis container
 
 shell-nats: ## Shell into NATS container
 	@docker exec -it hermes-nats sh
+
+##@ API Testing (Schemathesis)
+
+test-api: ## Run Schemathesis tests against all running services (auth + user + guild)
+	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (all services)...$(NC)"
+	@bash scripts/test-api.sh all
+
+test-api-auth: ## Run Schemathesis tests against auth-service only
+	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (auth-service)...$(NC)"
+	@bash scripts/test-api.sh auth
+
+test-api-user: ## Run Schemathesis tests against user-service only
+	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (user-service)...$(NC)"
+	@bash scripts/test-api.sh user
+
+test-api-guild: ## Run Schemathesis tests against guild-service only
+	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (guild-service)...$(NC)"
+	@bash scripts/test-api.sh guild
+
+test-api-shell: ## Open interactive Schemathesis shell (docker-compose)
+	@$(COMPOSE) --profile testing run --rm schemathesis sh
 
 ##@ CI/CD
 

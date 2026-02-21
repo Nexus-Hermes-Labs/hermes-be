@@ -92,98 +92,440 @@
 					"name": "Me",
 					"item": [
 						{
-							"name": "Get My Profile",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
+							"name": "Profile",
+							"item": [
+								{
+									"name": "Get My Profile",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me"
 									}
-								],
-								"url": "http://localhost:8082/api/v1/users/@me"
-							}
-						},
-						{
-							"name": "Update My Profile",
-							"request": {
-								"method": "PATCH",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"display_name\": \"My New Name\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/@me"
-							}
-						},
-						{
-							"name": "Get My Privacy Settings",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
+								{
+									"name": "Update My Profile",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"display_name\": \"My New Name\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me"
 									}
-								],
-								"url": "http://localhost:8082/api/v1/users/@me/privacy"
-							}
-						},
-						{
-							"name": "Get My Friends",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									}
-								],
-								"url": "http://localhost:8082/api/v1/users/@me/relationships/friends"
-							}
-						},
-						{
-							"name": "Get My Blocked Users",
-							"request": {
-								"method": "GET",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									}
-								],
-								"url": "http://localhost:8082/api/v1/users/@me/relationships/blocked"
-							}
-						},
-						{
-							"name": "Send Friend Request",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\",\n    \"message\": \"Hey!\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/@me/relationships/request"
-							}
+								{
+									"name": "Delete My Profile",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me"
+									}
+								},
+								{
+									"name": "Change My Username",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"new_username\": \"newusername\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/username"
+									}
+								}
+							]
+						},
+						{
+							"name": "Status",
+							"item": [
+								{
+									"name": "Update My Status",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"status\": \"online\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/status"
+									}
+								},
+								{
+									"name": "Set My Custom Status",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"text\": \"Coding...\",\n    \"emoji\": \"👨‍💻\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/custom-status"
+									}
+								},
+								{
+									"name": "Clear My Custom Status",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/custom-status"
+									}
+								}
+							]
+						},
+						{
+							"name": "Privacy",
+							"item": [
+								{
+									"name": "Get My Privacy Settings",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/privacy"
+									}
+								},
+								{
+									"name": "Update My DM Privacy",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"allow_dms_from\": \"friends\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/privacy/dm"
+									}
+								},
+								{
+									"name": "Update My Friend Request Privacy",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"allow_friend_requests_from\": \"everyone\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/privacy/friend-requests"
+									}
+								},
+								{
+									"name": "Update My Visibility",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"show_online_status\": true,\n    \"show_current_activity\": false\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/privacy/visibility"
+									}
+								},
+								{
+									"name": "Update My Content Settings",
+									"request": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"allow_nsfw_content\": true,\n    \"content_filter_level\": 2\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/privacy/content"
+									}
+								},
+								{
+									"name": "Apply My Privacy Preset",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"preset\": \"private\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/privacy/preset"
+									}
+								}
+							]
+						},
+						{
+							"name": "Relationships",
+							"item": [
+								{
+									"name": "Get My Friends",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/friends"
+									}
+								},
+								{
+									"name": "Get My Incoming Requests",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/incoming"
+									}
+								},
+								{
+									"name": "Get My Outgoing Requests",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/outgoing"
+									}
+								},
+								{
+									"name": "Get My Blocked Users",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/blocked"
+									}
+								},
+								{
+									"name": "Get My Relationship",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/{{target_user_id}}"
+									}
+								},
+								{
+									"name": "Send Friend Request",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\",\n    \"message\": \"Hey!\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/request"
+									}
+								},
+								{
+									"name": "Accept Friend Request",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/request/accept"
+									}
+								},
+								{
+									"name": "Decline Friend Request",
+									"request": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/request/decline"
+									}
+								},
+								{
+									"name": "Block User",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											},
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+										},
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/block"
+									}
+								},
+								{
+									"name": "Unblock User",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/block/{{target_user_id}}"
+									}
+								},
+								{
+									"name": "Remove Friend",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer {{access_token}}"
+											}
+										],
+										"url": "http://localhost:8082/api/v1/users/@me/relationships/friend/{{target_user_id}}"
+									}
+								}
+							]
 						}
 					]
 				},
@@ -532,53 +874,6 @@
 							}
 						},
 						{
-							"name": "Block User",
-							"request": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									},
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
-								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block"
-							}
-						},
-						{
-							"name": "Unblock User",
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									}
-								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block/{{target_user_id}}"
-							}
-						},
-						{
-							"name": "Remove Friend",
-							"request": {
-								"method": "DELETE",
-								"header": [
-									{
-										"key": "Authorization",
-										"value": "Bearer {{access_token}}"
-									}
-								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/friend/{{target_user_id}}"
-							}
-						},
-						{
 							"name": "Get Incoming Requests",
 							"request": {
 								"method": "GET",
@@ -628,6 +923,53 @@
 									}
 								],
 								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/{{target_user_id}}"
+							}
+						},
+						{
+							"name": "Block User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
+								},
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block"
+							}
+						},
+						{
+							"name": "Unblock User",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block/{{target_user_id}}"
+							}
+						},
+						{
+							"name": "Remove Friend",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/friend/{{target_user_id}}"
 							}
 						}
 					]
@@ -688,6 +1030,347 @@
 									}
 								],
 								"url": "http://localhost:8082/api/v1/users/{{user_id}}/custom-status"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Guild Service",
+			"item": [
+				{
+					"name": "Guilds",
+					"item": [
+						{
+							"name": "Create Guild",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"My Guild\",\n    \"description\": \"A cool guild\"\n}"
+								},
+								"url": "http://localhost:8086/api/v1/guilds"
+							}
+						},
+						{
+							"name": "Search Guilds",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/search?query=test&limit=10&offset=0"
+							}
+						},
+						{
+							"name": "Get Guild",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}"
+							}
+						},
+						{
+							"name": "Update Guild",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Updated Guild Name\",\n    \"description\": \"Updated description\"\n}"
+								},
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}"
+							}
+						},
+						{
+							"name": "Delete Guild",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}"
+							}
+						}
+					]
+				},
+				{
+					"name": "Members",
+					"item": [
+						{
+							"name": "List Members",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members"
+							}
+						},
+						{
+							"name": "Get Member",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}"
+							}
+						},
+						{
+							"name": "Leave Guild",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/@me"
+							}
+						},
+						{
+							"name": "Kick Member",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}"
+							}
+						},
+						{
+							"name": "Assign Role to Member",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"role_id\": \"{{role_id}}\"\n}"
+								},
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}/roles"
+							}
+						},
+						{
+							"name": "Remove Role from Member",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}/roles/{{role_id}}"
+							}
+						}
+					]
+				},
+				{
+					"name": "Roles",
+					"item": [
+						{
+							"name": "Create Role",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Moderator\",\n    \"color\": \"#FF5733\",\n    \"permissions\": 0\n}"
+								},
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles"
+							}
+						},
+						{
+							"name": "List Roles",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles"
+							}
+						},
+						{
+							"name": "Get Role",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
+							}
+						},
+						{
+							"name": "Update Role",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Senior Moderator\",\n    \"color\": \"#C70039\"\n}"
+								},
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
+							}
+						},
+						{
+							"name": "Delete Role",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
+							}
+						}
+					]
+				},
+				{
+					"name": "Invites",
+					"item": [
+						{
+							"name": "Create Invite",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"max_uses\": 10,\n    \"expires_in_hours\": 24\n}"
+								},
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/invites"
+							}
+						},
+						{
+							"name": "List Invites",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/invites"
+							}
+						},
+						{
+							"name": "Revoke Invite",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/invites/{{invite_code}}"
+							}
+						},
+						{
+							"name": "Get Invite (Public)",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": "http://localhost:8086/api/v1/invites/{{invite_code}}"
+							}
+						},
+						{
+							"name": "Use Invite",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{access_token}}"
+									}
+								],
+								"url": "http://localhost:8086/api/v1/invites/{{invite_code}}/use"
 							}
 						}
 					]

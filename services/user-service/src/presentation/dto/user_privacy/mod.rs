@@ -4,12 +4,37 @@ use utoipa::ToSchema;
 use crate::domain::user_privacy::UserPrivacySettings;
 
 // ============================================
+// DM PRIVACY INPUT ENUM
+// ============================================
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DmPrivacyInput {
+    Everyone,
+    Friends,
+    ServerMembers,
+    None,
+}
+
+// ============================================
 // UPDATE DM PRIVACY REQUEST
 // ============================================
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateDmPrivacyRequest {
-    pub allow_dms_from: String, // "everyone", "friends", "server_members", "none"
+    pub allow_dms_from: DmPrivacyInput,
+}
+
+// ============================================
+// FRIEND REQUEST PRIVACY INPUT ENUM
+// ============================================
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum FriendRequestPrivacyInput {
+    Everyone,
+    FriendsOfFriends,
+    None,
 }
 
 // ============================================
@@ -18,7 +43,7 @@ pub struct UpdateDmPrivacyRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateFriendRequestPrivacyRequest {
-    pub allow_friend_requests_from: String, // "everyone", "friends_of_friends", "none"
+    pub allow_friend_requests_from: FriendRequestPrivacyInput,
 }
 
 // ============================================
@@ -39,7 +64,20 @@ pub struct UpdateVisibilityRequest {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateContentSettingsRequest {
     pub allow_nsfw_content: Option<bool>,
+    #[schema(minimum = 0, maximum = 2)]
     pub content_filter_level: Option<i16>, // 0: Off, 1: Medium, 2: Strict
+}
+
+// ============================================
+// PRIVACY PRESET INPUT ENUM
+// ============================================
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PrivacyPresetInput {
+    Public,
+    FriendsOnly,
+    Private,
 }
 
 // ============================================
@@ -48,7 +86,7 @@ pub struct UpdateContentSettingsRequest {
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ApplyPresetRequest {
-    pub preset: String, // "public", "friends_only", "private"
+    pub preset: PrivacyPresetInput,
 }
 
 // ============================================

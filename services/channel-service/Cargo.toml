@@ -55,12 +55,10 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 
 # ============================================================================
-# AUTHENTICATION & SECURITY (Auth-specific)
+# AUTHENTICATION & SECURITY
 # ============================================================================
-argon2 = { workspace = true }       # Password hashing
-jsonwebtoken = { workspace = true } # JWT generation
-sha2 = { workspace = true }
-rand = { workspace = true }         # Token secrets
+jsonwebtoken = { workspace = true }
+rand = { workspace = true }
 
 # ============================================================================
 # LOGGING & OBSERVABILITY
@@ -81,7 +79,7 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 
 # ============================================================================
-# REDIS (for refresh tokens)
+# REDIS
 # ============================================================================
 redis = { workspace = true }
 
@@ -91,7 +89,7 @@ redis = { workspace = true }
 async-trait = { workspace = true }
 
 # ============================================================================
-# NATS (for publishing user_profile.created events)
+# NATS
 # ============================================================================
 async-nats = { workspace = true }
 
@@ -100,23 +98,19 @@ async-nats = { workspace = true }
 # ============================================================================
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
-rand_core = "0.6.4"
-
-# ============================================================================
-# UTILITIES
-# ============================================================================
 once_cell = { workspace = true }
-regex = { workspace = true }
 
 # ============================================================================
 # TESTING
 # ============================================================================
 [dev-dependencies]
+common = { path = "../common", features = ["testing"] }
 mockall = { workspace = true }
 fake = { workspace = true }
 rstest = { workspace = true }
 testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
+http-body-util = "0.1"
 
 # ============================================================================
 # BUILD DEPENDENCIES (proto compilation)
@@ -129,4 +123,6 @@ tonic-build = { workspace = true }
 # ============================================================================
 [features]
 default = []
-# Future: Add feature flags if needed (e.g., "oauth", "2fa")
+
+[lints]
+workspace = true

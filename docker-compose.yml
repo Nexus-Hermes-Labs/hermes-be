@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   # PostgreSQL Database
   postgres:
@@ -14,7 +12,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U hermes" ]
+      test: ["CMD-SHELL", "pg_isready -U hermes"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -36,14 +34,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - hermes-network
 
-  # NATS Message Broker
+  # NATS Message Broker (JetStream enabled)
   nats:
     image: nats:2.10-alpine
     container_name: hermes-nats
-    command: "-js -m 8222"
+    command: "-js --store_dir=/data -m 8222"
     ports:
       - "4222:4222" # Client connections
       - "8222:8222" # HTTP monitoring
@@ -54,12 +53,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
     networks:
       - hermes-network
 
   # Prometheus Metrics
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1
     container_name: hermes-prometheus
     ports:
       - "9090:9090"
@@ -69,12 +69,18 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - hermes-network
 
   # Grafana Dashboard
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.2.0
     container_name: hermes-grafana
     ports:
       - "3000:3000"
@@ -85,7 +91,14 @@ services:
       - grafana_data:/var/lib/grafana
       - ./infra/grafana/provisioning:/etc/grafana/provisioning
     depends_on:
-      - prometheus
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - hermes-network
 
@@ -99,13 +112,29 @@ services:
     networks:
       - hermes-network
 
+  # Schemathesis API Tester (only starts with: --profile testing)
+  schemathesis:
+    image: schemathesis/schemathesis:stable
+    container_name: hermes-schemathesis
+    profiles:
+      - testing
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      AUTH_URL: "${AUTH_URL:-http://host.docker.internal:8081}"
+      USER_URL: "${USER_URL:-http://host.docker.internal:8082}"
+      GUILD_URL: "${GUILD_URL:-http://host.docker.internal:8086}"
+    volumes:
+      - ./reports:/reports
+    networks:
+      - hermes-network
+
 volumes:
   postgres_data:
   redis_data:
   nats_data:
   prometheus_data:
   grafana_data:
-  mailpit_data:
 
 networks:
   hermes-network:

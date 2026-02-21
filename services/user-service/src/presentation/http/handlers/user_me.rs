@@ -34,7 +34,8 @@ pub struct UserMeHandler;
     path = "/api/v1/users/@me",
     responses(
         (status = 200, description = "Authenticated user profile", body = ProfileResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found")
     ),
     security(
         ("bearer_auth" = [])
@@ -58,7 +59,9 @@ pub async fn get_profile(
     request_body = UpdateProfileRequest,
     responses(
         (status = 200, description = "Profile updated", body = ProfileResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -91,7 +94,8 @@ pub async fn update_profile(
     path = "/api/v1/users/@me",
     responses(
         (status = 204, description = "Profile deleted"),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found")
     ),
     security(
         ("bearer_auth" = [])
@@ -116,7 +120,9 @@ pub async fn delete_profile(
     responses(
         (status = 200, description = "Username changed", body = ProfileResponse),
         (status = 401, description = "Unauthorized"),
-        (status = 409, description = "Username already taken")
+        (status = 404, description = "Profile not found"),
+        (status = 409, description = "Username already taken"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -144,7 +150,10 @@ pub async fn change_username(
     request_body = UpdateStatusRequest,
     responses(
         (status = 200, description = "Status updated", body = ProfileResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid JSON body"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -157,10 +166,12 @@ pub async fn update_status(
     Json(request): Json<UpdateStatusRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     let user_id = extract_user_id(&claims)?;
-    let status = request
-        .status
-        .parse::<UserStatus>()
-        .map_err(|e| ApiError::validation(e.to_string()))?;
+    let status = match request.status {
+        UserStatusInput::Online => UserStatus::Online,
+        UserStatusInput::Offline => UserStatus::Offline,
+        UserStatusInput::Idle => UserStatus::Idle,
+        UserStatusInput::Dnd => UserStatus::DoNotDisturb,
+    };
     let service = &state.user.user_profile_service;
     let profile = service.update_status(user_id, status).await?;
     Ok(Json(ProfileResponse::from(profile)))
@@ -173,7 +184,9 @@ pub async fn update_status(
     request_body = SetCustomStatusRequest,
     responses(
         (status = 200, description = "Custom status updated", body = ProfileResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -200,7 +213,8 @@ pub async fn set_custom_status(
     path = "/api/v1/users/@me/custom-status",
     responses(
         (status = 204, description = "Custom status cleared"),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile not found")
     ),
     security(
         ("bearer_auth" = [])
@@ -251,7 +265,9 @@ pub async fn get_privacy_settings(
     request_body = UpdateDmPrivacyRequest,
     responses(
         (status = 200, description = "DM privacy updated", body = PrivacySettingsResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid JSON body"),
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -264,10 +280,12 @@ pub async fn update_dm_privacy(
     Json(request): Json<UpdateDmPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let user_id = extract_user_id(&claims)?;
-    let privacy = request
-        .allow_dms_from
-        .parse::<DmPrivacy>()
-        .map_err(ApiError::validation)?;
+    let privacy = match request.allow_dms_from {
+        DmPrivacyInput::Everyone => DmPrivacy::Everyone,
+        DmPrivacyInput::Friends => DmPrivacy::Friends,
+        DmPrivacyInput::ServerMembers => DmPrivacy::ServerMembers,
+        DmPrivacyInput::None => DmPrivacy::None,
+    };
     let service = &state.user.user_privacy_service;
     let settings = service.update_dm_privacy(user_id, privacy).await?;
     Ok(Json(PrivacySettingsResponse::from(settings)))
@@ -280,7 +298,9 @@ pub async fn update_dm_privacy(
     request_body = UpdateFriendRequestPrivacyRequest,
     responses(
         (status = 200, description = "Friend request privacy updated", body = PrivacySettingsResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid JSON body"),
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -293,10 +313,11 @@ pub async fn update_friend_request_privacy(
     Json(request): Json<UpdateFriendRequestPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let user_id = extract_user_id(&claims)?;
-    let privacy = request
-        .allow_friend_requests_from
-        .parse::<FriendRequestPrivacy>()
-        .map_err(ApiError::validation)?;
+    let privacy = match request.allow_friend_requests_from {
+        FriendRequestPrivacyInput::Everyone => FriendRequestPrivacy::Everyone,
+        FriendRequestPrivacyInput::FriendsOfFriends => FriendRequestPrivacy::FriendsOfFriends,
+        FriendRequestPrivacyInput::None => FriendRequestPrivacy::None,
+    };
     let service = &state.user.user_privacy_service;
     let settings = service
         .update_friend_request_privacy(user_id, privacy)
@@ -311,7 +332,8 @@ pub async fn update_friend_request_privacy(
     request_body = UpdateVisibilityRequest,
     responses(
         (status = 200, description = "Visibility updated", body = PrivacySettingsResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -343,7 +365,8 @@ pub async fn update_visibility(
     request_body = UpdateContentSettingsRequest,
     responses(
         (status = 200, description = "Content settings updated", body = PrivacySettingsResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -377,7 +400,9 @@ pub async fn update_content_settings(
     request_body = ApplyPresetRequest,
     responses(
         (status = 200, description = "Privacy preset applied", body = PrivacySettingsResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid JSON body"),
+        (status = 401, description = "Unauthorized"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -390,11 +415,10 @@ pub async fn apply_preset(
     Json(request): Json<ApplyPresetRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let user_id = extract_user_id(&claims)?;
-    let preset = match request.preset.as_str() {
-        "public" => PrivacyPreset::Public,
-        "friends_only" => PrivacyPreset::FriendsOnly,
-        "private" => PrivacyPreset::Private,
-        _ => return Err(ApiError::validation("Invalid preset")),
+    let preset = match request.preset {
+        PrivacyPresetInput::Public => PrivacyPreset::Public,
+        PrivacyPresetInput::FriendsOnly => PrivacyPreset::FriendsOnly,
+        PrivacyPresetInput::Private => PrivacyPreset::Private,
     };
     let service = &state.user.user_privacy_service;
     let settings = service.apply_preset(user_id, preset).await?;
@@ -412,9 +436,11 @@ pub async fn apply_preset(
     request_body = RelationshipRequest,
     responses(
         (status = 200, description = "Friend request sent", body = RelationshipResponse),
+        (status = 400, description = "Invalid JSON"),
         (status = 401, description = "Unauthorized"),
         (status = 403, description = "Blocked or privacy settings prevent request"),
-        (status = 404, description = "User not found")
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -426,6 +452,7 @@ pub async fn send_friend_request(
     AuthenticatedUser(claims): AuthenticatedUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationship = state
         .user
@@ -447,8 +474,10 @@ pub async fn send_friend_request(
     request_body = RelationshipRequest,
     responses(
         (status = 200, description = "Friend request accepted", body = RelationshipResponse),
+        (status = 400, description = "Invalid JSON"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
+        (status = 404, description = "Relationship not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -460,6 +489,7 @@ pub async fn accept_friend_request(
     AuthenticatedUser(claims): AuthenticatedUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationship = state
         .user
@@ -481,8 +511,10 @@ pub async fn accept_friend_request(
     request_body = RelationshipRequest,
     responses(
         (status = 204, description = "Friend request declined"),
+        (status = 400, description = "Invalid JSON"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "Relationship not found")
+        (status = 404, description = "Relationship not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -494,6 +526,7 @@ pub async fn decline_friend_request(
     AuthenticatedUser(claims): AuthenticatedUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<StatusCode, ApiError> {
+    payload.validate()?;
     let user_id = extract_user_id(&claims)?;
     state
         .user
@@ -512,6 +545,7 @@ pub async fn decline_friend_request(
     ),
     responses(
         (status = 204, description = "Friend removed"),
+        (status = 400, description = "Invalid User ID"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Relationship not found")
     ),
@@ -541,8 +575,10 @@ pub async fn remove_friend(
     request_body = RelationshipRequest,
     responses(
         (status = 200, description = "User blocked", body = RelationshipResponse),
+        (status = 400, description = "Invalid JSON"),
         (status = 401, description = "Unauthorized"),
-        (status = 404, description = "User not found")
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -554,6 +590,7 @@ pub async fn block_user(
     AuthenticatedUser(claims): AuthenticatedUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationship = state
         .user
@@ -577,6 +614,7 @@ pub async fn block_user(
     ),
     responses(
         (status = 204, description = "User unblocked"),
+        (status = 400, description = "Invalid User ID"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Relationship not found")
     ),
@@ -608,7 +646,10 @@ pub async fn unblock_user(
     ),
     responses(
         (status = 200, description = "Friends list", body = [RelationshipResponse]),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid query parameters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -620,6 +661,7 @@ pub async fn get_friends(
     AuthenticatedUser(claims): AuthenticatedUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationships = state
         .user
@@ -647,7 +689,10 @@ pub async fn get_friends(
     ),
     responses(
         (status = 200, description = "Incoming friend requests", body = [RelationshipResponse]),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid query parameters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -659,6 +704,7 @@ pub async fn get_incoming_requests(
     AuthenticatedUser(claims): AuthenticatedUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationships = state
         .user
@@ -686,7 +732,10 @@ pub async fn get_incoming_requests(
     ),
     responses(
         (status = 200, description = "Outgoing friend requests", body = [RelationshipResponse]),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid query parameters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -698,6 +747,7 @@ pub async fn get_outgoing_requests(
     AuthenticatedUser(claims): AuthenticatedUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationships = state
         .user
@@ -725,7 +775,10 @@ pub async fn get_outgoing_requests(
     ),
     responses(
         (status = 200, description = "Blocked users list", body = [RelationshipResponse]),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Invalid query parameters"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     security(
         ("bearer_auth" = [])
@@ -737,6 +790,7 @@ pub async fn get_blocked_users(
     AuthenticatedUser(claims): AuthenticatedUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let user_id = extract_user_id(&claims)?;
     let relationships = state
         .user
@@ -764,6 +818,7 @@ pub async fn get_blocked_users(
     ),
     responses(
         (status = 200, description = "Relationship found", body = RelationshipResponse),
+        (status = 400, description = "Invalid User ID"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Relationship not found")
     ),

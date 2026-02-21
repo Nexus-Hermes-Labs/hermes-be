@@ -4,12 +4,15 @@ use validator::Validate;
 
 /// Request body for creating a new guild.
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateGuildRequest {
     /// Guild display name (2–100 characters).
     #[validate(length(min = 2, max = 100))]
+    #[schema(min_length = 2, max_length = 100)]
     pub name: String,
     /// Optional description shown on the guild profile (max 1 000 characters).
     #[validate(length(max = 1000))]
+    #[schema(max_length = 1000)]
     pub description: Option<String>,
     /// URL of the guild icon image (must begin with `http://` or `https://`).
     pub icon_url: Option<String>,
@@ -19,12 +22,15 @@ pub struct CreateGuildRequest {
 ///
 /// All fields are optional; only the provided fields are changed.
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateGuildRequest {
     /// New guild display name (2–100 characters).
     #[validate(length(min = 2, max = 100))]
+    #[schema(min_length = 2, max_length = 100)]
     pub name: Option<String>,
     /// New guild description (max 1 000 characters).
     #[validate(length(max = 1000))]
+    #[schema(max_length = 1000)]
     pub description: Option<String>,
     /// New icon URL (must begin with `http://` or `https://`).
     pub icon_url: Option<String>,
@@ -35,15 +41,20 @@ pub struct UpdateGuildRequest {
 }
 
 /// Query parameters for searching public guilds.
-#[derive(Debug, Deserialize, IntoParams, ToSchema)]
+#[derive(Debug, Deserialize, IntoParams, ToSchema, Validate)]
+#[serde(deny_unknown_fields)]
 pub struct SearchGuildsRequest {
     /// Full-text search term matched against guild names.
     pub query: String,
     /// Maximum number of results to return (default: 20).
     #[serde(default = "default_limit")]
+    #[validate(range(min = 1, max = 100))]
+    #[schema(minimum = 1, maximum = 100)]
     pub limit: i64,
     /// Number of results to skip for pagination (default: 0).
     #[serde(default)]
+    #[validate(range(min = 0))]
+    #[schema(minimum = 0)]
     pub offset: i64,
 }
 

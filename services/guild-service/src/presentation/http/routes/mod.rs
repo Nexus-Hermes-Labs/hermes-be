@@ -2,6 +2,7 @@ mod guild;
 mod guild_invite;
 mod guild_member;
 mod guild_role;
+mod health;
 
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
@@ -15,7 +16,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 pub fn create_router(
     app_state: AppState,
-    _health_check: Arc<HealthCheck>,
+    health_check: Arc<HealthCheck>,
     cors: CorsLayer,
     trace_layer: TraceLayer<
         tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
@@ -42,6 +43,7 @@ pub fn create_router(
 
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .nest("/health", health::routes().with_state(health_check))
         .nest("/api/v1", api_router)
         .layer(cors)
         .layer(trace_layer)

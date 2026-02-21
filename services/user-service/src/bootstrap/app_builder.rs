@@ -119,13 +119,14 @@ impl AppBuilder {
         // APPLICATION LAYER
         // ========================================
         let user_profile_service = Arc::new(UserProfileService::new(
-            user_profile_repo,
-            relationship_repo.clone(),
+            Arc::clone(&user_profile_repo),
+            Arc::clone(&relationship_repo),
         ));
         let user_privacy_service = Arc::new(UserPrivacyService::new(user_privacy_repo));
         let relationship_service = Arc::new(UserRelationshipService::new(
-            relationship_repo,
-            user_privacy_service.clone(),
+            Arc::clone(&relationship_repo),
+            Arc::clone(&user_privacy_service),
+            Arc::clone(&user_profile_repo),
         ));
 
         info!("✅ Application layer ready");

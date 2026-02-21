@@ -4,9 +4,11 @@ use validator::Validate;
 
 /// Request body for creating a new guild role.
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct CreateRoleRequest {
     /// Role display name (1–100 characters, must be unique within the guild).
     #[validate(length(min = 1, max = 100))]
+    #[schema(min_length = 1, max_length = 100)]
     pub name: String,
     /// Permissions bitfield (combine `Permissions::*` constants with bitwise OR).
     pub permissions: i64,
@@ -16,9 +18,11 @@ pub struct CreateRoleRequest {
 ///
 /// All fields are optional; only the provided fields are changed.
 #[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
 pub struct UpdateRoleRequest {
     /// New role display name (1–100 characters).
     #[validate(length(min = 1, max = 100))]
+    #[schema(min_length = 1, max_length = 100)]
     pub name: Option<String>,
     /// New role color as an RGB integer (0 = no color / default grey).
     pub color: Option<i32>,

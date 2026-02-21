@@ -2,7 +2,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
 use uuid::Uuid;
-
+use validator::Validate;
 use crate::presentation::dto::user_relationship::{
     Pagination, RelationshipRequest, RelationshipResponse,
 };
@@ -25,9 +25,11 @@ pub struct UserRelationshipHandler;
     request_body = RelationshipRequest,
     responses(
         (status = 200, description = "Friend request sent", body = RelationshipResponse),
-        (status = 400, description = "Invalid request"),
+        (status = 400, description = "Invalid User ID or input"),
+        (status = 401, description = "Unauthorized"),
         (status = 403, description = "Blocked or privacy settings prevent request"),
-        (status = 404, description = "User not found")
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -36,6 +38,7 @@ pub async fn send_friend_request(
     Path(user_id): Path<Uuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
     let relationship = state
         .user
         .relationship_service
@@ -60,7 +63,10 @@ pub async fn send_friend_request(
     request_body = RelationshipRequest,
     responses(
         (status = 200, description = "Friend request accepted", body = RelationshipResponse),
-        (status = 404, description = "Relationship not found")
+        (status = 400, description = "Invalid User ID or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Relationship not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -69,6 +75,7 @@ pub async fn accept_friend_request(
     Path(user_id): Path<Uuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
     let relationship = state
         .user
         .relationship_service
@@ -93,7 +100,10 @@ pub async fn accept_friend_request(
     request_body = RelationshipRequest,
     responses(
         (status = 204, description = "Friend request declined"),
-        (status = 404, description = "Relationship not found")
+        (status = 400, description = "Invalid User ID or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Relationship not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -102,6 +112,7 @@ pub async fn decline_friend_request(
     Path(user_id): Path<Uuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<StatusCode, ApiError> {
+    payload.validate()?;
     state
         .user
         .relationship_service
@@ -121,6 +132,8 @@ pub async fn decline_friend_request(
     ),
     responses(
         (status = 204, description = "Friend removed"),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Relationship not found")
     ),
     tag = "user-relationship"
@@ -148,7 +161,10 @@ pub async fn remove_friend(
     request_body = RelationshipRequest,
     responses(
         (status = 200, description = "User blocked", body = RelationshipResponse),
-        (status = 404, description = "User not found")
+        (status = 400, description = "Invalid User ID or input"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -157,6 +173,7 @@ pub async fn block_user(
     Path(user_id): Path<Uuid>,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
+    payload.validate()?;
     let relationship = state
         .user
         .relationship_service
@@ -181,6 +198,8 @@ pub async fn block_user(
     ),
     responses(
         (status = 204, description = "User unblocked"),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Relationship not found")
     ),
     tag = "user-relationship"
@@ -208,6 +227,8 @@ pub async fn unblock_user(
     ),
     responses(
         (status = 200, description = "Relationship found", body = RelationshipResponse),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
         (status = 404, description = "Relationship not found")
     ),
     tag = "user-relationship"
@@ -240,7 +261,11 @@ pub async fn get_relationship(
         Pagination
     ),
     responses(
-        (status = 200, description = "Friends list", body = [RelationshipResponse])
+        (status = 200, description = "Friends list", body = [RelationshipResponse]),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -249,6 +274,7 @@ pub async fn get_friends(
     Path(user_id): Path<Uuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let relationships = state
         .user
         .relationship_service
@@ -277,7 +303,11 @@ pub async fn get_friends(
         Pagination
     ),
     responses(
-        (status = 200, description = "Incoming friend requests", body = [RelationshipResponse])
+        (status = 200, description = "Incoming friend requests", body = [RelationshipResponse]),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -286,6 +316,7 @@ pub async fn get_incoming_requests(
     Path(user_id): Path<Uuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let relationships = state
         .user
         .relationship_service
@@ -314,7 +345,11 @@ pub async fn get_incoming_requests(
         Pagination
     ),
     responses(
-        (status = 200, description = "Outgoing friend requests", body = [RelationshipResponse])
+        (status = 200, description = "Outgoing friend requests", body = [RelationshipResponse]),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -323,6 +358,7 @@ pub async fn get_outgoing_requests(
     Path(user_id): Path<Uuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let relationships = state
         .user
         .relationship_service
@@ -351,7 +387,11 @@ pub async fn get_outgoing_requests(
         Pagination
     ),
     responses(
-        (status = 200, description = "Blocked users list", body = [RelationshipResponse])
+        (status = 200, description = "Blocked users list", body = [RelationshipResponse]),
+        (status = 400, description = "Invalid User ID"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "User not found"),
+        (status = 422, description = "Validation failed")
     ),
     tag = "user-relationship"
 )]
@@ -360,6 +400,7 @@ pub async fn get_blocked_users(
     Path(user_id): Path<Uuid>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
+    pagination.validate()?;
     let relationships = state
         .user
         .relationship_service

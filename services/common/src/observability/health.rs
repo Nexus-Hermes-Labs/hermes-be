@@ -2,21 +2,22 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 use sqlx::PgPool;
 use std::sync::Arc;
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct HealthResponse {
     status: String,
     version: String,
     checks: HealthChecks,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct HealthChecks {
     database: ComponentHealth,
     redis: ComponentHealth,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ComponentHealth {
     status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,6 +83,17 @@ impl HealthCheck {
     }
 }
 
+/// Check comprehensive health status of the service
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Service is healthy", body = HealthResponse),
+        (status = 400, description = "Bad request"),
+        (status = 503, description = "Service is unhealthy", body = HealthResponse)
+    ),
+    tag = "health"
+)]
 pub async fn health_handler(State(health_check): State<Arc<HealthCheck>>) -> impl IntoResponse {
     let response = health_check.check().await;
     let status = if response.status == "ok" {
@@ -93,10 +105,31 @@ pub async fn health_handler(State(health_check): State<Arc<HealthCheck>>) -> imp
     (status, Json(response))
 }
 
+/// Simple liveness check
+#[utoipa::path(
+    get,
+    path = "/health/live",
+    responses(
+        (status = 200, description = "Service is alive"),
+        (status = 400, description = "Bad request")
+    ),
+    tag = "health"
+)]
 pub async fn liveness_handler() -> impl IntoResponse {
     StatusCode::OK
 }
 
+/// Readiness check
+#[utoipa::path(
+    get,
+    path = "/health/ready",
+    responses(
+        (status = 200, description = "Service is ready"),
+        (status = 400, description = "Bad request"),
+        (status = 503, description = "Service is not ready")
+    ),
+    tag = "health"
+)]
 pub async fn readiness_handler(State(health_check): State<Arc<HealthCheck>>) -> impl IntoResponse {
     let response = health_check.check().await;
     if response.status == "ok" {

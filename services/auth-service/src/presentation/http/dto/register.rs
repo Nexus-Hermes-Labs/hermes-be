@@ -14,6 +14,7 @@ use validator::Validate;
 pub struct RegisterRequest {
     /// User's email address (must be unique)
     #[validate(email(message = "Invalid email address"))]
+    #[schema(format = "email", min_length = 5, pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$")]
     pub email: String,
 
     /// Unique username (3-32 characters, lowercase alphanumeric + underscore)
@@ -26,6 +27,7 @@ pub struct RegisterRequest {
         path = *USERNAME_REGEX,
         message = "Username can only contain lowercase letters, numbers, and underscores"
     ))]
+    #[schema(min_length = 3, max_length = 32, pattern = "^[a-z0-9_]+$")]
     pub username: String,
 
     /// User's display name (1-100 characters)
@@ -34,10 +36,12 @@ pub struct RegisterRequest {
         max = 100,
         message = "Display name must be between 1 and 100 characters"
     ))]
+    #[schema(min_length = 1, max_length = 100)]
     pub display_name: String,
 
     /// Password (minimum 8 characters)
     #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    #[schema(min_length = 8, format = Password)]
     pub password: String,
 }
 

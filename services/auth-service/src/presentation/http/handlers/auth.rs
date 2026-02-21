@@ -26,7 +26,10 @@ use validator::Validate;
     responses(
         (status = 201, description = "Registration successful", body = AuthResponseWithUser),
         (status = 400, description = "Validation error"),
-        (status = 409, description = "Email already exists")
+        (status = 409, description = "Email already exists"),
+        (status = 422, description = "Malformed JSON or wrong field type"),
+        (status = 502, description = "User service unavailable"),
+        (status = 503, description = "Service temporarily unavailable")
     ),
     tag = "auth"
 )]
@@ -61,7 +64,8 @@ pub async fn register_handler(
         (status = 200, description = "Login successful", body = AuthResponse),
         (status = 400, description = "Validation error"),
         (status = 401, description = "Invalid credentials"),
-        (status = 403, description = "Account locked/suspended")
+        (status = 403, description = "Account locked/suspended"),
+        (status = 422, description = "Malformed JSON or wrong field type")
     ),
     tag = "auth"
 )]
@@ -95,7 +99,8 @@ pub async fn login_handler(
     responses(
         (status = 200, description = "Token refreshed", body = AuthResponse),
         (status = 400, description = "Validation error"),
-        (status = 401, description = "Invalid/expired refresh token")
+        (status = 401, description = "Invalid/expired refresh token"),
+        (status = 422, description = "Malformed JSON or wrong field type")
     ),
     tag = "auth"
 )]
@@ -128,7 +133,8 @@ pub async fn refresh_token_handler(
     responses(
         (status = 200, description = "Token(s) revoked successfully", body = LogoutResponse),
         (status = 400, description = "Validation error"),
-        (status = 401, description = "Invalid refresh token")
+        (status = 401, description = "Invalid refresh token"),
+        (status = 422, description = "Malformed JSON or wrong field type")
     ),
     tag = "auth"
 )]
@@ -174,7 +180,8 @@ pub async fn logout_handler(
     responses(
         (status = 200, description = "Email verified successfully", body = VerifyEmailResponse),
         (status = 400, description = "Validation error"),
-        (status = 401, description = "Invalid or expired token")
+        (status = 401, description = "Invalid or expired token"),
+        (status = 422, description = "Malformed query parameter")
     ),
     tag = "auth"
 )]
