@@ -398,8 +398,8 @@ pub async fn update_content_settings(
     if !v.is_object() {
         return Err(ApiError::bad_request("Expected a JSON object"));
     }
-    let request: UpdateContentSettingsRequest = serde_json::from_value(v)
-        .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    let request: UpdateContentSettingsRequest =
+        serde_json::from_value(v).map_err(|e| ApiError::bad_request(e.to_string()))?;
     request.validate()?;
     let user_id = extract_user_id(&claims)?;
     let filter_level = request

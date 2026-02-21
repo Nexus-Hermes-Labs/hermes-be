@@ -46,10 +46,7 @@ impl GuildGrpcClient {
     }
 
     /// Get a guild by ID. Returns `None` if the guild does not exist.
-    pub async fn get_guild(
-        &self,
-        guild_id: Uuid,
-    ) -> Result<Option<GuildResponse>, tonic::Status> {
+    pub async fn get_guild(&self, guild_id: Uuid) -> Result<Option<GuildResponse>, tonic::Status> {
         let mut client = self.create_client();
         let request = tonic::Request::new(GetGuildRequest {
             guild_id: guild_id.to_string(),

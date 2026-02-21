@@ -12,10 +12,7 @@ use crate::state::AppState;
 pub fn authenticated_channel_routes() -> Router<AppState> {
     Router::new()
         // Guild-scoped channel creation
-        .route(
-            "/guilds/:guild_id/channels",
-            post(create_channel),
-        )
+        .route("/guilds/:guild_id/channels", post(create_channel))
         // Channel-scoped mutations
         .route(
             "/channels/:channel_id",

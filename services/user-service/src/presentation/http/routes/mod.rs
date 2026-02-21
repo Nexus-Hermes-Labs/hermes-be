@@ -1,8 +1,8 @@
+mod health;
 mod user_me;
 mod user_privacy;
 mod user_profile;
 mod user_relationship;
-mod health;
 
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;

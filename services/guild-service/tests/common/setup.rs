@@ -169,8 +169,9 @@ impl TestHarness {
         let guild_state =
             GuildState::new(guild_service, member_service, role_service, invite_service);
 
-        let user_grpc_client = guild_service::infrastructure::grpc::UserGrpcClient::new("http://[::1]:50052")
-            .expect("create user grpc client");
+        let user_grpc_client =
+            guild_service::infrastructure::grpc::UserGrpcClient::new("http://[::1]:50052")
+                .expect("create user grpc client");
 
         let shared_state = SharedState {
             db: pool.clone(),

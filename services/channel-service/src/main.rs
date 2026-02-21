@@ -13,7 +13,8 @@ async fn main() -> Result<()> {
         &common_config::config().logging,
         &common_config::config().service.name,
         &common_config::config().service.environment.to_string(),
-    ).expect("Failed to init tracing");
+    )
+    .expect("Failed to init tracing");
 
     info!("🚀 Starting Channel Service");
 

@@ -132,8 +132,7 @@ impl ChannelServiceTrait for ChannelServiceGrpc {
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        let proto_channels: Vec<ChannelResponse> =
-            channels.iter().map(channel_to_proto).collect();
+        let proto_channels: Vec<ChannelResponse> = channels.iter().map(channel_to_proto).collect();
 
         Ok(Response::new(ListGuildChannelsResponse {
             channels: proto_channels,

@@ -120,13 +120,9 @@ impl AppBuilder {
             })?
             .to_string();
 
-        let guild_grpc_client = Arc::new(
-            GuildGrpcClient::new(guild_grpc_url).map_err(|e| {
-                BootstrapError::Infrastructure(format!(
-                    "Invalid guild-service gRPC endpoint: {e}"
-                ))
-            })?,
-        );
+        let guild_grpc_client = Arc::new(GuildGrpcClient::new(guild_grpc_url).map_err(|e| {
+            BootstrapError::Infrastructure(format!("Invalid guild-service gRPC endpoint: {e}"))
+        })?);
 
         info!("✅ Infrastructure layer ready");
 
@@ -141,10 +137,8 @@ impl AppBuilder {
         // ========================================
         // APPLICATION LAYER
         // ========================================
-        let channel_service = Arc::new(ChannelService::new(
-            channel_repo,
-            guild_grpc_client.clone(),
-        ));
+        let channel_service =
+            Arc::new(ChannelService::new(channel_repo, guild_grpc_client.clone()));
 
         info!("✅ Application layer ready");
 

@@ -14,7 +14,11 @@ use validator::Validate;
 pub struct RegisterRequest {
     /// User's email address (must be unique)
     #[validate(email(message = "Invalid email address"))]
-    #[schema(format = "email", min_length = 5, pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$")]
+    #[schema(
+        format = "email",
+        min_length = 5,
+        pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$"
+    )]
     pub email: String,
 
     /// Unique username (3-32 characters, lowercase alphanumeric + underscore)

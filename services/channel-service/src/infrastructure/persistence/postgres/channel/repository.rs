@@ -33,9 +33,8 @@ impl Repository<Channel, Uuid> for PostgresChannelRepository {
     type Error = RepositoryError;
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Channel>, Self::Error> {
-        let sql = format!(
-            "SELECT {CHANNEL_COLUMNS} FROM channels WHERE id = $1 AND deleted_at IS NULL"
-        );
+        let sql =
+            format!("SELECT {CHANNEL_COLUMNS} FROM channels WHERE id = $1 AND deleted_at IS NULL");
         let row = sqlx::query_as::<_, ChannelRow>(&sql)
             .bind(id)
             .fetch_optional(&self.pool)
@@ -112,12 +111,10 @@ impl Repository<Channel, Uuid> for PostgresChannelRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), Self::Error> {
-        sqlx::query(
-            "UPDATE channels SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1",
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE channels SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }

@@ -124,13 +124,9 @@ impl AppBuilder {
             })?
             .to_string();
 
-        let user_grpc_client = Arc::new(
-            UserGrpcClient::new(user_grpc_url).map_err(|e| {
-                BootstrapError::Infrastructure(format!(
-                    "Invalid user-service gRPC endpoint: {e}"
-                ))
-            })?,
-        );
+        let user_grpc_client = Arc::new(UserGrpcClient::new(user_grpc_url).map_err(|e| {
+            BootstrapError::Infrastructure(format!("Invalid user-service gRPC endpoint: {e}"))
+        })?);
 
         info!("✅ Infrastructure layer ready");
 

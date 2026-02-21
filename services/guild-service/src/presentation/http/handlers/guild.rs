@@ -37,7 +37,9 @@ pub async fn create_guild(
     request.validate()?;
 
     if request.name.contains('\0') {
-        return Err(ApiError::bad_request("Guild name contains invalid characters"));
+        return Err(ApiError::bad_request(
+            "Guild name contains invalid characters",
+        ));
     }
 
     let owner_id = auth_user
@@ -99,13 +101,17 @@ pub async fn update_guild(
 
     if let Some(ref name) = request.name {
         if name.contains('\0') {
-            return Err(ApiError::bad_request("Guild name contains invalid characters"));
+            return Err(ApiError::bad_request(
+                "Guild name contains invalid characters",
+            ));
         }
     }
 
     if let Some(ref desc) = request.description {
         if desc.contains('\0') {
-            return Err(ApiError::bad_request("Guild description contains invalid characters"));
+            return Err(ApiError::bad_request(
+                "Guild description contains invalid characters",
+            ));
         }
     }
 
@@ -187,7 +193,9 @@ pub async fn search_guilds(
     request.validate()?;
 
     if request.query.contains('\0') {
-        return Err(ApiError::bad_request("Search query contains invalid characters"));
+        return Err(ApiError::bad_request(
+            "Search query contains invalid characters",
+        ));
     }
 
     let guilds = state

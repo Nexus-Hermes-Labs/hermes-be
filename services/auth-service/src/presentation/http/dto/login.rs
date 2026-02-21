@@ -13,7 +13,11 @@ use validator::Validate;
 pub struct LoginRequest {
     /// User's email address
     #[validate(email(message = "Invalid email address"))]
-    #[schema(format = "email", min_length = 5, pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$")]
+    #[schema(
+        format = "email",
+        min_length = 5,
+        pattern = r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$"
+    )]
     pub email: String,
 
     /// User's password

@@ -23,7 +23,10 @@ impl std::fmt::Debug for ChannelService {
 
 impl ChannelService {
     /// Create a new `ChannelService` with required dependencies.
-    pub fn new(channel_repo: Arc<dyn ChannelRepository>, guild_client: Arc<GuildGrpcClient>) -> Self {
+    pub fn new(
+        channel_repo: Arc<dyn ChannelRepository>,
+        guild_client: Arc<GuildGrpcClient>,
+    ) -> Self {
         Self {
             channel_repo,
             guild_client,
@@ -55,10 +58,9 @@ impl ChannelService {
             .map_err(|e| ChannelServiceError::GrpcError(e.to_string()))?
             .ok_or(ChannelServiceError::GuildNotFound)?;
 
-        let owner_id: Uuid = guild
-            .owner_id
-            .parse()
-            .map_err(|_| ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string()))?;
+        let owner_id: Uuid = guild.owner_id.parse().map_err(|_| {
+            ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string())
+        })?;
 
         if owner_id != requester_id {
             return Err(ChannelServiceError::Forbidden(
@@ -66,10 +68,10 @@ impl ChannelService {
             ));
         }
 
-        let channel_name =
-            ChannelName::new(&name).map_err(ChannelServiceError::DomainError)?;
-        let channel_type_vo =
-            channel_type.parse::<ChannelType>().map_err(ChannelServiceError::DomainError)?;
+        let channel_name = ChannelName::new(&name).map_err(ChannelServiceError::DomainError)?;
+        let channel_type_vo = channel_type
+            .parse::<ChannelType>()
+            .map_err(ChannelServiceError::DomainError)?;
 
         // Assign position = max existing position + 1
         let position = self
@@ -139,10 +141,9 @@ impl ChannelService {
             .map_err(|e| ChannelServiceError::GrpcError(e.to_string()))?
             .ok_or(ChannelServiceError::GuildNotFound)?;
 
-        let owner_id: Uuid = guild
-            .owner_id
-            .parse()
-            .map_err(|_| ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string()))?;
+        let owner_id: Uuid = guild.owner_id.parse().map_err(|_| {
+            ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string())
+        })?;
 
         if owner_id != requester_id {
             return Err(ChannelServiceError::Forbidden(
@@ -184,10 +185,9 @@ impl ChannelService {
             .map_err(|e| ChannelServiceError::GrpcError(e.to_string()))?
             .ok_or(ChannelServiceError::GuildNotFound)?;
 
-        let owner_id: Uuid = guild
-            .owner_id
-            .parse()
-            .map_err(|_| ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string()))?;
+        let owner_id: Uuid = guild.owner_id.parse().map_err(|_| {
+            ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string())
+        })?;
 
         if owner_id != requester_id {
             return Err(ChannelServiceError::Forbidden(

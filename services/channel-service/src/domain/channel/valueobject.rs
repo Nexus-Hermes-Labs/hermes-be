@@ -124,10 +124,7 @@ mod tests {
     #[test]
     fn test_channel_type_parsing() {
         assert_eq!("text".parse::<ChannelType>().unwrap(), ChannelType::Text);
-        assert_eq!(
-            "voice".parse::<ChannelType>().unwrap(),
-            ChannelType::Voice
-        );
+        assert_eq!("voice".parse::<ChannelType>().unwrap(), ChannelType::Voice);
         assert_eq!(
             "category".parse::<ChannelType>().unwrap(),
             ChannelType::Category

@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
-use serde::{Deserialize, Deserializer, de};
+use serde::{de, Deserialize, Deserializer};
 use uuid::Uuid;
 
 /// Only accepts the canonical UUID format: `[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}`.
@@ -25,6 +25,8 @@ impl<'de> Deserialize<'de> for StrictUuid {
                 "invalid UUID: must be lowercase hyphenated (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)",
             ));
         }
-        Uuid::parse_str(&s).map(StrictUuid).map_err(de::Error::custom)
+        Uuid::parse_str(&s)
+            .map(StrictUuid)
+            .map_err(de::Error::custom)
     }
 }
