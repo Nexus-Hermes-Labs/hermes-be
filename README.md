@@ -49,34 +49,34 @@ Hermes uses nginx as the edge proxy for REST routing, TLS termination, and rate 
 
 ### Service Table
 
-| Service | Port | Purpose | Phase |
-|---------|------|---------|-------|
-| **nginx** | 80/443 | REST reverse proxy, TLS termination, rate limiting | Infrastructure |
-| **auth-service** | 8081 | Authentication, JWT, sessions | MVP |
-| **user-service** | 8082 | Profiles, relationships, privacy | MVP |
-| **guild-service** | 8086 | Guilds, roles, members, invites, permissions | MVP |
-| **channel-service** | 8083 | Text and voice channels, categories | MVP |
-| **chat-service** | 8084 | Messages, reactions, attachments, history | MVP |
-| **realtime-service** | 8080 | WebSocket connections, NATS event fanout | MVP |
-| **presence-service** | 8087 | Online status, typing indicators | Phase 2 |
-| **media-service** | 8088 | File uploads, image processing, CDN proxy | Phase 2 |
-| **notification-service** | 8089 | Push notifications, unreads, mentions | Phase 2 |
-| **ai-service** | 8091 | Real-time translation (text + voice STT/TTS) | Phase 3 |
-| **search-service** | 8090 | Full-text search (messages, users, guilds) | Phase 4 |
-| **voice-service** | 8085 | WebRTC P2P signaling, voice channels | Phase 4 |
+| Service | Port | Purpose | Phase | Status |
+|---------|------|---------|-------|--------|
+| **nginx** | 80/443 | REST reverse proxy, TLS termination, rate limiting | Infrastructure | ✅ Complete |
+| **auth-service** | 8081 | Authentication, JWT, sessions | MVP | ✅ Complete |
+| **user-service** | 8082 | Profiles, relationships, privacy | MVP | ✅ Complete |
+| **guild-service** | 8086 | Guilds, roles, members, invites, permissions | MVP | ✅ Complete |
+| **channel-service** | 8083 | Text and voice channels, categories | MVP | ✅ Complete |
+| **chat-service** | 8084 | Messages, reactions, attachments, history | MVP | 🔧 In progress |
+| **realtime-service** | 8080 | WebSocket connections, NATS event fanout | MVP | 🔧 In progress |
+| **presence-service** | 8087 | Online status, typing indicators | Phase 2 | ⬜ Not started |
+| **media-service** | 8088 | File uploads, image processing, CDN proxy | Phase 2 | ⬜ Not started |
+| **notification-service** | 8089 | Push notifications, unreads, mentions | Phase 2 | ⬜ Not started |
+| **ai-service** | 8091 | Real-time translation (text + voice STT/TTS) | Phase 3 | ⬜ Not started |
+| **search-service** | 8090 | Full-text search (messages, users, guilds) | Phase 4 | ⬜ Not started |
+| **voice-service** | 8085 | WebRTC P2P signaling, voice channels | Phase 4 | ⬜ Not started |
 
 ### Service Map
 
 ```
 Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        Phase 4 (Scale)
  +-----------------+             +------------------+        +--------------+    +----------------+
- | auth-service    |             | presence-service |        | ai-service   |    | search-service |
- | user-service    |             | media-service    |        |  - text xlat |    | voice-service  |
- | guild-service   |             | notification-svc |        |  - STT       |    +----------------+
- | channel-service |             +------------------+        |  - TTS       |
- | chat-service    |                                         +--------------+
- | realtime-service|
- | nginx (infra)   |
+ | auth-service ✅  |             | presence-service |        | ai-service   |    | search-service |
+ | user-service ✅  |             | media-service    |        |  - text xlat |    | voice-service  |
+ | guild-service ✅ |             | notification-svc |        |  - STT       |    +----------------+
+ | channel-service✅|             +------------------+        |  - TTS       |
+ | chat-service 🔧  |                                         +--------------+
+ | realtime-svc 🔧  |
+ | nginx (infra) ✅ |
  +-----------------+
 ```
 
@@ -94,9 +94,30 @@ Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        
 | Auth | JWT (jsonwebtoken 9.3), Argon2 password hashing |
 | Real-time | WebSocket (Tokio Tungstenite), WebRTC (voice) |
 | API Docs | utoipa 5 (OpenAPI/Swagger) |
+| API Testing | Schemathesis (property-based, stateful) |
 | Observability | Prometheus + Grafana, tracing |
 | Testing | testcontainers, mockall, fake, rstest |
 | Infrastructure | Docker Compose, nginx |
+
+## API Quality & Testing
+
+All MVP REST APIs are **battle-tested** using [Schemathesis](https://schemathesis.io/), a property-based API testing tool that auto-generates test cases directly from OpenAPI schemas.
+
+### What Schemathesis covers
+
+- **Schema conformance** -- every endpoint validated against its OpenAPI spec
+- **Edge case fuzzing** -- boundary values, unexpected inputs, and malformed payloads
+- **Stateful testing** -- multi-step flows (e.g. register → login → create guild → invite member)
+- **Error handling** -- ensures 5xx responses never leak from unexpected inputs
+
+### Services validated
+
+| Service | OpenAPI Spec | Schemathesis Status |
+|---------|-------------|---------------------|
+| auth-service | ✅ | ✅ Battle-tested |
+| user-service | ✅ | ✅ Battle-tested |
+| guild-service | ✅ | ✅ Battle-tested |
+| channel-service | ✅ | ✅ Battle-tested |
 
 ## Quick Start
 
@@ -149,14 +170,14 @@ hermes/
 |   +-- common/              # Shared library (models, errors, utilities)
 |   |   +-- common-config/   # Configuration loading
 |   |   +-- migrations/      # Database migrations
-|   +-- auth-service/        # Authentication (complete)
-|   +-- user-service/        # User management (in progress)
-|   +-- guild-service/       # Guild management (stub)
-|   +-- channel-service/     # Channel management (stub)
-|   +-- chat-service/        # Messaging (stub)
+|   +-- auth-service/        # Authentication (complete ✅)
+|   +-- user-service/        # User management (complete ✅)
+|   +-- guild-service/       # Guild management (complete ✅)
+|   +-- channel-service/     # Channel management (complete ✅)
+|   +-- chat-service/        # Messaging (in progress 🔧)
 |   +-- voice-service/       # Voice signaling (stub)
 |   +-- presence-service/    # Online status (stub)
-|   +-- realtime-service/    # WebSocket + event fanout (stub)
+|   +-- realtime-service/    # WebSocket + event fanout (in progress 🔧)
 |   +-- media-service/       # File uploads (stub)
 |   +-- notification-service/# Notifications (stub)
 |   +-- search-service/      # Full-text search (stub)
@@ -202,7 +223,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full development roadmap.
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| Phase 1 | MVP Core (auth, users, guilds, channels, chat, realtime, nginx) | In progress |
+| Phase 1 | MVP Core (auth, users, guilds, channels, chat, realtime, nginx) | 🔧 In progress |
+| Phase 1.5 | Frontend (web client) | 🆕 Starting now |
 | Phase 2 | Real-time and Supporting (presence, media, notifications) | Not started |
 | Phase 3 | AI Innovation (text translation, STT, TTS) | Not started |
 | Phase 4 | Scale and Polish (search, voice, moderation) | Not started |
