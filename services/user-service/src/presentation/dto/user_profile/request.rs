@@ -7,7 +7,7 @@ use validator::Validate;
 // CREATE PROFILE REQUEST
 // ============================================
 
-static USERNAME_REGEX: Lazy<regex::Regex> =
+pub static USERNAME_REGEX: Lazy<regex::Regex> =
     Lazy::new(|| regex::Regex::new(r"^[a-z0-9_]+$").unwrap());
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
@@ -25,7 +25,11 @@ pub struct CreateProfileRequest {
     #[validate(length(min = 1, max = 100, message = "Display name must be 1-100 characters"))]
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
     #[validate(custom(function = "common::utils::validator::validate_no_control_chars"))]
-    #[schema(min_length = 1, max_length = 100)]
+    #[schema(
+        min_length = 1,
+        max_length = 100,
+        pattern = r"^[^\x00-\x1f\x80-\x9f]+$"
+    )]
     pub display_name: String,
 }
 
@@ -48,6 +52,7 @@ pub struct UpdateProfileRequest {
 
     #[validate(length(max = 500, message = "Bio must be max 500 characters"))]
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
+    #[schema(max_length = 500, pattern = r"^[^\x00]*$")]
     pub bio: Option<String>,
 
     #[validate(url(message = "Avatar URL must be valid"))]
@@ -114,7 +119,10 @@ pub struct SetCustomStatusRequest {
     #[validate(custom(function = "common::utils::validator::validate_no_null_bytes"))]
     pub emoji: Option<String>,
 
-    #[schema(min_length = 20)]
+    #[schema(
+        format = "date-time",
+        pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
+    )]
     pub expires_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 

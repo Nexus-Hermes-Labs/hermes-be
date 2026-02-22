@@ -6,13 +6,67 @@ mod user_relationship;
 
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
-use axum::Router;
+use axum::{
+    body::Body,
+    http::{header, Request, StatusCode},
+    middleware::Next,
+    response::{IntoResponse, Response},
+    Router,
+};
 use common::middleware::authentication::auth_middleware;
 use common::observability::HealthCheck;
+use once_cell::sync::Lazy;
 use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+
+// Matches \uD800-\uDFFF surrogate escape sequences in raw JSON bytes
+static SURROGATE_RE: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"\\u[dD][89a-fA-F][0-9a-fA-F]{2}").unwrap());
+
+async fn reject_percent_encoded_paths(request: Request<Body>, next: Next) -> Response {
+    if request.uri().path().contains('%') {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Path parameters must not be percent-encoded",
+        )
+            .into_response();
+    }
+    next.run(request).await
+}
+
+async fn reject_json_surrogates(request: Request<Body>, next: Next) -> Response {
+    let is_json = request
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.starts_with("application/json"))
+        .unwrap_or(false);
+
+    if !is_json {
+        return next.run(request).await;
+    }
+
+    let (parts, body) = request.into_parts();
+    let bytes = match axum::body::to_bytes(body, 1024 * 1024).await {
+        Ok(b) => b,
+        Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response(),
+    };
+
+    if let Ok(body_str) = std::str::from_utf8(&bytes) {
+        if SURROGATE_RE.is_match(body_str) {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Request body must not contain surrogate escape sequences",
+            )
+                .into_response();
+        }
+    }
+
+    let request = Request::from_parts(parts, Body::from(bytes));
+    next.run(request).await
+}
 
 pub fn create_router(
     app_state: AppState,
@@ -46,4 +100,6 @@ pub fn create_router(
         .nest("/api/v1", api_router)
         .layer(cors)
         .layer(trace_layer)
+        .layer(axum::middleware::from_fn(reject_json_surrogates))
+        .layer(axum::middleware::from_fn(reject_percent_encoded_paths))
 }

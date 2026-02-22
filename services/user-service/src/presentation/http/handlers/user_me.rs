@@ -630,7 +630,7 @@ pub async fn get_blocked_users(
     get,
     path = "/api/v1/users/@me/relationships/{target_user_id}",
     params(
-        ("target_user_id" = Uuid, Path, description = "Target User ID")
+        ("target_user_id" = String, Path, description = "Target User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 200, description = "Relationship found", body = RelationshipResponse),
@@ -775,7 +775,7 @@ pub async fn decline_friend_request(
     delete,
     path = "/api/v1/users/@me/relationships/friend/{target_user_id}",
     params(
-        ("target_user_id" = Uuid, Path, description = "Target User ID")
+        ("target_user_id" = String, Path, description = "Target User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 204, description = "Friend removed"),
@@ -845,7 +845,7 @@ pub async fn block_user(
     delete,
     path = "/api/v1/users/@me/relationships/block/{target_user_id}",
     params(
-        ("target_user_id" = Uuid, Path, description = "Target User ID")
+        ("target_user_id" = String, Path, description = "Target User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 204, description = "User unblocked"),

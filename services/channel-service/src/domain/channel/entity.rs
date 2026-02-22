@@ -238,8 +238,7 @@ mod tests {
     fn test_update_channel() {
         let mut ch = make_channel();
         let new_name = ChannelName::new("announcements").unwrap();
-        ch.update(Some(new_name), None, None, Some(5))
-            .unwrap();
+        ch.update(Some(new_name), None, None, Some(5)).unwrap();
         assert_eq!(ch.name().as_str(), "announcements");
         assert_eq!(ch.position(), 5);
     }

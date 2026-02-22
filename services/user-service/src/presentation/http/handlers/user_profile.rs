@@ -28,7 +28,7 @@ pub struct UserProfileHandler;
     get,
     path = "/api/v1/users/{user_id}",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 200, description = "Profile found", body = ProfileResponse),
@@ -54,7 +54,7 @@ pub async fn get_profile(
     get,
     path = "/api/v1/users/username/{username}",
     params(
-        ("username" = String, Path, description = "Username", min_length = 3, max_length = 32, pattern = "^[a-z0-9_]+$")
+        ("username" = String, Path, description = "Username", pattern = "^[a-z0-9_]+$")
     ),
     responses(
         (status = 200, description = "Profile found", body = ProfileResponse),
@@ -134,7 +134,7 @@ pub async fn create_profile(
     patch,
     path = "/api/v1/users/{user_id}",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = UpdateProfileRequest,
     responses(
@@ -172,7 +172,7 @@ pub async fn update_profile(
     put,
     path = "/api/v1/users/{user_id}/username",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = ChangeUsernameRequest,
     responses(
@@ -205,7 +205,7 @@ pub async fn change_username(
     delete,
     path = "/api/v1/users/{user_id}",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 204, description = "Profile deleted"),
@@ -233,7 +233,7 @@ pub async fn delete_profile(
     put,
     path = "/api/v1/users/{user_id}/status",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = UpdateStatusRequest,
     responses(
@@ -269,7 +269,7 @@ pub async fn update_status(
     put,
     path = "/api/v1/users/{user_id}/custom-status",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = SetCustomStatusRequest,
     responses(
@@ -301,7 +301,7 @@ pub async fn set_custom_status(
     delete,
     path = "/api/v1/users/{user_id}/custom-status",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 204, description = "Custom status cleared"),
@@ -409,7 +409,7 @@ pub async fn get_online_users(
     get,
     path = "/api/v1/users/check-username/{username}",
     params(
-        ("username" = String, Path, description = "Username", min_length = 3, max_length = 32, pattern = "^[a-z0-9_]+$")
+        ("username" = String, Path, description = "Username", pattern = "^[a-z0-9_]+$")
     ),
     responses(
         (status = 200, description = "Username availability checked", body = UsernameAvailabilityResponse),
@@ -423,6 +423,12 @@ pub async fn check_username_availability(
     State(state): State<AppState>,
     Path(username): Path<String>,
 ) -> Result<Json<UsernameAvailabilityResponse>, ApiError> {
+    if !USERNAME_REGEX.is_match(&username) {
+        return Err(ApiError::validation(
+            "Username can only contain lowercase letters, numbers, and underscores",
+        ));
+    }
+
     let service = &state.user.user_profile_service;
 
     let status = service

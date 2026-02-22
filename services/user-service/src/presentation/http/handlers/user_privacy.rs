@@ -26,7 +26,7 @@ pub struct UserPrivacyHandler;
     get,
     path = "/api/v1/users/{user_id}/privacy",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     responses(
         (status = 200, description = "Privacy settings found", body = PrivacySettingsResponse),
@@ -50,7 +50,7 @@ pub async fn get_privacy_settings(
     put,
     path = "/api/v1/users/{user_id}/privacy/dm",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = UpdateDmPrivacyRequest,
     responses(
@@ -85,7 +85,7 @@ pub async fn update_dm_privacy(
     put,
     path = "/api/v1/users/{user_id}/privacy/friend-requests",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = UpdateFriendRequestPrivacyRequest,
     responses(
@@ -121,7 +121,7 @@ pub async fn update_friend_request_privacy(
     patch,
     path = "/api/v1/users/{user_id}/privacy/visibility",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = UpdateVisibilityRequest,
     responses(
@@ -156,7 +156,7 @@ pub async fn update_visibility(
     patch,
     path = "/api/v1/users/{user_id}/privacy/content",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = UpdateContentSettingsRequest,
     responses(
@@ -195,7 +195,7 @@ pub async fn update_content_settings(
     post,
     path = "/api/v1/users/{user_id}/privacy/preset",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = ApplyPresetRequest,
     responses(

@@ -6,7 +6,9 @@ use axum::{
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::presentation::dto::guild_member::request::{AssignRoleRequest, KickMemberRequest, Pagination};
+use crate::presentation::dto::guild_member::request::{
+    AssignRoleRequest, KickMemberRequest, Pagination,
+};
 use crate::presentation::dto::guild_member::response::{
     GuildMemberListResponse, GuildMemberResponse,
 };

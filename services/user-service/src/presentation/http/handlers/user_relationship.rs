@@ -21,7 +21,7 @@ pub struct UserRelationshipHandler;
     post,
     path = "/api/v1/users/{user_id}/relationships/request",
     params(
-        ("user_id" = Uuid, Path, description = "Sender User ID")
+        ("user_id" = String, Path, description = "Sender User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = RelationshipRequest,
     responses(
@@ -59,7 +59,7 @@ pub async fn send_friend_request(
     put,
     path = "/api/v1/users/{user_id}/relationships/request/accept",
     params(
-        ("user_id" = Uuid, Path, description = "Recipient User ID")
+        ("user_id" = String, Path, description = "Recipient User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = RelationshipRequest,
     responses(
@@ -96,7 +96,7 @@ pub async fn accept_friend_request(
     put,
     path = "/api/v1/users/{user_id}/relationships/request/decline",
     params(
-        ("user_id" = Uuid, Path, description = "Recipient User ID")
+        ("user_id" = String, Path, description = "Recipient User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = RelationshipRequest,
     responses(
@@ -128,7 +128,7 @@ pub async fn decline_friend_request(
     delete,
     path = "/api/v1/users/{user_id}/relationships/friend/{target_user_id}",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         ("target_user_id" = Uuid, Path, description = "Target User ID")
     ),
     responses(
@@ -157,7 +157,7 @@ pub async fn remove_friend(
     post,
     path = "/api/v1/users/{user_id}/relationships/block",
     params(
-        ("user_id" = Uuid, Path, description = "User ID")
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
     ),
     request_body = RelationshipRequest,
     responses(
@@ -195,7 +195,7 @@ pub async fn block_user(
     delete,
     path = "/api/v1/users/{user_id}/relationships/block/{target_user_id}",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         ("target_user_id" = Uuid, Path, description = "Target User ID")
     ),
     responses(
@@ -224,7 +224,7 @@ pub async fn unblock_user(
     get,
     path = "/api/v1/users/{user_id}/relationships/{target_user_id}",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         ("target_user_id" = Uuid, Path, description = "Target User ID")
     ),
     responses(
@@ -262,7 +262,7 @@ pub async fn get_relationship(
     get,
     path = "/api/v1/users/{user_id}/relationships/friends",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         Pagination
     ),
     responses(
@@ -304,7 +304,7 @@ pub async fn get_friends(
     get,
     path = "/api/v1/users/{user_id}/relationships/incoming",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         Pagination
     ),
     responses(
@@ -346,7 +346,7 @@ pub async fn get_incoming_requests(
     get,
     path = "/api/v1/users/{user_id}/relationships/outgoing",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         Pagination
     ),
     responses(
@@ -388,7 +388,7 @@ pub async fn get_outgoing_requests(
     get,
     path = "/api/v1/users/{user_id}/relationships/blocked",
     params(
-        ("user_id" = Uuid, Path, description = "User ID"),
+        ("user_id" = String, Path, description = "User ID", format = "uuid", pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
         Pagination
     ),
     responses(
