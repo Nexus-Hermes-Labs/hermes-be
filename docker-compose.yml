@@ -113,8 +113,7 @@ services:
       - hermes-network
 
   # Nginx API Gateway — routes /api/v1/* to microservices running on the host
-  # Frontend (Vite dev server at :3000) sends requests to http://localhost:80
-  # Note: Grafana also uses :3000 — don't run both at the same time in dev
+  # Frontend (Vite dev server at :3001) sends requests via proxy to http://localhost:80
   nginx:
     image: nginx:1.27-alpine
     container_name: hermes-nginx
@@ -127,7 +126,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      # Use 127.0.0.1 — Alpine resolves 'localhost' to ::1 (IPv6) but nginx binds IPv4 only
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1/health"]
       interval: 10s
       timeout: 3s
       retries: 3
