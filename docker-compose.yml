@@ -112,6 +112,29 @@ services:
     networks:
       - hermes-network
 
+  # Nginx API Gateway — routes /api/v1/* to microservices running on the host
+  # Frontend (Vite dev server at :3000) sends requests to http://localhost:80
+  # Note: Grafana also uses :3000 — don't run both at the same time in dev
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: hermes-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    # host.docker.internal resolves to the Docker host IP.
+    # On Linux this requires the extra_hosts entry below; macOS handles it automatically.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - hermes-network
+
   # Schemathesis API Tester (only starts with: --profile testing)
   schemathesis:
     image: schemathesis/schemathesis:stable
