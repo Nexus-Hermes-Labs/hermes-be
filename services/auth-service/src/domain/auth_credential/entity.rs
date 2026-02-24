@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use super::error::AuthCredentialError;
-use super::valueobject::{AccountStatus, Email, PasswordHash};
+use super::valueobject::{AccountStatus, Email, PasswordHash, SystemRole};
 
 /// Auth Credential Entity
 ///
@@ -28,6 +28,7 @@ pub struct AuthCredential {
 
     // Account State
     account_status: AccountStatus,
+    system_role: SystemRole,
     deleted_at: Option<DateTime<Utc>>,
 
     // Password Management
@@ -58,6 +59,7 @@ impl AuthCredential {
             last_login_at: None,
             last_login_ip: None,
             account_status: AccountStatus::Active,
+            system_role: SystemRole::User,
             deleted_at: None,
             password_reset_token: None,
             password_reset_expires_at: None,
@@ -82,6 +84,7 @@ impl AuthCredential {
         last_login_at: Option<DateTime<Utc>>,
         last_login_ip: Option<String>,
         account_status: AccountStatus,
+        system_role: SystemRole,
         deleted_at: Option<DateTime<Utc>>,
         password_reset_token: Option<String>,
         password_reset_expires_at: Option<DateTime<Utc>>,
@@ -102,6 +105,7 @@ impl AuthCredential {
             last_login_at,
             last_login_ip,
             account_status,
+            system_role,
             deleted_at,
             password_reset_token,
             password_reset_expires_at,
@@ -161,6 +165,10 @@ impl AuthCredential {
 
     pub fn account_status(&self) -> &AccountStatus {
         &self.account_status
+    }
+
+    pub fn system_role(&self) -> SystemRole {
+        self.system_role
     }
 
     pub fn is_deleted(&self) -> bool {
@@ -407,6 +415,28 @@ impl AuthCredential {
             });
         }
         Ok(())
+    }
+
+    // ============================================
+    // BUSINESS LOGIC - ROLE MANAGEMENT
+    // ============================================
+
+    /// Promote user to Admin role
+    pub fn promote_to_admin(&mut self) {
+        self.system_role = SystemRole::Admin;
+        self.updated_at = Utc::now();
+    }
+
+    /// Promote user to Moderator role
+    pub fn promote_to_moderator(&mut self) {
+        self.system_role = SystemRole::Moderator;
+        self.updated_at = Utc::now();
+    }
+
+    /// Demote user to regular User role
+    pub fn demote_to_user(&mut self) {
+        self.system_role = SystemRole::User;
+        self.updated_at = Utc::now();
     }
 
     // ============================================

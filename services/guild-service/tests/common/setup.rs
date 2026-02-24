@@ -1,5 +1,5 @@
 use axum::Router;
-use common::infrastructure::security::jwt_manager::JwtManager;
+use common::infrastructure::security::jwt_manager::{JwtManager, SystemRole};
 use common::observability::{HealthCheck, Metrics};
 use guild_service::application::{
     GuildInviteService, GuildMemberService, GuildRoleService, GuildService,
@@ -209,7 +209,7 @@ impl TestHarness {
     /// Create a test JWT access token for the given `user_id`.
     pub fn token_for(&self, user_id: Uuid) -> String {
         self.jwt_manager
-            .create_access_token(user_id, "test@example.com", 1)
+            .create_access_token(user_id, "test@example.com", SystemRole::User, 1)
             .expect("create test access token")
     }
 

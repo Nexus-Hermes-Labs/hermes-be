@@ -16,6 +16,7 @@ const AUTH_CREDENTIAL_COLUMNS: &str = r#"
     failed_login_attempts, locked_until, last_login_at,
     last_login_ip::TEXT as last_login_ip,
     account_status::TEXT as account_status,
+    system_role::TEXT as system_role,
     deleted_at,
     password_reset_token, password_reset_expires_at, password_changed_at,
     created_at, updated_at
@@ -82,14 +83,15 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO auth_credentials (id, user_id, email, password_hash)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO auth_credentials (id, user_id, email, password_hash, system_role)
+            VALUES ($1, $2, $3, $4, $5::system_role)
             "#,
         )
         .bind(insert.id)
         .bind(insert.user_id)
         .bind(insert.email)
         .bind(insert.password_hash)
+        .bind("user")
         .execute(&self.pool)
         .await?;
 
@@ -115,10 +117,11 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
                 last_login_at = $9,
                 last_login_ip = $10::inet,
                 account_status = $11::account_status,
-                deleted_at = $12,
-                password_reset_token = $13,
-                password_reset_expires_at = $14,
-                password_changed_at = $15
+                system_role = $12::system_role,
+                deleted_at = $13,
+                password_reset_token = $14,
+                password_reset_expires_at = $15,
+                password_changed_at = $16
             WHERE id = $1 AND deleted_at IS NULL
             "#,
         )
@@ -133,6 +136,7 @@ impl Repository<AuthCredential, Uuid> for PostgresAuthCredentialRepository {
         .bind(update.last_login_at)
         .bind(update.last_login_ip)
         .bind(update.account_status)
+        .bind(update.system_role)
         .bind(update.deleted_at)
         .bind(update.password_reset_token)
         .bind(update.password_reset_expires_at)

@@ -16,3 +16,4 @@ pub mod test_utils;
 
 // Re-export commonly used types
 pub use events::Event;
+pub use infrastructure::security::jwt_manager::SystemRole;

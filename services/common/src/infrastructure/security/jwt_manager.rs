@@ -50,6 +50,10 @@ pub struct Claims {
 
     /// User's email (for convenience)
     pub email: String,
+
+    /// System-level role (only present on access tokens)
+    #[serde(default)]
+    pub role: SystemRole,
 }
 
 impl Claims {
@@ -88,6 +92,63 @@ impl Claims {
 pub enum TokenType {
     Access,
     Refresh,
+}
+
+// ============================================
+// SYSTEM ROLE
+// ============================================
+
+/// System-level role embedded in JWT claims.
+///
+/// Used for authorization on system-level routes (e.g. admin-only user management).
+/// Stored in `auth_credentials.system_role` and included in every access token.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SystemRole {
+    /// Regular authenticated user (default)
+    #[default]
+    User,
+    /// Moderator — can manage content and members across guilds
+    Moderator,
+    /// Administrator — full system access including user management
+    Admin,
+}
+
+impl SystemRole {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Moderator => "moderator",
+            Self::Admin => "admin",
+        }
+    }
+
+    pub fn is_admin(&self) -> bool {
+        matches!(self, Self::Admin)
+    }
+
+    pub fn is_moderator_or_above(&self) -> bool {
+        matches!(self, Self::Moderator | Self::Admin)
+    }
+}
+
+impl std::fmt::Display for SystemRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl std::str::FromStr for SystemRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "user" => Ok(Self::User),
+            "moderator" => Ok(Self::Moderator),
+            "admin" => Ok(Self::Admin),
+            _ => Err(format!("Unknown system role: {}", s)),
+        }
+    }
 }
 
 // ============================================
@@ -174,11 +235,13 @@ impl JwtManager {
     /// # Arguments
     /// * `user_id` - User's unique identifier
     /// * `email` - User's email address
+    /// * `role` - System-level role for authorization
     /// * `expiration_hours` - Token lifetime in hours (typically 6-24)
     pub fn create_access_token(
         &self,
         user_id: Uuid,
         email: impl Into<String>,
+        role: SystemRole,
         expiration_hours: i64,
     ) -> Result<String, JwtError> {
         let now = Utc::now();
@@ -195,6 +258,7 @@ impl JwtManager {
             jti: Uuid::new_v4().to_string(),
             typ: TokenType::Access,
             email: email.into(),
+            role,
         };
 
         encode(&Header::default(), &claims, &self.access_encoding_key)
@@ -227,6 +291,7 @@ impl JwtManager {
             jti: Uuid::new_v4().to_string(),
             typ: TokenType::Refresh,
             email: email.into(),
+            role: SystemRole::default(),
         };
 
         encode(&Header::default(), &claims, &self.refresh_encoding_key)
@@ -342,7 +407,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let token = manager
-            .create_access_token(user_id, "test@example.com", 1)
+            .create_access_token(user_id, "test@example.com", SystemRole::User, 1)
             .unwrap();
 
         let claims = manager.verify_access_token(&token).unwrap();
@@ -389,7 +454,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let access_token = manager
-            .create_access_token(user_id, "test@example.com", 1)
+            .create_access_token(user_id, "test@example.com", SystemRole::User, 1)
             .unwrap();
 
         let result = manager.verify_refresh_token(&access_token);
@@ -402,7 +467,7 @@ mod tests {
         let user_id = Uuid::new_v4();
 
         let token = manager
-            .create_access_token(user_id, "test@example.com", 1)
+            .create_access_token(user_id, "test@example.com", SystemRole::User, 1)
             .unwrap();
 
         let claims = manager.verify_access_token(&token).unwrap();

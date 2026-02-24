@@ -198,6 +198,7 @@ impl AuthService {
             .create_access_token(
                 credential.user_id(),
                 credential.email().as_str(),
+                credential.system_role(),
                 ACCESS_TOKEN_EXPIRY_HOURS,
             )
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
@@ -408,13 +409,14 @@ impl AuthService {
         info!(user_id = %credential.id(), "Login successful");
 
         // ═══════════════════════════════════════════════════
-        // STEP 5: Generate Tokens (WITHOUT ROLE)
+        // STEP 5: Generate Tokens
         // ═══════════════════════════════════════════════════
         let access_token = self
             .jwt_manager
             .create_access_token(
                 credential.user_id(),
                 credential.email().as_str(),
+                credential.system_role(),
                 ACCESS_TOKEN_EXPIRY_HOURS,
             )
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
@@ -518,7 +520,12 @@ impl AuthService {
         // Generate new access token
         let access_token = self
             .jwt_manager
-            .create_access_token(user_id, &claims.email, ACCESS_TOKEN_EXPIRY_HOURS)
+            .create_access_token(
+                user_id,
+                &claims.email,
+                claims.role,
+                ACCESS_TOKEN_EXPIRY_HOURS,
+            )
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
 
         debug!(user_id = %user_id, "Token refreshed");

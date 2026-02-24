@@ -3,6 +3,9 @@ use std::str::FromStr;
 
 use super::error::AuthCredentialError;
 
+// Re-export SystemRole from common so domain layer can use it cleanly
+pub use common::SystemRole;
+
 // ============================================
 // EMAIL VALUE OBJECT
 // ============================================

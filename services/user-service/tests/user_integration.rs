@@ -1,5 +1,6 @@
 mod common;
 
+use ::common::SystemRole;
 use axum::http::{Method, StatusCode};
 use common::helpers::{make_authenticated_request, make_json_request};
 use common::setup::TestHarness;
@@ -41,7 +42,7 @@ async fn create_profile_with_token(
     let uid: Uuid = user_id.parse().expect("parse user_id uuid");
     let token = harness
         .jwt_manager
-        .create_access_token(uid, format!("{username}@test.com"), 1)
+        .create_access_token(uid, format!("{username}@test.com"), SystemRole::User, 1)
         .expect("create token");
     (user_id, token)
 }

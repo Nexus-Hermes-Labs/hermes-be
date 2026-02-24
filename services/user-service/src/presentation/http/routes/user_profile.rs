@@ -3,11 +3,10 @@ use crate::state::AppState;
 use axum::routing::{delete, get, patch, post, put};
 use axum::Router;
 
-/// Create user profile routes
-pub fn user_profile_routes() -> Router<AppState> {
+/// Read-only routes accessible to any authenticated user.
+/// Allows looking up other users' profiles without admin privileges.
+pub fn user_profile_read_routes() -> Router<AppState> {
     Router::new()
-        // Specific routes first to avoid conflict with /:user_id
-        .route("/", post(user_profile::create_profile))
         .route("/search", get(user_profile::search_users))
         .route("/online", get(user_profile::get_online_users))
         .route(
@@ -18,8 +17,13 @@ pub fn user_profile_routes() -> Router<AppState> {
             "/check-username/:username",
             get(user_profile::check_username_availability),
         )
-        // Generic /:user_id routes
         .route("/:user_id", get(user_profile::get_profile))
+}
+
+/// Admin-only routes for system-level user management operations.
+pub fn user_profile_admin_routes() -> Router<AppState> {
+    Router::new()
+        .route("/", post(user_profile::create_profile))
         .route("/:user_id", patch(user_profile::update_profile))
         .route("/:user_id", delete(user_profile::delete_profile))
         .route("/:user_id/username", put(user_profile::change_username))

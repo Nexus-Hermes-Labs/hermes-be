@@ -2,7 +2,9 @@ use chrono::{DateTime, Utc};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::domain::auth_credential::{AccountStatus, AuthCredential, Email, PasswordHash};
+use crate::domain::auth_credential::{
+    AccountStatus, AuthCredential, Email, PasswordHash, SystemRole,
+};
 
 /// Database row for auth_credentials table
 #[derive(Debug, Clone, FromRow)]
@@ -19,6 +21,7 @@ pub struct AuthCredentialRow {
     pub last_login_at: Option<DateTime<Utc>>,
     pub last_login_ip: Option<String>,
     pub account_status: String,
+    pub system_role: String,
     pub deleted_at: Option<DateTime<Utc>>,
     pub password_reset_token: Option<String>,
     pub password_reset_expires_at: Option<DateTime<Utc>>,
@@ -41,6 +44,11 @@ impl TryFrom<AuthCredentialRow> for AuthCredential {
             .parse::<AccountStatus>()
             .map_err(|e| format!("Invalid account status: {:?}", e))?;
 
+        let system_role = row
+            .system_role
+            .parse::<SystemRole>()
+            .map_err(|e| format!("Invalid system role: {:?}", e))?;
+
         Ok(AuthCredential::from_persisted(
             row.id,
             row.user_id,
@@ -54,6 +62,7 @@ impl TryFrom<AuthCredentialRow> for AuthCredential {
             row.last_login_at,
             row.last_login_ip,
             account_status,
+            system_role,
             row.deleted_at,
             row.password_reset_token,
             row.password_reset_expires_at,
@@ -96,6 +105,7 @@ pub struct AuthCredentialUpdate {
     pub last_login_at: Option<DateTime<Utc>>,
     pub last_login_ip: Option<String>,
     pub account_status: String,
+    pub system_role: String,
     pub deleted_at: Option<DateTime<Utc>>,
     pub password_reset_token: Option<String>,
     pub password_reset_expires_at: Option<DateTime<Utc>>,
@@ -116,6 +126,7 @@ impl From<&AuthCredential> for AuthCredentialUpdate {
             last_login_at: credential.last_login_at(),
             last_login_ip: credential.last_login_ip().map(|s| s.to_string()),
             account_status: credential.account_status().as_str().to_string(),
+            system_role: credential.system_role().as_str().to_string(),
             deleted_at: credential.deleted_at(),
             password_reset_token: credential.password_reset_token().map(|s| s.to_string()),
             password_reset_expires_at: credential.password_reset_expires_at(),
@@ -143,6 +154,7 @@ mod tests {
             last_login_at: None,
             last_login_ip: None,
             account_status: "active".to_string(),
+            system_role: "user".to_string(),
             deleted_at: None,
             password_reset_token: None,
             password_reset_expires_at: None,
