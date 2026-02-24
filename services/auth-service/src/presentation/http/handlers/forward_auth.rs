@@ -9,10 +9,7 @@ use axum::{
 ///
 /// ForwardAuth endpoint called by Traefik on every protected request.
 /// Validates the JWT access token and forwards user identity headers on success.
-pub async fn verify_handler<B>(
-    State(state): State<AppState>,
-    request: Request<B>,
-) -> Response {
+pub async fn verify_handler<B>(State(state): State<AppState>, request: Request<B>) -> Response {
     let token = match extract_bearer_token(request.headers()) {
         Some(t) => t,
         None => return StatusCode::UNAUTHORIZED.into_response(),

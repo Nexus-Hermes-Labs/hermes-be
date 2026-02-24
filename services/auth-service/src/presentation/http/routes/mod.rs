@@ -23,13 +23,18 @@ pub fn create_router(
     let public_routes = Router::new().nest("/auth", auth::public_routes());
 
     // Combine and add state
-    let api_routes = Router::new().merge(public_routes).with_state(app_state.clone());
+    let api_routes = Router::new()
+        .merge(public_routes)
+        .with_state(app_state.clone());
 
     // Complete router
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/health", health::routes().with_state(health_check))
-        .nest("/internal", internal::internal_routes().with_state(app_state))
+        .nest(
+            "/internal",
+            internal::internal_routes().with_state(app_state),
+        )
         .nest("/api/v1", api_routes)
         .layer(cors)
         .layer(trace_layer)
