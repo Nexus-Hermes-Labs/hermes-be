@@ -13,7 +13,6 @@ use axum::{
     response::{IntoResponse, Response},
     Router,
 };
-use common::middleware::authentication::auth_middleware;
 use common::middleware::authorization::require_admin;
 use common::observability::HealthCheck;
 use once_cell::sync::Lazy;
@@ -77,30 +76,18 @@ pub fn create_router(
         tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
     >,
 ) -> Router {
-    // @me routes — authenticated, current user only
-    let me_routes = user_me::user_me_routes().route_layer(axum::middleware::from_fn_with_state(
-        app_state.shared.jwt_manager.clone(),
-        auth_middleware,
-    ));
+    // @me routes — RequestUser extractor enforces 401 when headers are missing
+    let me_routes = user_me::user_me_routes();
 
-    // Read-only /:user_id routes — any authenticated user can look up profiles
-    let profile_read_routes = user_profile::user_profile_read_routes().route_layer(
-        axum::middleware::from_fn_with_state(app_state.shared.jwt_manager.clone(), auth_middleware),
-    );
+    // Read-only /:user_id routes — Option<RequestUser> makes auth optional
+    let profile_read_routes = user_profile::user_profile_read_routes();
 
-    // Admin-only routes — system-level user management operations.
-    // Layer order: last .route_layer() call is outermost (runs first).
-    // auth_middleware (outer) runs first → sets Claims in extensions.
-    // require_admin (inner) runs second → reads Claims to check role.
+    // Admin-only routes — require_admin middleware checks X-User-Role header
     let admin_routes = Router::new()
         .merge(user_profile::user_profile_admin_routes())
         .merge(user_privacy::user_privacy_routes())
         .merge(user_relationship::user_relationship_routes())
-        .route_layer(axum::middleware::from_fn(require_admin))
-        .route_layer(axum::middleware::from_fn_with_state(
-            app_state.shared.jwt_manager.clone(),
-            auth_middleware,
-        ));
+        .route_layer(axum::middleware::from_fn(require_admin));
 
     let user_routes = Router::new()
         .merge(me_routes)

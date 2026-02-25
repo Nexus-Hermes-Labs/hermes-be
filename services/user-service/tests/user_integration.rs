@@ -1,11 +1,9 @@
 mod common;
 
-use ::common::SystemRole;
 use axum::http::{Method, StatusCode};
 use common::helpers::{make_authenticated_request, make_json_request};
 use common::setup::TestHarness;
 use serde_json::json;
-use uuid::Uuid;
 
 // ============================================
 // HELPER: create a profile and return (status, body)
@@ -27,6 +25,11 @@ async fn create_profile(
     .await
 }
 
+/// Creates a profile and returns (user_id, user_id).
+///
+/// The second value was previously a JWT token; now authentication uses the
+/// Traefik-injected `X-User-Id` header, so the user_id itself is passed to
+/// `make_authenticated_request` directly.
 async fn create_profile_with_token(
     harness: &TestHarness,
     username: &str,
@@ -39,12 +42,7 @@ async fn create_profile_with_token(
         "create {username} failed: {body}"
     );
     let user_id = body["user_id"].as_str().expect("user_id").to_string();
-    let uid: Uuid = user_id.parse().expect("parse user_id uuid");
-    let token = harness
-        .jwt_manager
-        .create_access_token(uid, format!("{username}@test.com"), SystemRole::User, 1)
-        .expect("create token");
-    (user_id, token)
+    (user_id.clone(), user_id)
 }
 
 // ============================================
@@ -943,12 +941,13 @@ async fn test_me_unauthenticated_returns_401() {
 async fn test_me_invalid_token_returns_401() {
     let harness = TestHarness::new().await;
 
+    // Non-UUID X-User-Id header cannot be parsed → RequestUser extractor returns 401
     let (status, _) = make_authenticated_request(
         harness.router.clone(),
         Method::GET,
         "/api/v1/users/@me",
         None,
-        "invalid.jwt.token",
+        "invalid.user.id",
     )
     .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
@@ -958,23 +957,13 @@ async fn test_me_invalid_token_returns_401() {
 async fn test_me_expired_token_returns_401() {
     let harness = TestHarness::new().await;
 
-    let (_, body) = create_profile(&harness, "expuser", "Expired User").await;
-    let user_id: Uuid = body["user_id"].as_str().unwrap().parse().unwrap();
-
-    // Create token with 0 hours (already expired since nbf = now and exp = now)
-    // We need a negative duration to truly expire, but JwtManager uses hours.
-    // Instead create a refresh token and try to use it as access -> should fail
-    let refresh_token = harness
-        .jwt_manager
-        .create_refresh_token(user_id, "expuser@test.com", 1)
-        .expect("create refresh token");
-
+    // Malformed (but non-empty) X-User-Id header → RequestUser extractor returns 401
     let (status, _) = make_authenticated_request(
         harness.router.clone(),
         Method::GET,
         "/api/v1/users/@me",
         None,
-        &refresh_token,
+        "not-a-valid-uuid",
     )
     .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);

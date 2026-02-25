@@ -1,4 +1,4 @@
-use crate::infrastructure::security::jwt_manager::{Claims, SystemRole};
+use crate::infrastructure::security::jwt_manager::SystemRole;
 use crate::middleware::authentication::AuthError;
 use async_trait::async_trait;
 use axum::extract::FromRequestParts;
@@ -6,33 +6,33 @@ use axum::extract::Request;
 use axum::http::request::Parts;
 use axum::middleware::Next;
 use axum::response::Response;
+use std::str::FromStr;
 
 // ── Role-checking helpers ──────────────────────────────────────────────────
 
-/// Returns true when the role in `claims` is in the `allowed` list.
-pub fn has_role(claims: &Claims, allowed: &[SystemRole]) -> bool {
-    allowed.contains(&claims.role)
+fn role_from_request(req: &Request) -> SystemRole {
+    req.headers()
+        .get("x-user-role")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| SystemRole::from_str(v).ok())
+        .unwrap_or_default()
+}
+
+fn role_from_parts(parts: &Parts) -> SystemRole {
+    parts
+        .headers
+        .get("x-user-role")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| SystemRole::from_str(v).ok())
+        .unwrap_or_default()
 }
 
 // ── Middleware functions (use with axum::middleware::from_fn) ─────────────
 
 /// Middleware that requires Admin role.
-/// Must be applied AFTER `auth_middleware` (which sets Claims in extensions).
-///
-/// Usage in route builder (note order — auth runs first as outer layer):
-/// ```rust
-/// router
-///     .route_layer(from_fn(require_admin))                  // inner: runs after auth
-///     .route_layer(from_fn_with_state(jwt, auth_middleware)) // outer: runs first
-/// ```
+/// Reads `X-User-Role` header injected by Traefik ForwardAuth.
 pub async fn require_admin(req: Request, next: Next) -> Result<Response, AuthError> {
-    let claims = req
-        .extensions()
-        .get::<Claims>()
-        .cloned()
-        .ok_or(AuthError::Unauthorized)?;
-
-    if claims.role.is_admin() {
+    if role_from_request(&req).is_admin() {
         Ok(next.run(req).await)
     } else {
         Err(AuthError::InsufficientPermissions)
@@ -41,13 +41,7 @@ pub async fn require_admin(req: Request, next: Next) -> Result<Response, AuthErr
 
 /// Middleware that requires Moderator or Admin role.
 pub async fn require_moderator(req: Request, next: Next) -> Result<Response, AuthError> {
-    let claims = req
-        .extensions()
-        .get::<Claims>()
-        .cloned()
-        .ok_or(AuthError::Unauthorized)?;
-
-    if claims.role.is_moderator_or_above() {
+    if role_from_request(&req).is_moderator_or_above() {
         Ok(next.run(req).await)
     } else {
         Err(AuthError::InsufficientPermissions)
@@ -56,15 +50,7 @@ pub async fn require_moderator(req: Request, next: Next) -> Result<Response, Aut
 
 // ── Extractors ────────────────────────────────────────────────────────────
 
-/// Extractor that passes only when the authenticated user has `Admin` role.
-///
-/// Usage in handlers:
-/// ```rust
-/// async fn admin_handler(
-///     _: AdminOnly,
-///     AuthenticatedUser(claims): AuthenticatedUser,
-/// ) -> impl IntoResponse { ... }
-/// ```
+/// Extractor that passes only when the caller has `Admin` role.
 pub struct AdminOnly;
 
 #[async_trait]
@@ -75,13 +61,7 @@ where
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let claims = parts
-            .extensions
-            .get::<Claims>()
-            .cloned()
-            .ok_or(AuthError::Unauthorized)?;
-
-        if claims.role.is_admin() {
+        if role_from_parts(parts).is_admin() {
             Ok(AdminOnly)
         } else {
             Err(AuthError::InsufficientPermissions)
@@ -89,7 +69,7 @@ where
     }
 }
 
-/// Extractor that passes when the authenticated user has `Moderator` or `Admin` role.
+/// Extractor that passes when the caller has `Moderator` or `Admin` role.
 pub struct ModeratorOrAbove;
 
 #[async_trait]
@@ -100,13 +80,7 @@ where
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let claims = parts
-            .extensions
-            .get::<Claims>()
-            .cloned()
-            .ok_or(AuthError::Unauthorized)?;
-
-        if claims.role.is_moderator_or_above() {
+        if role_from_parts(parts).is_moderator_or_above() {
             Ok(ModeratorOrAbove)
         } else {
             Err(AuthError::InsufficientPermissions)
@@ -116,50 +90,19 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::infrastructure::security::jwt_manager::SystemRole;
-
-    fn claims_with_role(role: SystemRole) -> Claims {
-        use crate::infrastructure::security::jwt_manager::TokenType;
-        Claims {
-            iss: "test".into(),
-            sub: uuid::Uuid::new_v4().to_string(),
-            aud: "api".into(),
-            exp: i64::MAX,
-            nbf: 0,
-            iat: 0,
-            jti: uuid::Uuid::new_v4().to_string(),
-            typ: TokenType::Access,
-            email: "test@example.com".into(),
-            role,
-        }
-    }
 
     #[test]
     fn test_has_role_admin_only() {
-        let admin = claims_with_role(SystemRole::Admin);
-        assert!(has_role(&admin, &[SystemRole::Admin]));
-        assert!(!has_role(&admin, &[SystemRole::User]));
+        assert!(SystemRole::Admin.is_admin());
+        assert!(!SystemRole::User.is_admin());
     }
 
     #[test]
     fn test_has_role_moderator_or_above() {
-        let moderator = claims_with_role(SystemRole::Moderator);
-        let admin = claims_with_role(SystemRole::Admin);
-        let user = claims_with_role(SystemRole::User);
-
-        assert!(has_role(
-            &moderator,
-            &[SystemRole::Moderator, SystemRole::Admin]
-        ));
-        assert!(has_role(
-            &admin,
-            &[SystemRole::Moderator, SystemRole::Admin]
-        ));
-        assert!(!has_role(
-            &user,
-            &[SystemRole::Moderator, SystemRole::Admin]
-        ));
+        assert!(SystemRole::Moderator.is_moderator_or_above());
+        assert!(SystemRole::Admin.is_moderator_or_above());
+        assert!(!SystemRole::User.is_moderator_or_above());
     }
 
     #[test]

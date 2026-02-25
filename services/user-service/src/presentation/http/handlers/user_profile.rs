@@ -11,7 +11,7 @@ use crate::domain::user_profile::UserStatus;
 use crate::presentation::dto::user_profile::{request::*, response::*};
 use crate::presentation::dto::user_relationship::Pagination;
 use crate::state::AppState;
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use super::error::ApiError;
 use super::strict_uuid::StrictUuid;
@@ -40,10 +40,10 @@ pub struct UserProfileHandler;
 )]
 pub async fn get_profile(
     State(state): State<AppState>,
-    auth_user: Option<AuthenticatedUser>,
+    auth_user: Option<RequestUser>,
     Path(StrictUuid(user_id)): Path<StrictUuid>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
-    let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
+    let requester_id = auth_user.map(|u| u.id);
     let service = &state.user.user_profile_service;
     let profile = service.get_profile(user_id, requester_id).await?;
     Ok(Json(ProfileResponse::from(profile)))
@@ -67,10 +67,10 @@ pub async fn get_profile(
 )]
 pub async fn get_profile_by_username(
     State(state): State<AppState>,
-    auth_user: Option<AuthenticatedUser>,
+    auth_user: Option<RequestUser>,
     Path(username): Path<String>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
-    let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
+    let requester_id = auth_user.map(|u| u.id);
     let service = &state.user.user_profile_service;
     let profile = match service
         .get_profile_by_username(username, requester_id)
@@ -342,7 +342,7 @@ pub async fn clear_custom_status(
 )]
 pub async fn search_users(
     State(state): State<AppState>,
-    auth_user: Option<AuthenticatedUser>,
+    auth_user: Option<RequestUser>,
     Query(request): Query<SearchUsersRequest>,
 ) -> Result<Json<ProfileListResponse>, ApiError> {
     request.validate()?;
@@ -353,7 +353,7 @@ pub async fn search_users(
         ));
     }
 
-    let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
+    let requester_id = auth_user.map(|u| u.id);
     let service = &state.user.user_profile_service;
     let profiles = service
         .search_users(request.query, request.limit, request.offset, requester_id)
@@ -388,11 +388,11 @@ pub async fn search_users(
 )]
 pub async fn get_online_users(
     State(state): State<AppState>,
-    auth_user: Option<AuthenticatedUser>,
+    auth_user: Option<RequestUser>,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<OnlineUsersResponse>, ApiError> {
     pagination.validate()?;
-    let requester_id = auth_user.and_then(|u| u.0.user_id().ok());
+    let requester_id = auth_user.map(|u| u.id);
     let service = &state.user.user_profile_service;
     let profiles = service
         .get_online_users(pagination.limit, pagination.offset, requester_id)

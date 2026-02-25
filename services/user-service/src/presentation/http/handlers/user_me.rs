@@ -4,10 +4,9 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use uuid::Uuid;
 use validator::Validate;
 
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use crate::domain::user_privacy::{
     ContentFilterLevel, DmPrivacy, FriendRequestPrivacy, PrivacyPreset,
@@ -46,9 +45,8 @@ pub struct UserMeHandler;
 )]
 pub async fn get_profile(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
 ) -> Result<Json<ProfileResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let service = &state.user.user_profile_service;
     let profile = service.get_profile(user_id, Some(user_id)).await?;
     Ok(Json(ProfileResponse::from(profile)))
@@ -73,11 +71,11 @@ pub async fn get_profile(
 )]
 pub async fn update_profile(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<UpdateProfileRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let service = &state.user.user_profile_service;
     let profile = service
         .update_profile(
@@ -108,9 +106,8 @@ pub async fn update_profile(
 )]
 pub async fn delete_profile(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
 ) -> Result<StatusCode, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let service = &state.user.user_profile_service;
     service.delete_profile(user_id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -136,11 +133,11 @@ pub async fn delete_profile(
 )]
 pub async fn change_username(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<ChangeUsernameRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let service = &state.user.user_profile_service;
     let profile = service
         .change_username(user_id, request.new_username)
@@ -167,11 +164,11 @@ pub async fn change_username(
 )]
 pub async fn update_status(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<UpdateStatusRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let status = match request.status {
         UserStatusInput::Online => UserStatus::Online,
         UserStatusInput::Offline => UserStatus::Offline,
@@ -202,11 +199,11 @@ pub async fn update_status(
 )]
 pub async fn set_custom_status(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<SetCustomStatusRequest>,
 ) -> Result<Json<ProfileResponse>, ApiError> {
     request.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let service = &state.user.user_profile_service;
     let profile = service
         .set_custom_status(user_id, request.text, request.emoji, request.expires_at)
@@ -231,9 +228,8 @@ pub async fn set_custom_status(
 )]
 pub async fn clear_custom_status(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
 ) -> Result<StatusCode, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let service = &state.user.user_profile_service;
     service.clear_custom_status(user_id).await?;
     Ok(StatusCode::NO_CONTENT)
@@ -259,9 +255,8 @@ pub async fn clear_custom_status(
 )]
 pub async fn get_privacy_settings(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let service = &state.user.user_privacy_service;
     let settings = service.get_privacy_settings(user_id).await?;
     Ok(Json(PrivacySettingsResponse::from(settings)))
@@ -286,10 +281,9 @@ pub async fn get_privacy_settings(
 )]
 pub async fn update_dm_privacy(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<UpdateDmPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let privacy = match request.allow_dms_from {
         DmPrivacyInput::Everyone => DmPrivacy::Everyone,
         DmPrivacyInput::Friends => DmPrivacy::Friends,
@@ -320,10 +314,9 @@ pub async fn update_dm_privacy(
 )]
 pub async fn update_friend_request_privacy(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<UpdateFriendRequestPrivacyRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let privacy = match request.allow_friend_requests_from {
         FriendRequestPrivacyInput::Everyone => FriendRequestPrivacy::Everyone,
         FriendRequestPrivacyInput::FriendsOfFriends => FriendRequestPrivacy::FriendsOfFriends,
@@ -355,10 +348,9 @@ pub async fn update_friend_request_privacy(
 )]
 pub async fn update_visibility(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<UpdateVisibilityRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let service = &state.user.user_privacy_service;
     let settings = service
         .update_visibility(
@@ -390,7 +382,7 @@ pub async fn update_visibility(
 )]
 pub async fn update_content_settings(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     body: Bytes,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
     let v: serde_json::Value = serde_json::from_slice(&body)
@@ -401,7 +393,7 @@ pub async fn update_content_settings(
     let request: UpdateContentSettingsRequest =
         serde_json::from_value(v).map_err(|e| ApiError::bad_request(e.to_string()))?;
     request.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let filter_level = request
         .content_filter_level
         .map(|level| {
@@ -435,10 +427,9 @@ pub async fn update_content_settings(
 )]
 pub async fn apply_preset(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(request): Json<ApplyPresetRequest>,
 ) -> Result<Json<PrivacySettingsResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let preset = match request.preset {
         PrivacyPresetInput::Public => PrivacyPreset::Public,
         PrivacyPresetInput::FriendsOnly => PrivacyPreset::FriendsOnly,
@@ -474,11 +465,11 @@ pub async fn apply_preset(
 )]
 pub async fn get_friends(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationships = state
         .user
         .relationship_service
@@ -517,11 +508,11 @@ pub async fn get_friends(
 )]
 pub async fn get_incoming_requests(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationships = state
         .user
         .relationship_service
@@ -560,11 +551,11 @@ pub async fn get_incoming_requests(
 )]
 pub async fn get_outgoing_requests(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationships = state
         .user
         .relationship_service
@@ -603,11 +594,11 @@ pub async fn get_outgoing_requests(
 )]
 pub async fn get_blocked_users(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Query(pagination): Query<Pagination>,
 ) -> Result<Json<Vec<RelationshipResponse>>, ApiError> {
     pagination.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationships = state
         .user
         .relationship_service
@@ -645,10 +636,9 @@ pub async fn get_blocked_users(
 )]
 pub async fn get_relationship(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Path(StrictUuid(target_user_id)): Path<StrictUuid>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     let relationship = state
         .user
         .relationship_service
@@ -683,11 +673,11 @@ pub async fn get_relationship(
 )]
 pub async fn send_friend_request(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationship = state
         .user
         .relationship_service
@@ -720,11 +710,11 @@ pub async fn send_friend_request(
 )]
 pub async fn accept_friend_request(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationship = state
         .user
         .relationship_service
@@ -757,11 +747,11 @@ pub async fn accept_friend_request(
 )]
 pub async fn decline_friend_request(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<StatusCode, ApiError> {
     payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     state
         .user
         .relationship_service
@@ -790,10 +780,9 @@ pub async fn decline_friend_request(
 )]
 pub async fn remove_friend(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Path(StrictUuid(target_user_id)): Path<StrictUuid>,
 ) -> Result<StatusCode, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     state
         .user
         .relationship_service
@@ -822,11 +811,11 @@ pub async fn remove_friend(
 )]
 pub async fn block_user(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Json(payload): Json<RelationshipRequest>,
 ) -> Result<Json<RelationshipResponse>, ApiError> {
     payload.validate()?;
-    let user_id = extract_user_id(&claims)?;
+
     let relationship = state
         .user
         .relationship_service
@@ -860,26 +849,13 @@ pub async fn block_user(
 )]
 pub async fn unblock_user(
     State(state): State<AppState>,
-    AuthenticatedUser(claims): AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Path(StrictUuid(target_user_id)): Path<StrictUuid>,
 ) -> Result<StatusCode, ApiError> {
-    let user_id = extract_user_id(&claims)?;
     state
         .user
         .relationship_service
         .unblock_user(user_id, target_user_id)
         .await?;
     Ok(StatusCode::NO_CONTENT)
-}
-
-// ============================================
-// HELPERS
-// ============================================
-
-fn extract_user_id(
-    claims: &common::infrastructure::security::jwt_manager::Claims,
-) -> Result<Uuid, ApiError> {
-    claims
-        .user_id()
-        .map_err(|_| ApiError::internal("Invalid user ID in token"))
 }

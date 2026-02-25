@@ -49,13 +49,16 @@ pub async fn make_json_request(
     (status, value)
 }
 
-/// Send an authenticated JSON request with a Bearer token.
+/// Send a request with Traefik ForwardAuth identity headers.
+///
+/// `user_id` must be a valid UUID string. Traefik injects these headers after
+/// a successful `/internal/verify` check; in tests we inject them directly.
 pub async fn make_authenticated_request(
     app: Router,
     method: Method,
     uri: &str,
     body: Option<serde_json::Value>,
-    token: &str,
+    user_id: &str,
 ) -> (StatusCode, serde_json::Value) {
     let body_str = body
         .map(|v| serde_json::to_string(&v).expect("serialize body"))
@@ -65,7 +68,9 @@ pub async fn make_authenticated_request(
         .method(method)
         .uri(uri)
         .header("content-type", "application/json")
-        .header("authorization", format!("Bearer {token}"))
+        .header("x-user-id", user_id)
+        .header("x-user-role", "user")
+        .header("x-user-email", format!("{user_id}@test.com"))
         .body(axum::body::Body::from(body_str))
         .expect("build request");
 

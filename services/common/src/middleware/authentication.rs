@@ -1,63 +1,58 @@
-use crate::infrastructure::security::jwt_manager::{Claims, JwtManager};
+use crate::infrastructure::security::jwt_manager::SystemRole;
 use async_trait::async_trait;
-use axum::extract::{FromRef, FromRequestParts};
+use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::response::IntoResponse;
-use axum::{
-    extract::{Request, State},
-    http::StatusCode,
-    middleware::Next,
-    response::Response,
-};
-use std::sync::Arc;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use std::str::FromStr;
+use uuid::Uuid;
 
-pub async fn auth_middleware<S>(
-    State(jwt_manager): State<Arc<JwtManager>>,
-    mut req: Request,
-    next: Next,
-) -> Result<Response, StatusCode>
-where
-    S: Send + Sync,
-    JwtManager: FromRef<S>,
-{
-    let auth_header = req
-        .headers()
-        .get("Authorization")
-        .and_then(|h| h.to_str().ok())
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
-    let token = if auth_header.to_lowercase().starts_with("bearer ") {
-        &auth_header[7..]
-    } else {
-        return Err(StatusCode::UNAUTHORIZED);
-    };
-
-    let claims = jwt_manager
-        .verify_access_token(token)
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
-
-    req.extensions_mut().insert(claims);
-
-    Ok(next.run(req).await)
+/// Authenticated user identity, extracted from headers injected by Traefik ForwardAuth.
+///
+/// Traefik calls `/internal/verify` on auth-service before forwarding the request.
+/// On success, it injects:
+///   `X-User-Id`    → UUID string
+///   `X-User-Role`  → "user" | "moderator" | "admin"
+///   `X-User-Email` → email address
+///
+/// This extractor reads those headers directly — no JWT verification is needed
+/// in downstream services.
+pub struct RequestUser {
+    pub id: Uuid,
+    pub role: SystemRole,
+    pub email: String,
 }
 
-pub struct AuthenticatedUser(pub Claims);
-
 #[async_trait]
-impl<S> FromRequestParts<S> for AuthenticatedUser
+impl<S> FromRequestParts<S> for RequestUser
 where
     S: Send + Sync,
 {
     type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let claims = parts
-            .extensions
-            .get::<Claims>()
-            .cloned()
+        let id = parts
+            .headers
+            .get("x-user-id")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| Uuid::parse_str(v).ok())
             .ok_or(AuthError::Unauthorized)?;
 
-        Ok(AuthenticatedUser(claims))
+        let role = parts
+            .headers
+            .get("x-user-role")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| SystemRole::from_str(v).ok())
+            .unwrap_or_default();
+
+        let email = parts
+            .headers
+            .get("x-user-email")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("")
+            .to_string();
+
+        Ok(RequestUser { id, role, email })
     }
 }
 
@@ -75,7 +70,6 @@ impl IntoResponse for AuthError {
                 (StatusCode::FORBIDDEN, "Insufficient permissions")
             }
         };
-
         (status, message).into_response()
     }
 }
