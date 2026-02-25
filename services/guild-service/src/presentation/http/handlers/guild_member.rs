@@ -13,7 +13,7 @@ use crate::presentation::dto::guild_member::response::{
     GuildMemberListResponse, GuildMemberResponse,
 };
 use crate::state::AppState;
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use super::error::ApiError;
 
@@ -101,15 +101,13 @@ pub async fn get_member(
 )]
 pub async fn kick_member(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path((guild_id, user_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<KickMemberRequest>,
 ) -> Result<StatusCode, ApiError> {
     request.validate()?;
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     state
         .guild
         .member_service
@@ -134,13 +132,9 @@ pub async fn kick_member(
 )]
 pub async fn leave_guild(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Path(guild_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let user_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     state
         .guild
         .member_service
@@ -170,14 +164,12 @@ pub async fn leave_guild(
 )]
 pub async fn assign_role(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path((guild_id, user_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<AssignRoleRequest>,
 ) -> Result<Json<GuildMemberResponse>, ApiError> {
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let member = state
         .guild
         .member_service
@@ -206,13 +198,11 @@ pub async fn assign_role(
 )]
 pub async fn remove_role(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path((guild_id, user_id, role_id)): Path<(Uuid, Uuid, Uuid)>,
 ) -> Result<Json<GuildMemberResponse>, ApiError> {
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let member = state
         .guild
         .member_service

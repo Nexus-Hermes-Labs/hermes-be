@@ -6,7 +6,6 @@ pub use shared_state::SharedState;
 
 use crate::infrastructure::grpc::GuildGrpcClient;
 use axum::extract::FromRef;
-use common::infrastructure::security::jwt_manager::JwtManager;
 use std::sync::Arc;
 
 /// Combined application state shared across all Axum handlers.
@@ -15,14 +14,8 @@ use std::sync::Arc;
 pub struct AppState {
     /// Channel domain services
     pub channel: ChannelState,
-    /// Shared infrastructure (DB, Redis, JWT, gRPC clients)
+    /// Shared infrastructure (DB, Redis, gRPC clients)
     pub shared: SharedState,
-}
-
-impl FromRef<AppState> for Arc<JwtManager> {
-    fn from_ref(state: &AppState) -> Self {
-        state.shared.jwt_manager.clone()
-    }
 }
 
 impl FromRef<AppState> for Arc<GuildGrpcClient> {

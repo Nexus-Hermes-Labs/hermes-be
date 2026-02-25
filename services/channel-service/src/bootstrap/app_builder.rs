@@ -9,7 +9,6 @@ use crate::presentation::http::server::Server;
 use crate::state::channel_state::ChannelState;
 use crate::state::shared_state::SharedState;
 use crate::state::AppState;
-use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
 use common_config::config;
 use sqlx::PgPool;
@@ -97,17 +96,6 @@ impl AppBuilder {
         // ========================================
         let health_check = Arc::new(HealthCheck::new(db_pool.clone(), redis.clone()));
 
-        let jwt_manager = Arc::new(
-            JwtManager::new(
-                &config().secrets.jwt.issuer,
-                &config().secrets.jwt.access_secret,
-                &config().secrets.jwt.refresh_secret,
-            )
-            .map_err(|e| {
-                BootstrapError::Infrastructure(format!("Failed to create JWT manager: {e}"))
-            })?,
-        );
-
         // Connect to guild-service gRPC for authorization checks
         let guild_grpc_url = config()
             .grpc_endpoints
@@ -151,7 +139,6 @@ impl AppBuilder {
             db: db_pool,
             redis,
             metrics,
-            jwt_manager,
             guild_grpc_client,
         };
 

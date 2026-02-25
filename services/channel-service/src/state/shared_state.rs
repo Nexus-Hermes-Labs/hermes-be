@@ -1,5 +1,4 @@
 use crate::infrastructure::grpc::GuildGrpcClient;
-use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::Metrics;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -16,8 +15,6 @@ pub struct SharedState {
     pub redis: redis::aio::ConnectionManager,
     /// Prometheus metrics
     pub metrics: Metrics,
-    /// JWT token manager for authentication
-    pub jwt_manager: Arc<JwtManager>,
     /// gRPC client for guild-service authorization checks
     pub guild_grpc_client: Arc<GuildGrpcClient>,
 }

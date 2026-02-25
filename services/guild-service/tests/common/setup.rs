@@ -1,5 +1,4 @@
 use axum::Router;
-use common::infrastructure::security::jwt_manager::{JwtManager, SystemRole};
 use common::observability::{HealthCheck, Metrics};
 use guild_service::application::{
     GuildInviteService, GuildMemberService, GuildRoleService, GuildService,
@@ -40,14 +39,6 @@ const GUILD_MEMBER_ROLES_INDEXES_SQL: &str =
     include_str!("../../migrations/20260210000007_create_guild_member_roles_indexes.sql");
 
 // ============================================
-// JWT TEST SECRETS (32+ chars)
-// ============================================
-
-const TEST_ISSUER: &str = "test-guild-service";
-const TEST_ACCESS_SECRET: &str = "test_access_secret_for_guild_tests_minimum_32_chars";
-const TEST_REFRESH_SECRET: &str = "test_refresh_secret_for_guild_tests_minimum_32_chars";
-
-// ============================================
 // METRICS SINGLETON (init only once per process)
 // ============================================
 
@@ -68,7 +59,6 @@ fn get_or_init_metrics() -> Metrics {
 /// Containers are stopped when the harness is dropped at the end of each test.
 pub struct TestHarness {
     pub router: Router,
-    pub jwt_manager: Arc<JwtManager>,
     pub pool: PgPool,
     _pg_container: ContainerAsync<Postgres>,
     _redis_container: ContainerAsync<GenericImage>,
@@ -157,13 +147,7 @@ impl TestHarness {
             member_repo,
         ));
 
-        // ── 5. JWT manager ───────────────────────────────────────────────────
-        let jwt_manager = Arc::new(
-            JwtManager::new(TEST_ISSUER, TEST_ACCESS_SECRET, TEST_REFRESH_SECRET)
-                .expect("create jwt manager"),
-        );
-
-        // ── 6. Assemble state ────────────────────────────────────────────────
+        // ── 5. Assemble state ────────────────────────────────────────────────
         let metrics = get_or_init_metrics();
 
         let guild_state =
@@ -177,7 +161,6 @@ impl TestHarness {
             db: pool.clone(),
             redis: redis_conn.clone(),
             metrics,
-            jwt_manager: jwt_manager.clone(),
             user_grpc_client: Arc::new(user_grpc_client),
         };
         let app_state = AppState {
@@ -199,18 +182,16 @@ impl TestHarness {
 
         Self {
             router,
-            jwt_manager,
             pool,
             _pg_container: pg_container,
             _redis_container: redis_container,
         }
     }
 
-    /// Create a test JWT access token for the given `user_id`.
+    /// Return the UUID string used as the Traefik-injected `X-User-Id` header in tests.
+    #[allow(clippy::unused_self)]
     pub fn token_for(&self, user_id: Uuid) -> String {
-        self.jwt_manager
-            .create_access_token(user_id, "test@example.com", SystemRole::User, 1)
-            .expect("create test access token")
+        user_id.to_string()
     }
 
     /// Directly insert a member row (bypasses service layer for fixture setup).

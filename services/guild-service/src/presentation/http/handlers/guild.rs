@@ -12,7 +12,7 @@ use crate::presentation::dto::guild::request::{
 };
 use crate::presentation::dto::guild::response::{GuildListResponse, GuildResponse};
 use crate::state::AppState;
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use super::error::ApiError;
 
@@ -31,7 +31,7 @@ use super::error::ApiError;
 )]
 pub async fn create_guild(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser { id: owner_id, .. }: RequestUser,
     Json(request): Json<CreateGuildRequest>,
 ) -> Result<(StatusCode, Json<GuildResponse>), ApiError> {
     request.validate()?;
@@ -42,10 +42,6 @@ pub async fn create_guild(
         ));
     }
 
-    let owner_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let service = &state.guild.guild_service;
     let guild = service
         .create_guild(owner_id, request.name, request.description)
@@ -93,7 +89,9 @@ pub async fn get_guild(
 )]
 pub async fn update_guild(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(guild_id): Path<Uuid>,
     Json(request): Json<UpdateGuildRequest>,
 ) -> Result<Json<GuildResponse>, ApiError> {
@@ -114,11 +112,6 @@ pub async fn update_guild(
             ));
         }
     }
-
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
 
     let visibility = request
         .visibility
@@ -158,13 +151,11 @@ pub async fn update_guild(
 )]
 pub async fn delete_guild(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(guild_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     state
         .guild
         .guild_service

@@ -3,7 +3,6 @@ mod channel;
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
 use axum::Router;
-use common::middleware::authentication::auth_middleware;
 use common::observability::HealthCheck;
 use std::sync::Arc;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -18,13 +17,8 @@ pub fn create_router(
         tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
     >,
 ) -> Router {
-    // Mutating routes require JWT authentication
-    let authenticated_routes = Router::new()
-        .merge(channel::authenticated_channel_routes())
-        .route_layer(axum::middleware::from_fn_with_state(
-            app_state.shared.jwt_manager.clone(),
-            auth_middleware,
-        ));
+    // Mutating routes — identity injected by Traefik ForwardAuth via RequestUser extractor
+    let authenticated_routes = Router::new().merge(channel::authenticated_channel_routes());
 
     // Public routes (read-only channel queries)
     let public_routes = channel::public_channel_routes();

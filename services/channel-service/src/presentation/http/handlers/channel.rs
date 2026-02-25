@@ -9,7 +9,7 @@ use validator::Validate;
 use crate::presentation::dto::channel::request::{CreateChannelRequest, UpdateChannelRequest};
 use crate::presentation::dto::channel::response::{ChannelListResponse, ChannelResponse};
 use crate::state::AppState;
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use super::error::ApiError;
 
@@ -32,16 +32,13 @@ use super::error::ApiError;
 )]
 pub async fn create_channel(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(guild_id): Path<Uuid>,
     Json(request): Json<CreateChannelRequest>,
 ) -> Result<(StatusCode, Json<ChannelResponse>), ApiError> {
     request.validate()?;
-
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
 
     let channel = state
         .channel
@@ -129,16 +126,13 @@ pub async fn get_channel(
 )]
 pub async fn update_channel(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(channel_id): Path<Uuid>,
     Json(request): Json<UpdateChannelRequest>,
 ) -> Result<Json<ChannelResponse>, ApiError> {
     request.validate()?;
-
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
 
     let channel = state
         .channel
@@ -172,14 +166,11 @@ pub async fn update_channel(
 )]
 pub async fn delete_channel(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(channel_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
-
     state
         .channel
         .channel_service

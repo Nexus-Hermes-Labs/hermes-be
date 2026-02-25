@@ -10,7 +10,7 @@ use crate::presentation::dto::guild_invite::request::CreateInviteRequest;
 use crate::presentation::dto::guild_invite::response::InviteResponse;
 use crate::presentation::dto::guild_member::response::GuildMemberResponse;
 use crate::state::AppState;
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use super::error::ApiError;
 
@@ -32,15 +32,11 @@ use super::error::ApiError;
 )]
 pub async fn create_invite(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser { id: creator_id, .. }: RequestUser,
     Path(guild_id): Path<Uuid>,
     Json(request): Json<CreateInviteRequest>,
 ) -> Result<(StatusCode, Json<InviteResponse>), ApiError> {
     request.validate()?;
-    let creator_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let invite = state
         .guild
         .invite_service
@@ -94,16 +90,12 @@ pub async fn get_invite(
 )]
 pub async fn use_invite(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser { id: user_id, .. }: RequestUser,
     Path(code): Path<String>,
 ) -> Result<Json<GuildMemberResponse>, ApiError> {
     if code.is_empty() || code.len() > 100 || code.contains('\0') {
         return Err(ApiError::bad_request("Invalid invite code format"));
     }
-    let user_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let member = state.guild.invite_service.use_invite(code, user_id).await?;
     Ok(Json(GuildMemberResponse::from(member)))
 }
@@ -127,16 +119,14 @@ pub async fn use_invite(
 )]
 pub async fn revoke_invite(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path((_guild_id, code)): Path<(Uuid, String)>,
 ) -> Result<StatusCode, ApiError> {
     if code.is_empty() || code.len() > 100 || code.contains('\0') {
         return Err(ApiError::bad_request("Invalid invite code format"));
     }
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     state
         .guild
         .invite_service
@@ -161,13 +151,11 @@ pub async fn revoke_invite(
 )]
 pub async fn list_invites(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(guild_id): Path<Uuid>,
 ) -> Result<Json<Vec<InviteResponse>>, ApiError> {
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let invites = state
         .guild
         .invite_service

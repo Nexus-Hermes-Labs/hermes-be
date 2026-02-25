@@ -10,7 +10,7 @@ use crate::domain::guild_role::{Permissions, RoleColor};
 use crate::presentation::dto::guild_role::request::{CreateRoleRequest, UpdateRoleRequest};
 use crate::presentation::dto::guild_role::response::GuildRoleResponse;
 use crate::state::AppState;
-use common::middleware::authentication::AuthenticatedUser;
+use common::middleware::authentication::RequestUser;
 
 use super::error::ApiError;
 
@@ -31,15 +31,13 @@ use super::error::ApiError;
 )]
 pub async fn create_role(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(guild_id): Path<Uuid>,
     Json(request): Json<CreateRoleRequest>,
 ) -> Result<(StatusCode, Json<GuildRoleResponse>), ApiError> {
     request.validate()?;
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     let role = state
         .guild
         .role_service
@@ -121,15 +119,13 @@ pub async fn get_role(
 )]
 pub async fn update_role(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path((guild_id, role_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<UpdateRoleRequest>,
 ) -> Result<Json<GuildRoleResponse>, ApiError> {
     request.validate()?;
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
 
     let color = request.color.map(RoleColor);
     let permissions = request.permissions.map(Permissions::new);
@@ -170,13 +166,11 @@ pub async fn update_role(
 )]
 pub async fn delete_role(
     State(state): State<AppState>,
-    auth_user: AuthenticatedUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path((guild_id, role_id)): Path<(Uuid, Uuid)>,
 ) -> Result<StatusCode, ApiError> {
-    let requester_id = auth_user
-        .0
-        .user_id()
-        .map_err(|_| ApiError::forbidden("Invalid user ID"))?;
     state
         .guild
         .role_service
