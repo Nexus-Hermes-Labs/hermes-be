@@ -34,13 +34,7 @@ pub async fn make_json_request(
     let value: serde_json::Value = if bytes.is_empty() {
         serde_json::Value::Null
     } else {
-        match serde_json::from_slice(&bytes) {
-            Ok(v) => v,
-            Err(e) => {
-                let body_str = String::from_utf8_lossy(&bytes);
-                panic!("Failed to parse response as JSON. Error: {e}, Body: {body_str}");
-            }
-        }
+        serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null)
     };
 
     (status, value)
@@ -84,13 +78,7 @@ pub async fn make_authenticated_request(
     let value: serde_json::Value = if bytes.is_empty() {
         serde_json::Value::Null
     } else {
-        match serde_json::from_slice(&bytes) {
-            Ok(v) => v,
-            Err(e) => {
-                let body_str = String::from_utf8_lossy(&bytes);
-                panic!("Failed to parse response as JSON. Error: {e}, Body: {body_str}");
-            }
-        }
+        serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null)
     };
 
     (status, value)

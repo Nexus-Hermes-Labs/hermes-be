@@ -61,6 +61,8 @@ const AUTH_INDEXES_SQL: &str = include_str!("../../migrations/20260122000004_cre
 const AUTH_FUNCTIONS_SQL: &str =
     include_str!("../../migrations/20260122000005_create_functions.sql");
 const AUTH_TRIGGERS_SQL: &str = include_str!("../../migrations/20260122000006_create_triggers.sql");
+const AUTH_SYSTEM_ROLE_SQL: &str =
+    include_str!("../../migrations/20260122000007_add_system_role.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -260,6 +262,7 @@ impl TestHarness {
             ("auth indexes", AUTH_INDEXES_SQL),
             ("auth functions", AUTH_FUNCTIONS_SQL),
             ("auth triggers", AUTH_TRIGGERS_SQL),
+            ("auth system role", AUTH_SYSTEM_ROLE_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)
