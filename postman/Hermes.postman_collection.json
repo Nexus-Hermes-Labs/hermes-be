@@ -22,7 +22,7 @@
 							"mode": "raw",
 							"raw": "{\n    \"email\": \"user@example.com\",\n    \"username\": \"testuser\",\n    \"display_name\": \"Test User\",\n    \"password\": \"SecurePass123!\"\n}"
 						},
-						"url": "http://localhost:8081/api/v1/auth/register"
+						"url": "http://localhost/api/v1/auth/register"
 					}
 				},
 				{
@@ -39,7 +39,7 @@
 							"mode": "raw",
 							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"SecurePass123!\"\n}"
 						},
-						"url": "http://localhost:8081/api/v1/auth/login"
+						"url": "http://localhost/api/v1/auth/login"
 					}
 				},
 				{
@@ -56,7 +56,7 @@
 							"mode": "raw",
 							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\"\n}"
 						},
-						"url": "http://localhost:8081/api/v1/auth/refresh"
+						"url": "http://localhost/api/v1/auth/refresh"
 					}
 				},
 				{
@@ -73,14 +73,14 @@
 							"mode": "raw",
 							"raw": "{\n    \"refresh_token\": \"{{refresh_token}}\",\n    \"all_devices\": false\n}"
 						},
-						"url": "http://localhost:8081/api/v1/auth/logout"
+						"url": "http://localhost/api/v1/auth/logout"
 					}
 				},
 				{
 					"name": "Verify Email",
 					"request": {
 						"method": "GET",
-						"url": "http://localhost:8081/api/v1/auth/verify-email?token={{verification_token}}"
+						"url": "http://localhost/api/v1/auth/verify-email?token={{verification_token}}"
 					}
 				}
 			]
@@ -104,7 +104,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me"
+										"url": "http://localhost/api/v1/users/@me"
 									}
 								},
 								{
@@ -125,7 +125,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"display_name\": \"My New Name\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me"
+										"url": "http://localhost/api/v1/users/@me"
 									}
 								},
 								{
@@ -138,7 +138,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me"
+										"url": "http://localhost/api/v1/users/@me"
 									}
 								},
 								{
@@ -159,7 +159,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"new_username\": \"newusername\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/username"
+										"url": "http://localhost/api/v1/users/@me/username"
 									}
 								}
 							]
@@ -185,7 +185,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"status\": \"online\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/status"
+										"url": "http://localhost/api/v1/users/@me/status"
 									}
 								},
 								{
@@ -206,7 +206,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"text\": \"Coding...\",\n    \"emoji\": \"👨‍💻\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/custom-status"
+										"url": "http://localhost/api/v1/users/@me/custom-status"
 									}
 								},
 								{
@@ -219,7 +219,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/custom-status"
+										"url": "http://localhost/api/v1/users/@me/custom-status"
 									}
 								}
 							]
@@ -237,7 +237,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/privacy"
+										"url": "http://localhost/api/v1/users/@me/privacy"
 									}
 								},
 								{
@@ -258,7 +258,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"allow_dms_from\": \"friends\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/privacy/dm"
+										"url": "http://localhost/api/v1/users/@me/privacy/dm"
 									}
 								},
 								{
@@ -279,7 +279,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"allow_friend_requests_from\": \"everyone\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/privacy/friend-requests"
+										"url": "http://localhost/api/v1/users/@me/privacy/friend-requests"
 									}
 								},
 								{
@@ -300,7 +300,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"show_online_status\": true,\n    \"show_current_activity\": false\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/privacy/visibility"
+										"url": "http://localhost/api/v1/users/@me/privacy/visibility"
 									}
 								},
 								{
@@ -321,7 +321,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"allow_nsfw_content\": true,\n    \"content_filter_level\": 2\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/privacy/content"
+										"url": "http://localhost/api/v1/users/@me/privacy/content"
 									}
 								},
 								{
@@ -342,7 +342,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"preset\": \"private\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/privacy/preset"
+										"url": "http://localhost/api/v1/users/@me/privacy/preset"
 									}
 								}
 							]
@@ -360,7 +360,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/friends"
+										"url": "http://localhost/api/v1/users/@me/relationships/friends"
 									}
 								},
 								{
@@ -373,7 +373,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/incoming"
+										"url": "http://localhost/api/v1/users/@me/relationships/incoming"
 									}
 								},
 								{
@@ -386,7 +386,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/outgoing"
+										"url": "http://localhost/api/v1/users/@me/relationships/outgoing"
 									}
 								},
 								{
@@ -399,7 +399,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/blocked"
+										"url": "http://localhost/api/v1/users/@me/relationships/blocked"
 									}
 								},
 								{
@@ -412,7 +412,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/{{target_user_id}}"
+										"url": "http://localhost/api/v1/users/@me/relationships/{{target_user_id}}"
 									}
 								},
 								{
@@ -433,7 +433,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\",\n    \"message\": \"Hey!\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/request"
+										"url": "http://localhost/api/v1/users/@me/relationships/request"
 									}
 								},
 								{
@@ -454,7 +454,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/request/accept"
+										"url": "http://localhost/api/v1/users/@me/relationships/request/accept"
 									}
 								},
 								{
@@ -475,7 +475,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/request/decline"
+										"url": "http://localhost/api/v1/users/@me/relationships/request/decline"
 									}
 								},
 								{
@@ -496,7 +496,7 @@
 											"mode": "raw",
 											"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
 										},
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/block"
+										"url": "http://localhost/api/v1/users/@me/relationships/block"
 									}
 								},
 								{
@@ -509,7 +509,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/block/{{target_user_id}}"
+										"url": "http://localhost/api/v1/users/@me/relationships/block/{{target_user_id}}"
 									}
 								},
 								{
@@ -522,7 +522,7 @@
 												"value": "Bearer {{access_token}}"
 											}
 										],
-										"url": "http://localhost:8082/api/v1/users/@me/relationships/friend/{{target_user_id}}"
+										"url": "http://localhost/api/v1/users/@me/relationships/friend/{{target_user_id}}"
 									}
 								}
 							]
@@ -546,7 +546,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"username\": \"newuser\",\n    \"display_name\": \"New User\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users"
+								"url": "http://localhost/api/v1/users"
 							}
 						},
 						{
@@ -559,7 +559,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}"
+								"url": "http://localhost/api/v1/users/{{user_id}}"
 							}
 						},
 						{
@@ -572,7 +572,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/username/{{username}}"
+								"url": "http://localhost/api/v1/users/username/{{username}}"
 							}
 						},
 						{
@@ -593,7 +593,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"display_name\": \"Updated Name\",\n    \"bio\": \"New bio here\",\n    \"avatar_url\": \"https://example.com/avatar.png\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}"
+								"url": "http://localhost/api/v1/users/{{user_id}}"
 							}
 						},
 						{
@@ -614,7 +614,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"new_username\": \"newusername\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/username"
+								"url": "http://localhost/api/v1/users/{{user_id}}/username"
 							}
 						},
 						{
@@ -627,7 +627,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}"
+								"url": "http://localhost/api/v1/users/{{user_id}}"
 							}
 						},
 						{
@@ -640,7 +640,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/search?query=test&limit=10&offset=0"
+								"url": "http://localhost/api/v1/users/search?query=test&limit=10&offset=0"
 							}
 						},
 						{
@@ -653,7 +653,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/online?limit=10&offset=0"
+								"url": "http://localhost/api/v1/users/online?limit=10&offset=0"
 							}
 						},
 						{
@@ -666,7 +666,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/check-username/{{username}}"
+								"url": "http://localhost/api/v1/users/check-username/{{username}}"
 							}
 						}
 					]
@@ -684,7 +684,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy"
+								"url": "http://localhost/api/v1/users/{{user_id}}/privacy"
 							}
 						},
 						{
@@ -705,7 +705,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"allow_dms_from\": \"friends\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/dm"
+								"url": "http://localhost/api/v1/users/{{user_id}}/privacy/dm"
 							}
 						},
 						{
@@ -726,7 +726,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"allow_friend_requests_from\": \"everyone\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/friend-requests"
+								"url": "http://localhost/api/v1/users/{{user_id}}/privacy/friend-requests"
 							}
 						},
 						{
@@ -747,7 +747,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"show_online_status\": true,\n    \"show_current_activity\": false\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/visibility"
+								"url": "http://localhost/api/v1/users/{{user_id}}/privacy/visibility"
 							}
 						},
 						{
@@ -768,7 +768,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"allow_nsfw_content\": true,\n    \"content_filter_level\": 2\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/content"
+								"url": "http://localhost/api/v1/users/{{user_id}}/privacy/content"
 							}
 						},
 						{
@@ -789,7 +789,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"preset\": \"private\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/privacy/preset"
+								"url": "http://localhost/api/v1/users/{{user_id}}/privacy/preset"
 							}
 						}
 					]
@@ -815,7 +815,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\",\n    \"message\": \"Hey, let's be friends!\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/request"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/request"
 							}
 						},
 						{
@@ -836,7 +836,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/request/accept"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/request/accept"
 							}
 						},
 						{
@@ -857,7 +857,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/request/decline"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/request/decline"
 							}
 						},
 						{
@@ -870,7 +870,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/friends"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/friends"
 							}
 						},
 						{
@@ -883,7 +883,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/incoming"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/incoming"
 							}
 						},
 						{
@@ -896,7 +896,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/outgoing"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/outgoing"
 							}
 						},
 						{
@@ -909,7 +909,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/blocked"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/blocked"
 							}
 						},
 						{
@@ -922,7 +922,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/{{target_user_id}}"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/{{target_user_id}}"
 							}
 						},
 						{
@@ -943,7 +943,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"target_user_id\": \"{{target_user_id}}\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/block"
 							}
 						},
 						{
@@ -956,7 +956,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/block/{{target_user_id}}"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/block/{{target_user_id}}"
 							}
 						},
 						{
@@ -969,7 +969,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/relationships/friend/{{target_user_id}}"
+								"url": "http://localhost/api/v1/users/{{user_id}}/relationships/friend/{{target_user_id}}"
 							}
 						}
 					]
@@ -995,7 +995,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"status\": \"online\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/status"
+								"url": "http://localhost/api/v1/users/{{user_id}}/status"
 							}
 						},
 						{
@@ -1016,7 +1016,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"text\": \"Coding...\",\n    \"emoji\": \"👨‍💻\"\n}"
 								},
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/custom-status"
+								"url": "http://localhost/api/v1/users/{{user_id}}/custom-status"
 							}
 						},
 						{
@@ -1029,7 +1029,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8082/api/v1/users/{{user_id}}/custom-status"
+								"url": "http://localhost/api/v1/users/{{user_id}}/custom-status"
 							}
 						}
 					]
@@ -1060,7 +1060,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"name\": \"My Guild\",\n    \"description\": \"A cool guild\"\n}"
 								},
-								"url": "http://localhost:8086/api/v1/guilds"
+								"url": "http://localhost/api/v1/guilds"
 							}
 						},
 						{
@@ -1073,7 +1073,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/search?query=test&limit=10&offset=0"
+								"url": "http://localhost/api/v1/guilds/search?query=test&limit=10&offset=0"
 							}
 						},
 						{
@@ -1086,7 +1086,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}"
 							}
 						},
 						{
@@ -1107,7 +1107,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"name\": \"Updated Guild Name\",\n    \"description\": \"Updated description\"\n}"
 								},
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}"
 							}
 						},
 						{
@@ -1120,7 +1120,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}"
 							}
 						}
 					]
@@ -1138,7 +1138,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/members"
 							}
 						},
 						{
@@ -1151,7 +1151,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/members/{{user_id}}"
 							}
 						},
 						{
@@ -1164,7 +1164,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/@me"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/members/@me"
 							}
 						},
 						{
@@ -1177,7 +1177,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/members/{{user_id}}"
 							}
 						},
 						{
@@ -1198,7 +1198,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"role_id\": \"{{role_id}}\"\n}"
 								},
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}/roles"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/members/{{user_id}}/roles"
 							}
 						},
 						{
@@ -1211,7 +1211,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/members/{{user_id}}/roles/{{role_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/members/{{user_id}}/roles/{{role_id}}"
 							}
 						}
 					]
@@ -1237,7 +1237,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"name\": \"Moderator\",\n    \"color\": \"#FF5733\",\n    \"permissions\": 0\n}"
 								},
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/roles"
 							}
 						},
 						{
@@ -1250,7 +1250,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/roles"
 							}
 						},
 						{
@@ -1263,7 +1263,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
 							}
 						},
 						{
@@ -1284,7 +1284,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"name\": \"Senior Moderator\",\n    \"color\": \"#C70039\"\n}"
 								},
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
 							}
 						},
 						{
@@ -1297,7 +1297,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/roles/{{role_id}}"
 							}
 						}
 					]
@@ -1323,7 +1323,7 @@
 									"mode": "raw",
 									"raw": "{\n    \"max_uses\": 10,\n    \"expires_in_hours\": 24\n}"
 								},
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/invites"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/invites"
 							}
 						},
 						{
@@ -1336,7 +1336,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/invites"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/invites"
 							}
 						},
 						{
@@ -1349,7 +1349,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/guilds/{{guild_id}}/invites/{{invite_code}}"
+								"url": "http://localhost/api/v1/guilds/{{guild_id}}/invites/{{invite_code}}"
 							}
 						},
 						{
@@ -1357,7 +1357,7 @@
 							"request": {
 								"method": "GET",
 								"header": [],
-								"url": "http://localhost:8086/api/v1/invites/{{invite_code}}"
+								"url": "http://localhost/api/v1/invites/{{invite_code}}"
 							}
 						},
 						{
@@ -1370,7 +1370,7 @@
 										"value": "Bearer {{access_token}}"
 									}
 								],
-								"url": "http://localhost:8086/api/v1/invites/{{invite_code}}/use"
+								"url": "http://localhost/api/v1/invites/{{invite_code}}/use"
 							}
 						}
 					]
