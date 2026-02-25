@@ -110,7 +110,12 @@ impl UserProfileClient for UserGrpcClient {
                     message = %e.message(),
                     "gRPC create_user_profile failed"
                 );
-                AuthApplicationError::UserServiceError(e.to_string())
+                match e.code() {
+                    tonic::Code::AlreadyExists => {
+                        AuthApplicationError::UsernameAlreadyExists(e.message().to_string())
+                    }
+                    _ => AuthApplicationError::UserServiceError(e.to_string()),
+                }
             })?
             .into_inner();
 

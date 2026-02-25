@@ -2,6 +2,7 @@ use std::sync::Arc;
 use tonic::{Request, Response, Status};
 use uuid::Uuid;
 
+use crate::application::services::user_profile::UserProfileServiceError;
 use crate::application::services::{
     UserPrivacyService, UserProfileService, UserRelationshipService,
 };
@@ -68,7 +69,15 @@ impl UserService for UserServiceGrpc {
             .profile_service
             .create_profile(req.username, req.display_name)
             .await
-            .map_err(|e| Status::internal(e.to_string()))?;
+            .map_err(|e| match e {
+                UserProfileServiceError::UsernameAlreadyTaken => {
+                    Status::already_exists(e.to_string())
+                }
+                UserProfileServiceError::InvalidUsername(_) => {
+                    Status::invalid_argument(e.to_string())
+                }
+                _ => Status::internal(e.to_string()),
+            })?;
 
         Ok(Response::new(to_proto_response(&profile)))
     }

@@ -71,7 +71,6 @@ clean: ## Remove all containers, volumes, and networks
 	@$(COMPOSE) down -v
 	@docker rm -f $$(docker ps -aq) 2>/dev/null || true
 	@docker volume rm $$(docker volume ls -q | grep hermes) 2>/dev/null || true
-	@docker network prune -f
 	@echo -e "$(GREEN)✅ Cleanup completed$(NC)"
 
 docker-clean: clean ## Alias for clean
