@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-seed-user db-seed-guild db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-seed db-seed-auth db-seed-user db-seed-guild db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell sqlx-prepare
 
 # Colors for output
 BLUE := \033[0;34m
@@ -135,6 +135,11 @@ proto-clean-user:
 	@echo -e "$(GREEN)✅ User cleaned$(NC)"
 
 ##@ Database
+
+sqlx-prepare: ## Generate SQLx offline metadata (run once before first Docker build)
+	@echo -e "$(BLUE)🗄️  Preparing SQLx offline metadata...$(NC)"
+	@cargo sqlx prepare --workspace
+	@echo -e "$(GREEN)✅ Done. Commit the .sqlx/ directories.$(NC)"
 
 db-migrate: db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel ## Run all database migrations
 	@echo -e "$(GREEN)✅ All migrations completed$(NC)"

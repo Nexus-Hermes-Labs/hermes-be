@@ -1,0 +1,21 @@
+# Rust build artifacts (huge — exclude to speed up Docker context transfer)
+target/
+
+# Dev / local files
+.env
+.env.*
+!.env.example
+
+# Test reports
+reports/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore

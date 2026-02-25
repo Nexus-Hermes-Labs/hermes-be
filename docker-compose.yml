@@ -112,18 +112,222 @@ services:
     networks:
       - hermes-network
 
+  # ─── Rust Microservices ────────────────────────────────────────────────────
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: auth-service
+    container_name: hermes-auth-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_SERVICE__NAME: auth-service
+      APP_SERVICE__VERSION: "1.0.0"
+      APP_SERVICE__HOST: "0.0.0.0"
+      APP_SERVICE__PORT: "8081"
+      APP_SERVICE__GRPC_PORT: "50051"
+      APP_SERVICE__ENVIRONMENT: development
+      APP_DATABASE__HOST: hermes-postgres
+      APP_REDIS__HOST: hermes-redis
+      APP_NATS__SERVERS: hermes-nats:4222
+      APP_SMTP__HOST: hermes-mailpit
+      APP_GRPC_ENDPOINTS__USER_SERVICE: http://hermes-user-service:50052
+    ports:
+      - "8081:8081"
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - hermes-network
+
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: user-service
+    container_name: hermes-user-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_SERVICE__NAME: user-service
+      APP_SERVICE__VERSION: "1.0.0"
+      APP_SERVICE__HOST: "0.0.0.0"
+      APP_SERVICE__PORT: "8082"
+      APP_SERVICE__GRPC_PORT: "50052"
+      APP_SERVICE__ENVIRONMENT: development
+      APP_DATABASE__HOST: hermes-postgres
+      APP_REDIS__HOST: hermes-redis
+      APP_NATS__SERVERS: hermes-nats:4222
+      APP_SMTP__HOST: hermes-mailpit
+      APP_GRPC_ENDPOINTS__AUTH_SERVICE: http://hermes-auth-service:50051
+    ports:
+      - "8082:8082"
+      - "50052:50052"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - hermes-network
+
+  channel-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: channel-service
+    container_name: hermes-channel-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_SERVICE__NAME: channel-service
+      APP_SERVICE__VERSION: "1.0.0"
+      APP_SERVICE__HOST: "0.0.0.0"
+      APP_SERVICE__PORT: "8083"
+      APP_SERVICE__GRPC_PORT: "50053"
+      APP_SERVICE__ENVIRONMENT: development
+      APP_DATABASE__HOST: hermes-postgres
+      APP_REDIS__HOST: hermes-redis
+      APP_NATS__SERVERS: hermes-nats:4222
+      APP_SMTP__HOST: hermes-mailpit
+      APP_GRPC_ENDPOINTS__GUILD_SERVICE: http://hermes-guild-service:50056
+    ports:
+      - "8083:8083"
+      - "50053:50053"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - hermes-network
+
+  guild-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: guild-service
+    container_name: hermes-guild-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_SERVICE__NAME: guild-service
+      APP_SERVICE__VERSION: "1.0.0"
+      APP_SERVICE__HOST: "0.0.0.0"
+      APP_SERVICE__PORT: "8086"
+      APP_SERVICE__GRPC_PORT: "50056"
+      APP_SERVICE__ENVIRONMENT: development
+      APP_DATABASE__HOST: hermes-postgres
+      APP_REDIS__HOST: hermes-redis
+      APP_NATS__SERVERS: hermes-nats:4222
+      APP_SMTP__HOST: hermes-mailpit
+      APP_GRPC_ENDPOINTS__USER_SERVICE: http://hermes-user-service:50052
+    ports:
+      - "8086:8086"
+      - "50056:50056"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - hermes-network
+
+  # ─── Stub services (traefik/whoami placeholder until implemented) ───────────
+
+  chat-service:
+    image: traefik/whoami
+    container_name: hermes-chat-service
+    restart: unless-stopped
+    command: --port=8084
+    networks:
+      - hermes-network
+
+  voice-service:
+    image: traefik/whoami
+    container_name: hermes-voice-service
+    restart: unless-stopped
+    command: --port=8085
+    networks:
+      - hermes-network
+
+  presence-service:
+    image: traefik/whoami
+    container_name: hermes-presence-service
+    restart: unless-stopped
+    command: --port=8087
+    networks:
+      - hermes-network
+
+  realtime-service:
+    image: traefik/whoami
+    container_name: hermes-realtime-service
+    restart: unless-stopped
+    command: --port=8080
+    networks:
+      - hermes-network
+
+  media-service:
+    image: traefik/whoami
+    container_name: hermes-media-service
+    restart: unless-stopped
+    command: --port=8088
+    networks:
+      - hermes-network
+
+  notification-service:
+    image: traefik/whoami
+    container_name: hermes-notification-service
+    restart: unless-stopped
+    command: --port=8089
+    networks:
+      - hermes-network
+
+  search-service:
+    image: traefik/whoami
+    container_name: hermes-search-service
+    restart: unless-stopped
+    command: --port=8090
+    networks:
+      - hermes-network
+
+  ai-service:
+    image: traefik/whoami
+    container_name: hermes-ai-service
+    restart: unless-stopped
+    command: --port=8091
+    networks:
+      - hermes-network
+
+  # ─── API Testing ───────────────────────────────────────────────────────────
+
   # Schemathesis API Tester (only starts with: --profile testing)
   schemathesis:
     image: schemathesis/schemathesis:stable
     container_name: hermes-schemathesis
     profiles:
       - testing
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     environment:
-      AUTH_URL: "${AUTH_URL:-http://host.docker.internal:8081}"
-      USER_URL: "${USER_URL:-http://host.docker.internal:8082}"
-      GUILD_URL: "${GUILD_URL:-http://host.docker.internal:8086}"
+      AUTH_URL: "${AUTH_URL:-http://hermes-auth-service:8081}"
+      USER_URL: "${USER_URL:-http://hermes-user-service:8082}"
+      GUILD_URL: "${GUILD_URL:-http://hermes-guild-service:8086}"
     volumes:
       - ./reports:/reports
     networks:
@@ -138,5 +342,4 @@ volumes:
 
 networks:
   hermes-network:
-    name: hermes-network
-    driver: bridge
+    external: true
