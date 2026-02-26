@@ -203,11 +203,7 @@ pub async fn get_my_guilds(
     State(state): State<AppState>,
     RequestUser { id: user_id, .. }: RequestUser,
 ) -> Result<Json<GuildListResponse>, ApiError> {
-    let guild_ids = state
-        .guild
-        .member_service
-        .get_user_guilds(user_id)
-        .await?;
+    let guild_ids = state.guild.member_service.get_user_guilds(user_id).await?;
 
     let mut guilds = Vec::with_capacity(guild_ids.len());
     for id in guild_ids {

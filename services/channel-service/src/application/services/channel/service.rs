@@ -107,30 +107,14 @@ impl ChannelService {
         &self,
         guild_id: Uuid,
     ) -> Result<(Channel, Channel), ChannelServiceError> {
-        let text_name =
-            ChannelName::new("general").map_err(ChannelServiceError::DomainError)?;
-        let voice_name =
-            ChannelName::new("General").map_err(ChannelServiceError::DomainError)?;
+        let text_name = ChannelName::new("general").map_err(ChannelServiceError::DomainError)?;
+        let voice_name = ChannelName::new("General").map_err(ChannelServiceError::DomainError)?;
 
-        let text_channel = Channel::new(
-            guild_id,
-            None,
-            text_name,
-            ChannelType::Text,
-            None,
-            1,
-        )
-        .map_err(ChannelServiceError::DomainError)?;
+        let text_channel = Channel::new(guild_id, None, text_name, ChannelType::Text, None, 1)
+            .map_err(ChannelServiceError::DomainError)?;
 
-        let voice_channel = Channel::new(
-            guild_id,
-            None,
-            voice_name,
-            ChannelType::Voice,
-            None,
-            2,
-        )
-        .map_err(ChannelServiceError::DomainError)?;
+        let voice_channel = Channel::new(guild_id, None, voice_name, ChannelType::Voice, None, 2)
+            .map_err(ChannelServiceError::DomainError)?;
 
         self.channel_repo
             .save(&text_channel)

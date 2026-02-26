@@ -97,7 +97,11 @@ pub async fn use_invite(
         return Err(ApiError::bad_request("Invalid invite code format"));
     }
     let member = state.guild.invite_service.use_invite(code, user_id).await?;
-    let guild = state.guild.guild_service.get_guild(member.guild_id()).await?;
+    let guild = state
+        .guild
+        .guild_service
+        .get_guild(member.guild_id())
+        .await?;
     Ok(Json(GuildResponse::from(guild)))
 }
 
