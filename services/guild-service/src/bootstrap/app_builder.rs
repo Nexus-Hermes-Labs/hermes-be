@@ -4,7 +4,7 @@ use crate::domain::guild::GuildRepository;
 use crate::domain::guild_invite::GuildInviteRepository;
 use crate::domain::guild_member::GuildMemberRepository;
 use crate::domain::guild_role::GuildRoleRepository;
-use crate::infrastructure::grpc::UserGrpcClient;
+use crate::infrastructure::grpc::{ChannelGrpcClient, UserGrpcClient};
 use crate::infrastructure::persistence::{
     PostgresGuildInviteRepository, PostgresGuildMemberRepository, PostgresGuildRepository,
     PostgresGuildRoleRepository,
@@ -116,6 +116,25 @@ impl AppBuilder {
             BootstrapError::Infrastructure(format!("Invalid user-service gRPC endpoint: {e}"))
         })?);
 
+        // Connect (lazily) to channel-service gRPC for default channel creation
+        let channel_grpc_url = config()
+            .grpc_endpoints
+            .channel_service
+            .as_deref()
+            .ok_or_else(|| {
+                BootstrapError::Configuration(
+                    "APP_GRPC_ENDPOINTS__CHANNEL_SERVICE is not set".to_string(),
+                )
+            })?
+            .to_string();
+
+        let channel_grpc_client =
+            Arc::new(ChannelGrpcClient::new(channel_grpc_url).map_err(|e| {
+                BootstrapError::Infrastructure(format!(
+                    "Invalid channel-service gRPC endpoint: {e}"
+                ))
+            })?);
+
         info!("✅ Infrastructure layer ready");
 
         // ========================================
@@ -168,6 +187,7 @@ impl AppBuilder {
             redis,
             metrics,
             user_grpc_client,
+            channel_grpc_client,
         };
 
         let app_state = AppState {

@@ -99,6 +99,52 @@ impl ChannelService {
         Ok(channel)
     }
 
+    /// Create default text + voice channels for a newly created guild.
+    ///
+    /// Skips ownership check — this is an internal service-to-service call
+    /// invoked immediately after guild creation when the guild is brand new.
+    pub async fn create_default_channels(
+        &self,
+        guild_id: Uuid,
+    ) -> Result<(Channel, Channel), ChannelServiceError> {
+        let text_name =
+            ChannelName::new("general").map_err(ChannelServiceError::DomainError)?;
+        let voice_name =
+            ChannelName::new("General").map_err(ChannelServiceError::DomainError)?;
+
+        let text_channel = Channel::new(
+            guild_id,
+            None,
+            text_name,
+            ChannelType::Text,
+            None,
+            1,
+        )
+        .map_err(ChannelServiceError::DomainError)?;
+
+        let voice_channel = Channel::new(
+            guild_id,
+            None,
+            voice_name,
+            ChannelType::Voice,
+            None,
+            2,
+        )
+        .map_err(ChannelServiceError::DomainError)?;
+
+        self.channel_repo
+            .save(&text_channel)
+            .await
+            .map_err(|e| ChannelServiceError::RepositoryError(e.to_string()))?;
+
+        self.channel_repo
+            .save(&voice_channel)
+            .await
+            .map_err(|e| ChannelServiceError::RepositoryError(e.to_string()))?;
+
+        Ok((text_channel, voice_channel))
+    }
+
     /// Get a channel by ID.
     pub async fn get_channel(&self, channel_id: Uuid) -> Result<Channel, ChannelServiceError> {
         self.channel_repo

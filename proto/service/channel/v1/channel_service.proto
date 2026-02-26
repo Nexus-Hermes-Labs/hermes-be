@@ -29,6 +29,9 @@ service ChannelService {
 
   /// Delete channel
   rpc DeleteChannel(DeleteChannelRequest) returns (google.protobuf.Empty);
+
+  /// Create default text + voice channels for a new guild (internal service call)
+  rpc CreateDefaultChannels(CreateDefaultChannelsRequest) returns (CreateDefaultChannelsResponse);
 }
 
 // ============================================
@@ -72,6 +75,15 @@ message UpdateChannelRequest {
 
 message DeleteChannelRequest {
   string channel_id = 1;
+}
+
+message CreateDefaultChannelsRequest {
+  string guild_id = 1;
+}
+
+message CreateDefaultChannelsResponse {
+  ChannelResponse text_channel = 1;
+  ChannelResponse voice_channel = 2;
 }
 
 message ChannelResponse {

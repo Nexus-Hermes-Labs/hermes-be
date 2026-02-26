@@ -237,6 +237,7 @@ services:
       APP_NATS__SERVERS: hermes-nats:4222
       APP_SMTP__HOST: hermes-mailpit
       APP_GRPC_ENDPOINTS__USER_SERVICE: http://hermes-user-service:50052
+      APP_GRPC_ENDPOINTS__CHANNEL_SERVICE: http://hermes-channel-service:50053
     ports:
       - "8086:8086"
       - "50056:50056"

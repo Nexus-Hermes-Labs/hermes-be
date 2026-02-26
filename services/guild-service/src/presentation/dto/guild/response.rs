@@ -47,6 +47,16 @@ impl From<Guild> for GuildResponse {
     }
 }
 
+/// Response returned when a guild is first created, including the ID of the
+/// default text channel so the client can navigate directly into the guild.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CreateGuildResponse {
+    #[serde(flatten)]
+    pub guild: GuildResponse,
+    /// ID of the default `#general` text channel created with the guild.
+    pub first_channel_id: Uuid,
+}
+
 /// Paginated list of guilds returned from a search.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct GuildListResponse {

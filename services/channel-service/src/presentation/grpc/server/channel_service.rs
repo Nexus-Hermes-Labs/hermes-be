@@ -5,7 +5,8 @@ use uuid::Uuid;
 use crate::application::ChannelService;
 use crate::presentation::grpc::proto::channel::v1::channel_service_server::ChannelService as ChannelServiceTrait;
 use crate::presentation::grpc::proto::channel::v1::{
-    ChannelResponse, CreateChannelRequest, DeleteChannelRequest, GetChannelRequest,
+    ChannelResponse, CreateChannelRequest, CreateDefaultChannelsRequest,
+    CreateDefaultChannelsResponse, DeleteChannelRequest, GetChannelRequest,
     ListGuildChannelsRequest, ListGuildChannelsResponse, UpdateChannelRequest,
 };
 
@@ -197,5 +198,25 @@ impl ChannelServiceTrait for ChannelServiceGrpc {
             .map_err(|e| Status::internal(e.to_string()))?;
 
         Ok(Response::new(()))
+    }
+
+    async fn create_default_channels(
+        &self,
+        request: Request<CreateDefaultChannelsRequest>,
+    ) -> Result<Response<CreateDefaultChannelsResponse>, Status> {
+        let req = request.into_inner();
+        let guild_id = Uuid::parse_str(&req.guild_id)
+            .map_err(|_| Status::invalid_argument("Invalid guild_id"))?;
+
+        let (text_channel, voice_channel) = self
+            .channel_service
+            .create_default_channels(guild_id)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
+
+        Ok(Response::new(CreateDefaultChannelsResponse {
+            text_channel: Some(channel_to_proto(&text_channel)),
+            voice_channel: Some(channel_to_proto(&voice_channel)),
+        }))
     }
 }

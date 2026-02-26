@@ -18,5 +18,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &["../../proto"],
         )?;
 
+    // Compile channel-service proto (client only, for creating default channels)
+    tonic_build::configure()
+        .build_server(false)
+        .build_client(true)
+        .compile(
+            &["../../proto/service/channel/v1/channel_service.proto"],
+            &["../../proto"],
+        )?;
+
     Ok(())
 }

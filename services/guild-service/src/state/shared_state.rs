@@ -1,4 +1,4 @@
-use crate::infrastructure::grpc::UserGrpcClient;
+use crate::infrastructure::grpc::{ChannelGrpcClient, UserGrpcClient};
 use common::observability::Metrics;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -15,4 +15,6 @@ pub struct SharedState {
     pub metrics: Metrics,
     /// Lazy gRPC client for user-service (profile lookups, existence checks).
     pub user_grpc_client: Arc<UserGrpcClient>,
+    /// Lazy gRPC client for channel-service (creating default channels on guild creation).
+    pub channel_grpc_client: Arc<ChannelGrpcClient>,
 }

@@ -4,13 +4,14 @@ use axum::{
 };
 
 use crate::presentation::http::handlers::guild::{
-    create_guild, delete_guild, get_guild, search_guilds, update_guild,
+    create_guild, delete_guild, get_guild, get_my_guilds, search_guilds, update_guild,
 };
 use crate::state::AppState;
 
 pub fn guild_routes() -> Router<AppState> {
     Router::new()
         .route("/guilds", post(create_guild))
+        .route("/guilds/@me", get(get_my_guilds))
         .route("/guilds/search", get(search_guilds))
         .route("/guilds/:guild_id", get(get_guild))
         .route("/guilds/:guild_id", patch(update_guild))

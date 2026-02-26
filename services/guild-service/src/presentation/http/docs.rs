@@ -34,6 +34,7 @@ use common::observability::health::{
     paths(
         // Guild
         create_guild,
+        get_my_guilds,
         get_guild,
         update_guild,
         delete_guild,
@@ -66,6 +67,7 @@ use common::observability::health::{
         CreateGuildRequest,
         UpdateGuildRequest,
         GuildResponse,
+        CreateGuildResponse,
         GuildListResponse,
         KickMemberRequest,
         AssignRoleRequest,

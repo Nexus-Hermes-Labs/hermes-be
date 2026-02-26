@@ -10,7 +10,9 @@ use crate::domain::guild::GuildVisibility;
 use crate::presentation::dto::guild::request::{
     CreateGuildRequest, SearchGuildsRequest, UpdateGuildRequest,
 };
-use crate::presentation::dto::guild::response::{GuildListResponse, GuildResponse};
+use crate::presentation::dto::guild::response::{
+    CreateGuildResponse, GuildListResponse, GuildResponse,
+};
 use crate::state::AppState;
 use common::middleware::authentication::RequestUser;
 
@@ -22,7 +24,7 @@ use super::error::ApiError;
     path = "/api/v1/guilds",
     request_body = CreateGuildRequest,
     responses(
-        (status = 201, description = "Guild created", body = GuildResponse),
+        (status = 201, description = "Guild created with default channels", body = CreateGuildResponse),
         (status = 400, description = "Invalid input"),
         (status = 401, description = "Unauthorized"),
         (status = 422, description = "Validation failed")
@@ -33,7 +35,7 @@ pub async fn create_guild(
     State(state): State<AppState>,
     RequestUser { id: owner_id, .. }: RequestUser,
     Json(request): Json<CreateGuildRequest>,
-) -> Result<(StatusCode, Json<GuildResponse>), ApiError> {
+) -> Result<(StatusCode, Json<CreateGuildResponse>), ApiError> {
     request.validate()?;
 
     if request.name.contains('\0') {
@@ -42,12 +44,35 @@ pub async fn create_guild(
         ));
     }
 
-    let service = &state.guild.guild_service;
-    let guild = service
+    let guild = state
+        .guild
+        .guild_service
         .create_guild(owner_id, request.name, request.description)
         .await?;
 
-    Ok((StatusCode::CREATED, Json(GuildResponse::from(guild))))
+    let guild_id = guild.id();
+
+    // Ask channel-service to create default text + voice channels via gRPC
+    let channels = state
+        .shared
+        .channel_grpc_client
+        .create_default_channels(guild_id)
+        .await
+        .map_err(|e| ApiError::internal(format!("Failed to create default channels: {e}")))?;
+
+    let first_channel_id = channels
+        .text_channel
+        .as_ref()
+        .and_then(|c| c.id.parse::<Uuid>().ok())
+        .ok_or_else(|| ApiError::internal("channel-service returned no text channel"))?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateGuildResponse {
+            guild: GuildResponse::from(guild),
+            first_channel_id,
+        }),
+    ))
 }
 
 /// GET /`api/v1/guilds/:guild_id`
@@ -162,6 +187,42 @@ pub async fn delete_guild(
         .delete_guild(guild_id, requester_id)
         .await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// GET /api/v1/guilds/@me — guilds the authenticated user is a member of
+#[utoipa::path(
+    get,
+    path = "/api/v1/guilds/@me",
+    responses(
+        (status = 200, description = "User's guilds", body = GuildListResponse),
+        (status = 401, description = "Unauthorized"),
+    ),
+    tag = "guilds"
+)]
+pub async fn get_my_guilds(
+    State(state): State<AppState>,
+    RequestUser { id: user_id, .. }: RequestUser,
+) -> Result<Json<GuildListResponse>, ApiError> {
+    let guild_ids = state
+        .guild
+        .member_service
+        .get_user_guilds(user_id)
+        .await?;
+
+    let mut guilds = Vec::with_capacity(guild_ids.len());
+    for id in guild_ids {
+        if let Ok(g) = state.guild.guild_service.get_guild(id).await {
+            guilds.push(GuildResponse::from(g));
+        }
+    }
+
+    let total = i64::try_from(guilds.len()).unwrap_or(i64::MAX);
+    Ok(Json(GuildListResponse {
+        guilds,
+        total,
+        limit: total,
+        offset: 0,
+    }))
 }
 
 /// GET /api/v1/guilds/search?query=...&limit=20&offset=0
