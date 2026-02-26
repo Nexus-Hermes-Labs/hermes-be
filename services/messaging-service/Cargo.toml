@@ -1,0 +1,118 @@
+# Messaging Service - Cargo.toml
+# Handles messages, reactions, and conversations (DM / Group DM)
+
+[package]
+name = "messaging-service"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "messaging-service"
+path = "src/main.rs"
+
+[dependencies]
+# ============================================================================
+# LOCAL DEPENDENCIES
+# ============================================================================
+common       = { path = "../common" }
+common-config = { path = "../common/common-config" }
+
+# ============================================================================
+# WEB FRAMEWORK
+# ============================================================================
+axum         = { workspace = true }
+axum-extra   = { workspace = true }
+tokio        = { workspace = true }
+tower        = { workspace = true }
+tower-http   = { workspace = true }
+
+# ============================================================================
+# GRPC (Inter-service Communication)
+# ============================================================================
+tonic        = { workspace = true }
+prost        = { workspace = true }
+prost-types  = { workspace = true }
+
+# ============================================================================
+# DATABASE
+# ============================================================================
+sqlx         = { workspace = true }
+
+# ============================================================================
+# SERIALIZATION & VALIDATION
+# ============================================================================
+serde        = { workspace = true }
+serde_json   = { workspace = true }
+validator    = { workspace = true }
+
+# ============================================================================
+# ERROR HANDLING
+# ============================================================================
+thiserror    = { workspace = true }
+anyhow       = { workspace = true }
+
+# ============================================================================
+# LOGGING & OBSERVABILITY
+# ============================================================================
+tracing      = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# ============================================================================
+# METRICS
+# ============================================================================
+metrics                    = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+
+# ============================================================================
+# TIME & UUID
+# ============================================================================
+uuid         = { workspace = true }
+chrono       = { workspace = true }
+
+# ============================================================================
+# REDIS
+# ============================================================================
+redis        = { workspace = true }
+
+# ============================================================================
+# NATS (publishing message / conversation events)
+# ============================================================================
+async-nats   = { workspace = true }
+
+# ============================================================================
+# ASYNC
+# ============================================================================
+async-trait  = { workspace = true }
+
+# ============================================================================
+# API DOCUMENTATION
+# ============================================================================
+utoipa             = { workspace = true }
+utoipa-swagger-ui  = { workspace = true }
+once_cell          = { workspace = true }
+
+# ============================================================================
+# TESTING
+# ============================================================================
+[dev-dependencies]
+common               = { path = "../common", features = ["testing"] }
+mockall              = { workspace = true }
+fake                 = { workspace = true }
+rstest               = { workspace = true }
+testcontainers       = { workspace = true }
+testcontainers-modules = { workspace = true }
+http-body-util       = "0.1"
+
+# ============================================================================
+# BUILD DEPENDENCIES (proto compilation)
+# ============================================================================
+[build-dependencies]
+tonic-build = { workspace = true }
+
+[features]
+default = []
+
+[lints]
+workspace = true

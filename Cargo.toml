@@ -8,6 +8,7 @@ members = [
     "services/guild-service",
     "services/channel-service",
     "services/chat-service",
+    "services/messaging-service",
     "services/voice-service",
     "services/presence-service",
     "services/realtime-service",

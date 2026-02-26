@@ -677,16 +677,19 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-nats",
+ "async-trait",
  "axum 0.7.9",
  "axum-extra",
  "chrono",
  "common",
- "config",
- "dotenvy",
+ "common-config",
  "fake",
  "metrics 0.22.4",
  "metrics-exporter-prometheus",
  "mockall",
+ "once_cell",
+ "prost 0.12.6",
+ "prost-types 0.12.6",
  "redis",
  "rstest",
  "serde",
@@ -696,6 +699,8 @@ dependencies = [
  "testcontainers-modules",
  "thiserror 1.0.69",
  "tokio",
+ "tonic 0.11.0",
+ "tonic-build",
  "tower 0.4.13",
  "tower-http",
  "tracing",
@@ -2356,6 +2361,47 @@ name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
+
+[[package]]
+name = "messaging-service"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "async-trait",
+ "axum 0.7.9",
+ "axum-extra",
+ "chrono",
+ "common",
+ "common-config",
+ "fake",
+ "http-body-util",
+ "metrics 0.22.4",
+ "metrics-exporter-prometheus",
+ "mockall",
+ "once_cell",
+ "prost 0.12.6",
+ "prost-types 0.12.6",
+ "redis",
+ "rstest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "testcontainers",
+ "testcontainers-modules",
+ "thiserror 1.0.69",
+ "tokio",
+ "tonic 0.11.0",
+ "tonic-build",
+ "tower 0.4.13",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "utoipa",
+ "utoipa-swagger-ui",
+ "uuid",
+ "validator",
+]
 
 [[package]]
 name = "metrics"

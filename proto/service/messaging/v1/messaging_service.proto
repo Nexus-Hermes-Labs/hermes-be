@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package messaging.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// ============================================
+// MESSAGING SERVICE
+// ============================================
+
+/// Inter-service API for reading and managing messages.
+/// Consumed by realtime-service (fan-out) and search-service (indexing).
+service MessagingService {
+  // ── Messages ────────────────────────────────────────────────────────────
+
+  /// Cursor-paginated message history for a channel (newest-first)
+  rpc GetChannelMessages(GetChannelMessagesRequest) returns (GetChannelMessagesResponse);
+
+  /// Cursor-paginated message history for a conversation / DM (newest-first)
+  rpc GetConversationMessages(GetConversationMessagesRequest) returns (GetConversationMessagesResponse);
+
+  /// Fetch a single message by ID
+  rpc GetMessage(GetMessageRequest) returns (MessageProto);
+
+  /// Bulk-delete all messages in a channel (called when a channel is deleted)
+  rpc DeleteChannelMessages(DeleteChannelMessagesRequest) returns (google.protobuf.Empty);
+
+  // ── Conversations ────────────────────────────────────────────────────────
+
+  /// Check whether a conversation already exists between two users (DM dedup)
+  rpc FindDirectConversation(FindDirectConversationRequest) returns (FindDirectConversationResponse);
+}
+
+// ============================================
+// MESSAGE MESSAGES
+// ============================================
+
+message GetChannelMessagesRequest {
+  string channel_id = 1;
+  int32  limit      = 2;           // 1–100, default 50
+  optional string before_id = 3;   // cursor: return messages older than this ID
+}
+
+message GetChannelMessagesResponse {
+  repeated MessageProto messages = 1;
+  bool has_more = 2;
+}
+
+message GetConversationMessagesRequest {
+  string conversation_id = 1;
+  int32  limit           = 2;
+  optional string before_id = 3;
+}
+
+message GetConversationMessagesResponse {
+  repeated MessageProto messages = 1;
+  bool has_more = 2;
+}
+
+message GetMessageRequest {
+  string message_id = 1;
+}
+
+message DeleteChannelMessagesRequest {
+  string channel_id = 1;
+}
+
+// ============================================
+// CONVERSATION MESSAGES
+// ============================================
+
+message FindDirectConversationRequest {
+  string user_id_a = 1;
+  string user_id_b = 2;
+}
+
+message FindDirectConversationResponse {
+  optional string conversation_id = 1;  // absent if no DM exists yet
+}
+
+// ============================================
+// SHARED TYPES
+// ============================================
+
+message MessageProto {
+  string id           = 1;
+  /// Set when the message belongs to a guild channel
+  optional string channel_id      = 2;
+  /// Set when the message belongs to a DM / group DM
+  optional string conversation_id = 3;
+  string user_id      = 4;
+  string content      = 5;
+  string message_type = 6;          // "text" | "system"
+  optional string reply_to_id = 7;
+  bool   is_deleted   = 8;
+  google.protobuf.Timestamp created_at = 9;
+  optional google.protobuf.Timestamp edited_at = 10;
+}
