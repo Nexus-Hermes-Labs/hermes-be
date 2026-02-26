@@ -16,13 +16,13 @@ This turns every guild and channel into a multilingual space by default, not as 
 
 ## Architecture Overview
 
-Hermes uses nginx as the edge proxy for REST routing, TLS termination, and rate limiting. Behind nginx, 12 backend services handle domain logic, and a dedicated realtime-service manages WebSocket connections and event fanout.
+Hermes uses Traefik as the edge proxy for REST routing, ForwardAuth JWT validation, and rate limiting. Behind Traefik, 12 backend services handle domain logic, and a dedicated realtime-service manages WebSocket connections and event fanout.
 
 ```
                     Clients
                        |
                 +------+------+
-                |    nginx    |  (REST routing, TLS, rate limit)
+                |   Traefik   |  (REST routing, ForwardAuth, rate limit)
                 +------+------+
                        |
        +-------+-------+-------+-------+
@@ -51,7 +51,7 @@ Hermes uses nginx as the edge proxy for REST routing, TLS termination, and rate 
 
 | Service | Port | Purpose | Phase | Status |
 |---------|------|---------|-------|--------|
-| **nginx** | 80/443 | REST reverse proxy, TLS termination, rate limiting | Infrastructure | ✅ Complete |
+| **Traefik** | 80 (dashboard 8080) | REST reverse proxy, ForwardAuth JWT validation, rate limiting | Infrastructure | ✅ Complete |
 | **auth-service** | 8081 | Authentication, JWT, sessions | MVP | ✅ Complete |
 | **user-service** | 8082 | Profiles, relationships, privacy | MVP | ✅ Complete |
 | **guild-service** | 8086 | Guilds, roles, members, invites, permissions | MVP | ✅ Complete |
@@ -76,7 +76,7 @@ Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        
  | channel-service✅|             +------------------+        |  - TTS       |
  | chat-service 🔧  |                                         +--------------+
  | realtime-svc 🔧  |
- | nginx (infra) ✅ |
+ | Traefik (infra) ✅ |
  +-----------------+
 ```
 
@@ -85,7 +85,7 @@ Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        
 | Layer | Technology |
 |-------|-----------|
 | Language | Rust (stable) |
-| Edge Proxy | nginx (REST routing, TLS, rate limiting, CORS) |
+| Edge Proxy | Traefik v3 (ForwardAuth, rate limiting, routing) |
 | Web Framework | Axum 0.7, Tower middleware |
 | gRPC | Tonic 0.11, Protocol Buffers (Prost 0.12) |
 | Database | PostgreSQL 16 (SQLx 0.8, compile-time checked) |
@@ -97,7 +97,7 @@ Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        
 | API Testing | Schemathesis (property-based, stateful) |
 | Observability | Prometheus + Grafana, tracing |
 | Testing | testcontainers, mockall, fake, rstest |
-| Infrastructure | Docker Compose, nginx |
+| Infrastructure | Docker Compose |
 
 ## API Quality & Testing
 
@@ -123,9 +123,8 @@ All MVP REST APIs are **battle-tested** using [Schemathesis](https://schemathesi
 
 ### Prerequisites
 
-- Rust (stable, 1.75+) -- [install](https://rustup.rs/)
 - Docker and Docker Compose
-- `sqlx-cli` -- `cargo install sqlx-cli --no-default-features --features postgres`
+- `make`
 
 ### Setup
 
@@ -134,27 +133,19 @@ git clone https://github.com/bulutcan99/hermes.git
 cd hermes
 cp .env.example .env
 
-# Start infrastructure and seed the database
-make setup
-
-# Build all services
-cargo build --workspace
-
-# Run a service
-make run-auth
+# Start everything (Traefik + all backend services + infra)
+make dev
 ```
 
-### Available Make Targets
+All services are fully containerized and launched from the root `hermes` repo. Traefik starts as the edge proxy on port 80 (dashboard on port 8080), routing traffic to backend services.
+
+### Development (local builds)
+
+For contributors who want to build or test services locally without Docker:
 
 ```bash
-make setup          # Initial setup (docker + migrate + seed)
-make dev            # Full dev environment
-make up / make down # Start/stop Docker services
-
-make run-auth       # Run individual services (also: run-user, run-guild,
-make run-chat       #   run-channel, run-chat, run-voice, run-presence,
-make run-realtime   #   run-realtime, run-media, run-notification,
-                    #   run-search, run-ai)
+# Prerequisites: Rust (stable, 1.75+), sqlx-cli
+# cargo install sqlx-cli --no-default-features --features postgres
 
 cargo check --workspace              # Quick check
 cargo test --workspace               # Run all tests
@@ -184,7 +175,7 @@ hermes/
 |   +-- ai-service/          # AI translation (stub)
 +-- proto/                   # Protocol Buffer definitions
 +-- infra/
-|   +-- nginx/               # nginx configuration
+|   # Note: Traefik config lives in the root hermes repo (../infra/traefik/)
 |   +-- postgres/             # Database init scripts
 |   +-- prometheus/           # Metrics
 |   +-- grafana/              # Dashboards
@@ -211,8 +202,8 @@ service/
 
 ## Communication Patterns
 
-- **nginx** (edge): REST reverse proxy, TLS termination, rate limiting, CORS, static file serving
-- **HTTP REST** (client-facing): Axum with JSON, JWT bearer auth. Clients hit nginx, which routes to backend services.
+- **Traefik** (edge): REST reverse proxy, ForwardAuth JWT validation via auth-service, rate limiting
+- **HTTP REST** (client-facing): Axum with JSON, JWT bearer auth. Clients hit Traefik, which routes to backend services.
 - **gRPC** (service-to-service): Tonic with Protocol Buffers, compile-time codegen via `build.rs`
 - **NATS** (async events): Cross-service notifications, AI translation pipeline
 - **WebSocket** (real-time): Clients connect to realtime-service for live event streaming. NATS events are fanned out to connected clients.
@@ -223,7 +214,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full development roadmap.
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| Phase 1 | MVP Core (auth, users, guilds, channels, chat, realtime, nginx) | 🔧 In progress |
+| Phase 1 | MVP Core (auth, users, guilds, channels, chat, realtime, Traefik) | 🔧 In progress |
 | Phase 1.5 | Frontend (web client) | 🆕 Starting now |
 | Phase 2 | Real-time and Supporting (presence, media, notifications) | Not started |
 | Phase 3 | AI Innovation (text translation, STT, TTS) | Not started |
