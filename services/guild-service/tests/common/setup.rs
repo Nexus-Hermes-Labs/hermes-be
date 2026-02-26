@@ -157,11 +157,16 @@ impl TestHarness {
             guild_service::infrastructure::grpc::UserGrpcClient::new("http://[::1]:50052")
                 .expect("create user grpc client");
 
+        let channel_grpc_client =
+            guild_service::infrastructure::grpc::ChannelGrpcClient::new("http://[::1]:50053")
+                .expect("create channel grpc client");
+
         let shared_state = SharedState {
             db: pool.clone(),
             redis: redis_conn.clone(),
             metrics,
             user_grpc_client: Arc::new(user_grpc_client),
+            channel_grpc_client: Arc::new(channel_grpc_client),
         };
         let app_state = AppState {
             guild: guild_state,
