@@ -43,11 +43,13 @@ impl ChannelGrpcClient {
         &self,
         guild_id: Uuid,
     ) -> Result<CreateDefaultChannelsResponse, tonic::Status> {
-        let mut client = self.create_client();
         let request = tonic::Request::new(CreateDefaultChannelsRequest {
             guild_id: guild_id.to_string(),
         });
-        let response = client.create_default_channels(request).await?;
+        let response = self
+            .create_client()
+            .create_default_channels(request)
+            .await?;
         Ok(response.into_inner())
     }
 }
