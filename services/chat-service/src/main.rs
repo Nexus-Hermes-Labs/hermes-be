@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("Chat Service is starting...");
