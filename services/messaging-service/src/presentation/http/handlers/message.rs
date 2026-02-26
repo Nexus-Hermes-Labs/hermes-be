@@ -7,7 +7,9 @@ use axum::{
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::presentation::dto::message::request::{EditMessageRequest, GetMessagesQuery, SendMessageRequest};
+use crate::presentation::dto::message::request::{
+    EditMessageRequest, GetMessagesQuery, SendMessageRequest,
+};
 use crate::presentation::dto::message::response::{MessageListResponse, MessageResponse};
 use crate::state::AppState;
 use common::middleware::authentication::RequestUser;
@@ -140,7 +142,12 @@ pub async fn send_conversation_message(
     let message = state
         .messaging
         .message_service
-        .send_conversation_message(conversation_id, user_id, request.content, request.reply_to_id)
+        .send_conversation_message(
+            conversation_id,
+            user_id,
+            request.content,
+            request.reply_to_id,
+        )
         .await?;
 
     Ok((StatusCode::CREATED, Json(MessageResponse::from(message))))
@@ -164,7 +171,9 @@ pub async fn send_conversation_message(
 )]
 pub async fn edit_message(
     State(state): State<AppState>,
-    RequestUser { id: requester_id, .. }: RequestUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(message_id): Path<Uuid>,
     Json(request): Json<EditMessageRequest>,
 ) -> Result<Json<MessageResponse>, ApiError> {
@@ -194,7 +203,9 @@ pub async fn edit_message(
 )]
 pub async fn delete_message(
     State(state): State<AppState>,
-    RequestUser { id: requester_id, .. }: RequestUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Path(message_id): Path<Uuid>,
 ) -> Result<StatusCode, ApiError> {
     state

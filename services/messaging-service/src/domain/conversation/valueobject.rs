@@ -13,7 +13,7 @@ impl ConversationType {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::Dm      => "dm",
+            Self::Dm => "dm",
             Self::GroupDm => "group_dm",
         }
     }
@@ -29,9 +29,9 @@ impl FromStr for ConversationType {
     type Err = ConversationError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "dm"       => Ok(Self::Dm),
+            "dm" => Ok(Self::Dm),
             "group_dm" => Ok(Self::GroupDm),
-            _          => Err(ConversationError::InvalidConversationType),
+            _ => Err(ConversationError::InvalidConversationType),
         }
     }
 }

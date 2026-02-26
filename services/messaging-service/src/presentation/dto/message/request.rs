@@ -20,7 +20,7 @@ pub struct EditMessageRequest {
 pub struct GetMessagesQuery {
     #[validate(range(min = 1, max = 100))]
     #[serde(default = "default_limit")]
-    pub limit:     i64,
+    pub limit: i64,
     pub before_id: Option<Uuid>,
 }
 

@@ -38,13 +38,29 @@ impl Conversation {
         conversation_type: ConversationType,
         created_at: DateTime<Utc>,
     ) -> Self {
-        Self { id, conversation_type, created_at }
+        Self {
+            id,
+            conversation_type,
+            created_at,
+        }
     }
 
-    #[must_use] pub const fn id(&self) -> Uuid { self.id }
-    #[must_use] pub const fn conversation_type(&self) -> ConversationType { self.conversation_type }
-    #[must_use] pub const fn created_at(&self) -> DateTime<Utc> { self.created_at }
-    #[must_use] pub const fn is_dm(&self) -> bool { matches!(self.conversation_type, ConversationType::Dm) }
+    #[must_use]
+    pub const fn id(&self) -> Uuid {
+        self.id
+    }
+    #[must_use]
+    pub const fn conversation_type(&self) -> ConversationType {
+        self.conversation_type
+    }
+    #[must_use]
+    pub const fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+    #[must_use]
+    pub const fn is_dm(&self) -> bool {
+        matches!(self.conversation_type, ConversationType::Dm)
+    }
 }
 
 /// Conversation membership record.
@@ -58,17 +74,38 @@ pub struct ConversationMember {
 impl ConversationMember {
     #[must_use]
     pub fn new(conversation_id: Uuid, user_id: Uuid) -> Self {
-        Self { conversation_id, user_id, joined_at: Utc::now() }
+        Self {
+            conversation_id,
+            user_id,
+            joined_at: Utc::now(),
+        }
     }
 
     #[must_use]
-    pub const fn from_persisted(conversation_id: Uuid, user_id: Uuid, joined_at: DateTime<Utc>) -> Self {
-        Self { conversation_id, user_id, joined_at }
+    pub const fn from_persisted(
+        conversation_id: Uuid,
+        user_id: Uuid,
+        joined_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            conversation_id,
+            user_id,
+            joined_at,
+        }
     }
 
-    #[must_use] pub const fn conversation_id(&self) -> Uuid { self.conversation_id }
-    #[must_use] pub const fn user_id(&self) -> Uuid { self.user_id }
-    #[must_use] pub const fn joined_at(&self) -> DateTime<Utc> { self.joined_at }
+    #[must_use]
+    pub const fn conversation_id(&self) -> Uuid {
+        self.conversation_id
+    }
+    #[must_use]
+    pub const fn user_id(&self) -> Uuid {
+        self.user_id
+    }
+    #[must_use]
+    pub const fn joined_at(&self) -> DateTime<Utc> {
+        self.joined_at
+    }
 }
 
 /// Validates member list before creating the conversation.

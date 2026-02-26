@@ -17,6 +17,7 @@ path = "src/main.rs"
 # LOCAL DEPENDENCIES
 # ============================================================================
 common = { path = "../common" }
+common-config = { path = "../common/common-config" }
 
 # ============================================================================
 # WEB FRAMEWORK
@@ -26,6 +27,13 @@ axum-extra = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
+
+# ============================================================================
+# GRPC (Inter-service Communication)
+# ============================================================================
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
 
 # ============================================================================
 # DATABASE
@@ -44,12 +52,6 @@ validator = { workspace = true }
 # ============================================================================
 thiserror = { workspace = true }
 anyhow = { workspace = true }
-
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-config = { workspace = true }
-dotenvy = { workspace = true }
 
 # ============================================================================
 # LOGGING & OBSERVABILITY
@@ -80,15 +82,22 @@ redis = { workspace = true }
 async-nats = { workspace = true }
 
 # ============================================================================
+# ASYNC
+# ============================================================================
+async-trait = { workspace = true }
+
+# ============================================================================
 # API DOCUMENTATION
 # ============================================================================
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
+once_cell = { workspace = true }
 
 # ============================================================================
 # TESTING
 # ============================================================================
 [dev-dependencies]
+common = { path = "../common", features = ["testing"] }
 mockall = { workspace = true }
 fake = { workspace = true }
 rstest = { workspace = true }
@@ -96,7 +105,16 @@ testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
 
 # ============================================================================
+# BUILD DEPENDENCIES (proto compilation)
+# ============================================================================
+[build-dependencies]
+tonic-build = { workspace = true }
+
+# ============================================================================
 # FEATURES
 # ============================================================================
 [features]
 default = []
+
+[lints]
+workspace = true

@@ -164,13 +164,11 @@ impl ConversationRepository for PostgresConversationRepository {
     }
 
     async fn remove_member(&self, conversation_id: Uuid, user_id: Uuid) -> Result<(), Self::Error> {
-        sqlx::query(
-            "DELETE FROM conversation_members WHERE conversation_id = $1 AND user_id = $2",
-        )
-        .bind(conversation_id)
-        .bind(user_id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("DELETE FROM conversation_members WHERE conversation_id = $1 AND user_id = $2")
+            .bind(conversation_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 }

@@ -7,7 +7,9 @@ use common::infrastructure::persistence::repository::Repository;
 use super::entity::Reaction;
 
 #[async_trait]
-pub trait ReactionRepository: Repository<Reaction, Uuid, Error = RepositoryError> + Send + Sync {
+pub trait ReactionRepository:
+    Repository<Reaction, Uuid, Error = RepositoryError> + Send + Sync
+{
     async fn find_by_message(&self, message_id: Uuid) -> Result<Vec<Reaction>, Self::Error>;
 
     async fn find_by_message_user_emoji(

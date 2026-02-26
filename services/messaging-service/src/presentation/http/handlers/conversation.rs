@@ -40,7 +40,10 @@ pub async fn get_my_conversations(
 
     let total = conversations.len();
     Ok(Json(ConversationListResponse {
-        conversations: conversations.into_iter().map(ConversationResponse::from).collect(),
+        conversations: conversations
+            .into_iter()
+            .map(ConversationResponse::from)
+            .collect(),
         total,
     }))
 }
@@ -82,7 +85,9 @@ pub async fn get_conversation(
 )]
 pub async fn open_dm(
     State(state): State<AppState>,
-    RequestUser { id: requester_id, .. }: RequestUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Json(request): Json<OpenDmRequest>,
 ) -> Result<Json<ConversationResponse>, ApiError> {
     let conv = state
@@ -108,7 +113,9 @@ pub async fn open_dm(
 )]
 pub async fn create_group_dm(
     State(state): State<AppState>,
-    RequestUser { id: requester_id, .. }: RequestUser,
+    RequestUser {
+        id: requester_id, ..
+    }: RequestUser,
     Json(request): Json<CreateGroupDmRequest>,
 ) -> Result<(StatusCode, Json<ConversationResponse>), ApiError> {
     request.validate()?;
@@ -150,7 +157,12 @@ pub async fn get_conversation_members(
         .get_conversation_members(conversation_id)
         .await?;
 
-    Ok(Json(members.into_iter().map(ConversationMemberResponse::from).collect()))
+    Ok(Json(
+        members
+            .into_iter()
+            .map(ConversationMemberResponse::from)
+            .collect(),
+    ))
 }
 
 /// POST /api/v1/conversations/:conversation_id/members

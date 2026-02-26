@@ -1,9 +1,9 @@
 use tracing::warn;
 use uuid::Uuid;
 
+use crate::domain::conversation::Conversation;
 use crate::domain::message::Message;
 use crate::domain::reaction::Reaction;
-use crate::domain::conversation::Conversation;
 
 /// Fire-and-forget NATS event publisher.
 ///
@@ -92,15 +92,19 @@ impl NatsPublisher {
             "conversation_id": conversation_id,
             "user_id":         user_id,
         });
-        self.publish("hermes.conversation.member.joined", &payload).await;
+        self.publish("hermes.conversation.member.joined", &payload)
+            .await;
     }
 
     // ── Internal ──────────────────────────────────────────────────────────
 
     async fn publish(&self, subject: &str, payload: &serde_json::Value) {
         let bytes = match serde_json::to_vec(payload) {
-            Ok(b)  => b,
-            Err(e) => { warn!("NATS serialize error on {subject}: {e}"); return; }
+            Ok(b) => b,
+            Err(e) => {
+                warn!("NATS serialize error on {subject}: {e}");
+                return;
+            }
         };
         if let Err(e) = self.client.publish(subject.to_string(), bytes.into()).await {
             warn!("NATS publish error on {subject}: {e}");

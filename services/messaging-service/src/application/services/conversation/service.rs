@@ -2,7 +2,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::domain::conversation::{
-    Conversation, ConversationMember, ConversationRepository, validate_members,
+    validate_members, Conversation, ConversationMember, ConversationRepository,
 };
 use crate::domain::ConversationType;
 use crate::infrastructure::NatsPublisher;
@@ -11,12 +11,13 @@ use super::error::ConversationServiceError;
 
 pub struct ConversationService {
     conversation_repo: Arc<dyn ConversationRepository>,
-    nats:              Arc<NatsPublisher>,
+    nats: Arc<NatsPublisher>,
 }
 
 impl std::fmt::Debug for ConversationService {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ConversationService").finish_non_exhaustive()
+        f.debug_struct("ConversationService")
+            .finish_non_exhaustive()
     }
 }
 
@@ -25,7 +26,10 @@ impl ConversationService {
         conversation_repo: Arc<dyn ConversationRepository>,
         nats: Arc<NatsPublisher>,
     ) -> Self {
-        Self { conversation_repo, nats }
+        Self {
+            conversation_repo,
+            nats,
+        }
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -97,7 +101,9 @@ impl ConversationService {
             .await
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
 
-        self.nats.publish_conversation_created(&conversation, &member_ids).await;
+        self.nats
+            .publish_conversation_created(&conversation, &member_ids)
+            .await;
         Ok(conversation)
     }
 
@@ -123,7 +129,9 @@ impl ConversationService {
             .await
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
 
-        self.nats.publish_conversation_created(&conversation, &member_ids).await;
+        self.nats
+            .publish_conversation_created(&conversation, &member_ids)
+            .await;
         Ok(conversation)
     }
 
@@ -156,7 +164,9 @@ impl ConversationService {
             .await
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
 
-        self.nats.publish_conversation_member_joined(conversation_id, user_id).await;
+        self.nats
+            .publish_conversation_member_joined(conversation_id, user_id)
+            .await;
         Ok(())
     }
 

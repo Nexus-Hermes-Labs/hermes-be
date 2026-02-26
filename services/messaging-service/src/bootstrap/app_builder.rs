@@ -24,10 +24,10 @@ use crate::state::AppState;
 #[allow(missing_debug_implementations)]
 pub struct AppBuilder {
     service_name: Option<&'static str>,
-    db_pool:      Option<PgPool>,
-    redis:        Option<redis::aio::ConnectionManager>,
-    metrics:      Option<Metrics>,
-    nats:         Option<async_nats::Client>,
+    db_pool: Option<PgPool>,
+    redis: Option<redis::aio::ConnectionManager>,
+    metrics: Option<Metrics>,
+    nats: Option<async_nats::Client>,
 }
 
 impl Default for AppBuilder {
@@ -41,10 +41,10 @@ impl AppBuilder {
     pub const fn new() -> Self {
         Self {
             service_name: None,
-            db_pool:      None,
-            redis:        None,
-            metrics:      None,
-            nats:         None,
+            db_pool: None,
+            redis: None,
+            metrics: None,
+            nats: None,
         }
     }
 
@@ -120,8 +120,7 @@ impl AppBuilder {
         // ========================================
         // APPLICATION LAYER
         // ========================================
-        let message_service =
-            Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
+        let message_service = Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
         let reaction_service =
             Arc::new(ReactionService::new(reaction_repo, nats_publisher.clone()));
         let conversation_service =
@@ -138,12 +137,15 @@ impl AppBuilder {
             conversation_service.clone(),
         );
         let shared_state = SharedState {
-            db:      db_pool,
+            db: db_pool,
             redis,
             metrics,
-            nats:    nats_client,
+            nats: nats_client,
         };
-        let app_state = AppState { messaging: messaging_state, shared: shared_state };
+        let app_state = AppState {
+            messaging: messaging_state,
+            shared: shared_state,
+        };
 
         info!("✅ Application state composed");
 

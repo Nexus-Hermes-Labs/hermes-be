@@ -7,20 +7,20 @@ use crate::domain::Reaction;
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ReactionResponse {
-    pub id:         Uuid,
+    pub id: Uuid,
     pub message_id: Uuid,
-    pub user_id:    Uuid,
-    pub emoji:      String,
+    pub user_id: Uuid,
+    pub emoji: String,
     pub created_at: DateTime<Utc>,
 }
 
 impl From<Reaction> for ReactionResponse {
     fn from(r: Reaction) -> Self {
         Self {
-            id:         r.id(),
+            id: r.id(),
             message_id: r.message_id(),
-            user_id:    r.user_id(),
-            emoji:      r.emoji().as_str().to_string(),
+            user_id: r.user_id(),
+            emoji: r.emoji().as_str().to_string(),
             created_at: r.created_at(),
         }
     }

@@ -83,21 +83,62 @@ impl Message {
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
     ) -> Self {
-        Self { id, target, user_id, content, message_type, reply_to_id, edited_at, is_deleted, created_at, updated_at }
+        Self {
+            id,
+            target,
+            user_id,
+            content,
+            message_type,
+            reply_to_id,
+            edited_at,
+            is_deleted,
+            created_at,
+            updated_at,
+        }
     }
 
     // ── Getters ───────────────────────────────────────────────────────────
 
-    #[must_use] pub const fn id(&self) -> Uuid { self.id }
-    #[must_use] pub const fn target(&self) -> MessageTarget { self.target }
-    #[must_use] pub const fn user_id(&self) -> Uuid { self.user_id }
-    #[must_use] pub const fn content(&self) -> &MessageContent { &self.content }
-    #[must_use] pub const fn message_type(&self) -> MessageType { self.message_type }
-    #[must_use] pub const fn reply_to_id(&self) -> Option<Uuid> { self.reply_to_id }
-    #[must_use] pub const fn edited_at(&self) -> Option<DateTime<Utc>> { self.edited_at }
-    #[must_use] pub const fn is_deleted(&self) -> bool { self.is_deleted }
-    #[must_use] pub const fn created_at(&self) -> DateTime<Utc> { self.created_at }
-    #[must_use] pub const fn updated_at(&self) -> DateTime<Utc> { self.updated_at }
+    #[must_use]
+    pub const fn id(&self) -> Uuid {
+        self.id
+    }
+    #[must_use]
+    pub const fn target(&self) -> MessageTarget {
+        self.target
+    }
+    #[must_use]
+    pub const fn user_id(&self) -> Uuid {
+        self.user_id
+    }
+    #[must_use]
+    pub const fn content(&self) -> &MessageContent {
+        &self.content
+    }
+    #[must_use]
+    pub const fn message_type(&self) -> MessageType {
+        self.message_type
+    }
+    #[must_use]
+    pub const fn reply_to_id(&self) -> Option<Uuid> {
+        self.reply_to_id
+    }
+    #[must_use]
+    pub const fn edited_at(&self) -> Option<DateTime<Utc>> {
+        self.edited_at
+    }
+    #[must_use]
+    pub const fn is_deleted(&self) -> bool {
+        self.is_deleted
+    }
+    #[must_use]
+    pub const fn created_at(&self) -> DateTime<Utc> {
+        self.created_at
+    }
+    #[must_use]
+    pub const fn updated_at(&self) -> DateTime<Utc> {
+        self.updated_at
+    }
 
     #[must_use]
     pub const fn channel_id(&self) -> Option<Uuid> {
@@ -122,9 +163,17 @@ impl Message {
 
     // ── Business Logic ────────────────────────────────────────────────────
 
-    pub fn edit(&mut self, requester_id: Uuid, new_content: MessageContent) -> Result<(), MessageError> {
-        if self.is_deleted { return Err(MessageError::MessageDeleted); }
-        if !self.is_author(requester_id) { return Err(MessageError::NotAuthor); }
+    pub fn edit(
+        &mut self,
+        requester_id: Uuid,
+        new_content: MessageContent,
+    ) -> Result<(), MessageError> {
+        if self.is_deleted {
+            return Err(MessageError::MessageDeleted);
+        }
+        if !self.is_author(requester_id) {
+            return Err(MessageError::NotAuthor);
+        }
         let now = Utc::now();
         self.content = new_content;
         self.edited_at = Some(now);
@@ -133,8 +182,12 @@ impl Message {
     }
 
     pub fn soft_delete(&mut self, requester_id: Uuid) -> Result<(), MessageError> {
-        if self.is_deleted { return Err(MessageError::MessageDeleted); }
-        if !self.is_author(requester_id) { return Err(MessageError::NotAuthor); }
+        if self.is_deleted {
+            return Err(MessageError::MessageDeleted);
+        }
+        if !self.is_author(requester_id) {
+            return Err(MessageError::NotAuthor);
+        }
         let now = Utc::now();
         self.is_deleted = true;
         self.updated_at = now;
@@ -149,10 +202,19 @@ mod tests {
 
     fn make_msg() -> Message {
         let content = MessageContent::new("hello").unwrap();
-        Message::new(MessageTarget::Channel(Uuid::new_v4()), Uuid::new_v4(), content, None)
+        Message::new(
+            MessageTarget::Channel(Uuid::new_v4()),
+            Uuid::new_v4(),
+            content,
+            None,
+        )
     }
 
-    #[test] fn test_new() { let m = make_msg(); assert!(!m.is_deleted()); }
+    #[test]
+    fn test_new() {
+        let m = make_msg();
+        assert!(!m.is_deleted());
+    }
 
     #[test]
     fn test_edit_author_only() {

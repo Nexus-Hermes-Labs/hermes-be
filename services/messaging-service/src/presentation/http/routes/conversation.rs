@@ -4,8 +4,8 @@ use axum::{
 };
 
 use crate::presentation::http::handlers::conversation::{
-    add_member, create_group_dm, get_conversation, get_conversation_members,
-    get_my_conversations, leave_conversation, open_dm,
+    add_member, create_group_dm, get_conversation, get_conversation_members, get_my_conversations,
+    leave_conversation, open_dm,
 };
 use crate::state::AppState;
 

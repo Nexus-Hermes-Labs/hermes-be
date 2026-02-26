@@ -13,9 +13,7 @@ use crate::presentation::dto::message::response::*;
 use crate::presentation::dto::reaction::response::*;
 
 #[allow(clippy::wildcard_imports)]
-use crate::presentation::http::handlers::{
-    conversation::*, message::*, reaction::*,
-};
+use crate::presentation::http::handlers::{conversation::*, message::*, reaction::*};
 use common::observability::health::{
     ComponentHealth, HealthChecks, HealthResponse, __path_health_handler, __path_liveness_handler,
     __path_readiness_handler,

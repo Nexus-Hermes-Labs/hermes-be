@@ -7,7 +7,9 @@ use common::infrastructure::persistence::repository::Repository;
 use super::entity::Message;
 
 #[async_trait]
-pub trait MessageRepository: Repository<Message, Uuid, Error = RepositoryError> + Send + Sync {
+pub trait MessageRepository:
+    Repository<Message, Uuid, Error = RepositoryError> + Send + Sync
+{
     /// Cursor-paginated messages for a guild channel (newest first).
     async fn find_by_channel(
         &self,

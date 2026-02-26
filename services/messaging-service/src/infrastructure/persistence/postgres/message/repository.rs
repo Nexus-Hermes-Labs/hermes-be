@@ -99,12 +99,10 @@ impl Repository<Message, Uuid> for PostgresMessageRepository {
     }
 
     async fn delete(&self, id: Uuid) -> Result<(), Self::Error> {
-        sqlx::query(
-            "UPDATE messages SET is_deleted = TRUE, updated_at = NOW() WHERE id = $1",
-        )
-        .bind(id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("UPDATE messages SET is_deleted = TRUE, updated_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 

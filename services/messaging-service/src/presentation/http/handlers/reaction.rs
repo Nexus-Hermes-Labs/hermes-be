@@ -33,7 +33,9 @@ pub async fn get_reactions(
         .get_message_reactions(message_id)
         .await?;
 
-    Ok(Json(reactions.into_iter().map(ReactionResponse::from).collect()))
+    Ok(Json(
+        reactions.into_iter().map(ReactionResponse::from).collect(),
+    ))
 }
 
 /// GET /api/v1/messages/:message_id/reactions/:emoji/count

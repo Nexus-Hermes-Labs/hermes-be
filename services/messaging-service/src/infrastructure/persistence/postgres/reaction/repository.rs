@@ -140,14 +140,12 @@ impl ReactionRepository for PostgresReactionRepository {
         user_id: Uuid,
         emoji: &str,
     ) -> Result<(), Self::Error> {
-        sqlx::query(
-            "DELETE FROM reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3",
-        )
-        .bind(message_id)
-        .bind(user_id)
-        .bind(emoji)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query("DELETE FROM reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3")
+            .bind(message_id)
+            .bind(user_id)
+            .bind(emoji)
+            .execute(&self.pool)
+            .await?;
         Ok(())
     }
 }

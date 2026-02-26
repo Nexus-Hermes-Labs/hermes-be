@@ -8,9 +8,9 @@ use crate::domain::conversation::{
 
 #[derive(Debug, Clone, FromRow)]
 pub struct ConversationRow {
-    pub id:              Uuid,
-    pub r#type:          String,
-    pub created_at:      DateTime<Utc>,
+    pub id: Uuid,
+    pub r#type: String,
+    pub created_at: DateTime<Utc>,
 }
 
 impl TryFrom<ConversationRow> for Conversation {
@@ -25,8 +25,8 @@ impl TryFrom<ConversationRow> for Conversation {
 #[derive(Debug, Clone, FromRow)]
 pub struct ConversationMemberRow {
     pub conversation_id: Uuid,
-    pub user_id:         Uuid,
-    pub joined_at:       DateTime<Utc>,
+    pub user_id: Uuid,
+    pub joined_at: DateTime<Utc>,
 }
 
 impl From<ConversationMemberRow> for ConversationMember {
@@ -39,8 +39,8 @@ impl From<&ConversationMember> for ConversationMemberRow {
     fn from(m: &ConversationMember) -> Self {
         Self {
             conversation_id: m.conversation_id(),
-            user_id:         m.user_id(),
-            joined_at:       m.joined_at(),
+            user_id: m.user_id(),
+            joined_at: m.joined_at(),
         }
     }
 }

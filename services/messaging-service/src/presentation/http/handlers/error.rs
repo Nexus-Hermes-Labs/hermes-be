@@ -5,14 +5,12 @@ use axum::{
 };
 use serde::Serialize;
 
-use crate::application::{
-    ConversationServiceError, MessageServiceError, ReactionServiceError,
-};
+use crate::application::{ConversationServiceError, MessageServiceError, ReactionServiceError};
 use crate::domain::{ConversationError, MessageError, ReactionError};
 
 #[derive(Debug, Serialize)]
 pub struct ErrorResponse {
-    pub error:   String,
+    pub error: String,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<serde_json::Value>,
@@ -20,19 +18,20 @@ pub struct ErrorResponse {
 
 #[derive(Debug)]
 pub struct ApiError {
-    status:  StatusCode,
-    error:   String,
+    status: StatusCode,
+    error: String,
     message: String,
     details: Option<serde_json::Value>,
 }
 
 impl ApiError {
-    pub fn new(
-        status:  StatusCode,
-        error:   impl Into<String>,
-        message: impl Into<String>,
-    ) -> Self {
-        Self { status, error: error.into(), message: message.into(), details: None }
+    pub fn new(status: StatusCode, error: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            status,
+            error: error.into(),
+            message: message.into(),
+            details: None,
+        }
     }
 
     pub fn bad_request(message: impl Into<String>) -> Self {
@@ -52,11 +51,19 @@ impl ApiError {
     }
 
     pub fn unprocessable(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::UNPROCESSABLE_ENTITY, "validation_error", message)
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation_error",
+            message,
+        )
     }
 
     pub fn internal(message: impl Into<String>) -> Self {
-        Self::new(StatusCode::INTERNAL_SERVER_ERROR, "internal_server_error", message)
+        Self::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            message,
+        )
     }
 
     #[must_use]
@@ -69,7 +76,7 @@ impl ApiError {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let body = Json(ErrorResponse {
-            error:   self.error,
+            error: self.error,
             message: self.message,
             details: self.details,
         });
@@ -144,12 +151,8 @@ impl From<ConversationServiceError> for ApiError {
                 ConversationError::InvalidGroupDmMemberCount => {
                     Self::bad_request("A group DM requires 3–10 members")
                 }
-                ConversationError::AlreadyMember => {
-                    Self::conflict("User is already a member")
-                }
-                ConversationError::NotMember => {
-                    Self::forbidden("User is not a member")
-                }
+                ConversationError::AlreadyMember => Self::conflict("User is already a member"),
+                ConversationError::NotMember => Self::forbidden("User is not a member"),
                 ConversationError::NotFound => Self::not_found("Conversation not found"),
             },
             ConversationServiceError::RepositoryError(e) => {

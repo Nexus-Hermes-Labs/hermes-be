@@ -15,20 +15,24 @@ use crate::presentation::grpc::proto::messaging::v1::{
 #[derive(Debug)]
 #[allow(clippy::struct_field_names)]
 pub struct MessagingServiceGrpc {
-    message_service:      Arc<MessageService>,
+    message_service: Arc<MessageService>,
     #[allow(dead_code)]
-    reaction_service:     Arc<ReactionService>,
+    reaction_service: Arc<ReactionService>,
     conversation_service: Arc<ConversationService>,
 }
 
 impl MessagingServiceGrpc {
     #[must_use]
     pub const fn new(
-        message_service:      Arc<MessageService>,
-        reaction_service:     Arc<ReactionService>,
+        message_service: Arc<MessageService>,
+        reaction_service: Arc<ReactionService>,
         conversation_service: Arc<ConversationService>,
     ) -> Self {
-        Self { message_service, reaction_service, conversation_service }
+        Self {
+            message_service,
+            reaction_service,
+            conversation_service,
+        }
     }
 }
 
@@ -36,21 +40,21 @@ impl MessagingServiceGrpc {
 
 fn message_to_proto(m: &crate::domain::Message) -> MessageProto {
     MessageProto {
-        id:              m.id().to_string(),
-        channel_id:      m.channel_id().map(|id| id.to_string()),
+        id: m.id().to_string(),
+        channel_id: m.channel_id().map(|id| id.to_string()),
         conversation_id: m.conversation_id().map(|id| id.to_string()),
-        user_id:         m.user_id().to_string(),
-        content:         m.content().as_str().to_string(),
-        message_type:    m.message_type().as_str().to_string(),
-        reply_to_id:     m.reply_to_id().map(|id| id.to_string()),
-        is_deleted:      m.is_deleted(),
-        created_at:      Some(prost_types::Timestamp {
+        user_id: m.user_id().to_string(),
+        content: m.content().as_str().to_string(),
+        message_type: m.message_type().as_str().to_string(),
+        reply_to_id: m.reply_to_id().map(|id| id.to_string()),
+        is_deleted: m.is_deleted(),
+        created_at: Some(prost_types::Timestamp {
             seconds: m.created_at().timestamp(),
-            nanos:   m.created_at().timestamp_subsec_nanos().cast_signed(),
+            nanos: m.created_at().timestamp_subsec_nanos().cast_signed(),
         }),
-        edited_at:       m.edited_at().map(|t| prost_types::Timestamp {
+        edited_at: m.edited_at().map(|t| prost_types::Timestamp {
             seconds: t.timestamp(),
-            nanos:   t.timestamp_subsec_nanos().cast_signed(),
+            nanos: t.timestamp_subsec_nanos().cast_signed(),
         }),
     }
 }
@@ -169,10 +173,10 @@ impl MessagingServiceTrait for MessagingServiceGrpc {
 
         // find_dm_between is find-only, but ConversationService::open_dm creates if not found.
         // For the gRPC "find" semantics we use open_dm which is idempotent — safe to call here.
-        let conversation_id = conv
-            .map(|c| Some(c.id().to_string()))
-            .unwrap_or(None);
+        let conversation_id = conv.map(|c| Some(c.id().to_string())).unwrap_or(None);
 
-        Ok(Response::new(FindDirectConversationResponse { conversation_id }))
+        Ok(Response::new(FindDirectConversationResponse {
+            conversation_id,
+        }))
     }
 }

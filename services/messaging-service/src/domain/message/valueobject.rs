@@ -50,7 +50,7 @@ impl MessageType {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::Text   => "text",
+            Self::Text => "text",
             Self::System => "system",
         }
     }
@@ -66,9 +66,9 @@ impl FromStr for MessageType {
     type Err = MessageError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "text"   => Ok(Self::Text),
+            "text" => Ok(Self::Text),
             "system" => Ok(Self::System),
-            _        => Err(MessageError::InvalidMessageType),
+            _ => Err(MessageError::InvalidMessageType),
         }
     }
 }

@@ -93,10 +93,8 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
             .map_err(BootstrapError::Presentation)
     });
 
-    let grpc_addr = std::net::SocketAddr::from((
-        [0, 0, 0, 0],
-        config().service.grpc_port.unwrap_or(0),
-    ));
+    let grpc_addr =
+        std::net::SocketAddr::from(([0, 0, 0, 0], config().service.grpc_port.unwrap_or(0)));
     let grpc_shutdown_rx = shutdown_rx.clone();
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()

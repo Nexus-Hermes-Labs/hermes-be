@@ -6,11 +6,11 @@ use sqlx::PgPool;
 #[derive(Clone)]
 pub struct SharedState {
     /// `PostgreSQL` connection pool for all database operations.
-    pub db:      PgPool,
+    pub db: PgPool,
     /// Redis async connection manager.
-    pub redis:   redis::aio::ConnectionManager,
+    pub redis: redis::aio::ConnectionManager,
     /// Prometheus metrics collector.
     pub metrics: Metrics,
     /// NATS async client (kept for potential direct publishing from handlers).
-    pub nats:    async_nats::Client,
+    pub nats: async_nats::Client,
 }

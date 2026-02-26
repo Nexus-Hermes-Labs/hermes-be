@@ -9,7 +9,7 @@ use super::error::ReactionServiceError;
 
 pub struct ReactionService {
     reaction_repo: Arc<dyn ReactionRepository>,
-    nats:          Arc<NatsPublisher>,
+    nats: Arc<NatsPublisher>,
 }
 
 impl std::fmt::Debug for ReactionService {
@@ -20,7 +20,10 @@ impl std::fmt::Debug for ReactionService {
 
 impl ReactionService {
     pub fn new(reaction_repo: Arc<dyn ReactionRepository>, nats: Arc<NatsPublisher>) -> Self {
-        Self { reaction_repo, nats }
+        Self {
+            reaction_repo,
+            nats,
+        }
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -95,7 +98,9 @@ impl ReactionService {
             .delete_by_message_user_emoji(message_id, user_id, emoji.as_str())
             .await
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
-        self.nats.publish_reaction_removed(message_id, user_id, emoji.as_str()).await;
+        self.nats
+            .publish_reaction_removed(message_id, user_id, emoji.as_str())
+            .await;
         Ok(())
     }
 }

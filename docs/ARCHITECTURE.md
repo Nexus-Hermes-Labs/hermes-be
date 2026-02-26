@@ -8,7 +8,7 @@
 - [Overview](#overview)
 - [Architecture Principles](#architecture-principles)
 - [Service Architecture](#service-architecture)
-- [nginx Edge Proxy](#nginx-edge-proxy)
+- [Traefik Edge Proxy](#Traefik-edge-proxy)
 - [Communication Patterns](#communication-patterns)
 - [AI Translation Pipeline](#ai-translation-pipeline)
 - [Data Architecture](#data-architecture)
@@ -23,9 +23,13 @@
 
 ## Overview
 
-Hermes is a microservices-based real-time communication platform built with Rust. The system follows Domain-Driven Design (DDD) principles with a hybrid communication architecture. The key differentiator is AI-powered real-time translation integrated at the infrastructure level.
+Hermes is a microservices-based real-time communication platform built with Rust. The system follows Domain-Driven
+Design (DDD) principles with a hybrid communication architecture. The key differentiator is AI-powered real-time
+translation integrated at the infrastructure level.
 
-nginx serves as the edge proxy handling REST routing, TLS termination, and rate limiting. Backend services focus purely on domain logic. A dedicated realtime-service handles WebSocket connections and NATS event fanout.
+Traefik serves as the edge proxy handling REST routing, TLS termination, and rate limiting. Backend services focus
+purely
+on domain logic. A dedicated realtime-service handles WebSocket connections and NATS event fanout.
 
 ### Architecture Goals
 
@@ -41,10 +45,10 @@ nginx serves as the edge proxy handling REST routing, TLS termination, and rate 
 
 ### 1. Microservices Architecture
 
-Each service owns its domain and can be deployed independently. nginx sits at the edge and routes REST traffic.
+Each service owns its domain and can be deployed independently. Traefik sits at the edge and routes REST traffic.
 
 ```
-                  nginx (edge proxy)
+                  Traefik (edge proxy)
                         |
     +--------+----------+----------+---------+
     |        |          |          |         |
@@ -52,7 +56,7 @@ Each service owns its domain and can be deployed independently. nginx sits at th
   auth    user       guild     channel    chat     ...
   8081    8082       8086      8083       8084
 
-          realtime-service (8080)
+          realtime-service (8092)
             WebSocket + NATS fanout
 ```
 
@@ -80,6 +84,7 @@ Each service follows DDD layers:
 - **Presentation**: Handles protocol concerns (HTTP, gRPC)
 
 Additional per-service directories:
+
 - **State**: Shared application state (DB pools, clients)
 - **Bootstrap**: Service initialization and dependency wiring
 
@@ -87,7 +92,7 @@ Additional per-service directories:
 
 ```
 +---------------------------------------------+
-| EDGE PROXY (nginx)                          |
+| EDGE PROXY (Traefik)                          |
 | - REST routing to backend services          |
 | - TLS termination, rate limiting, CORS      |
 +---------------------------------------------+
@@ -114,21 +119,21 @@ Additional per-service directories:
 
 ### 12-Service Overview
 
-| Service | Port | Domain | Phase |
-|---------|------|--------|-------|
-| **nginx** | 80/443 | REST reverse proxy, TLS, rate limiting, CORS | Infrastructure |
-| **auth-service** | 8081 | User registration, login, JWT management, sessions | MVP |
-| **user-service** | 8082 | User profiles, friend system, blocks, privacy settings | MVP |
-| **guild-service** | 8086 | Guilds, roles, members, invites, permission management | MVP |
-| **channel-service** | 8083 | Text/voice channels, categories, channel permissions | MVP |
-| **chat-service** | 8084 | Messages, reactions, attachments, message history | MVP |
-| **realtime-service** | 8080 | WebSocket connections, NATS event fanout, connection state | MVP |
-| **presence-service** | 8087 | Online/offline/idle/DND status, typing indicators | Phase 2 |
-| **media-service** | 8088 | File uploads, image processing, CDN proxy, avatars | Phase 2 |
-| **notification-service** | 8089 | Push notifications, unread counts, @mentions | Phase 2 |
-| **ai-service** | 8091 | Real-time text translation, STT, TTS | Phase 3 |
-| **search-service** | 8090 | Full-text search across messages, users, guilds | Phase 4 |
-| **voice-service** | 8085 | WebRTC P2P signaling, voice channel management | Phase 4 |
+| Service                  | Port   | Domain                                                     | Phase          |
+|--------------------------|--------|------------------------------------------------------------|----------------|
+| **Traefik**              | 80/443 | REST reverse proxy, TLS, rate limiting, CORS               | Infrastructure |
+| **auth-service**         | 8081   | User registration, login, JWT management, sessions         | MVP            |
+| **user-service**         | 8082   | User profiles, friend system, blocks, privacy settings     | MVP            |
+| **guild-service**        | 8086   | Guilds, roles, members, invites, permission management     | MVP            |
+| **channel-service**      | 8083   | Text/voice channels, categories, channel permissions       | MVP            |
+| **chat-service**         | 8084   | Messages, reactions, attachments, message history          | MVP            |
+| **realtime-service**     | 8092   | WebSocket connections, NATS event fanout, connection state | MVP            |
+| **presence-service**     | 8087   | Online/offline/idle/DND status, typing indicators          | Phase 2        |
+| **media-service**        | 8088   | File uploads, image processing, CDN proxy, avatars         | Phase 2        |
+| **notification-service** | 8089   | Push notifications, unread counts, @mentions               | Phase 2        |
+| **ai-service**           | 8091   | Real-time text translation, STT, TTS                       | Phase 3        |
+| **search-service**       | 8090   | Full-text search across messages, users, guilds            | Phase 4        |
+| **voice-service**        | 8085   | WebRTC P2P signaling, voice channel management             | Phase 4        |
 
 ### MVP Architecture
 
@@ -140,8 +145,8 @@ Additional per-service directories:
          | REST (HTTPS)          | WebSocket
          v                       v
 +------------------+    +------------------+
-|     nginx        |    | realtime-service |
-| (reverse proxy)  |    |     (8080)       |
+|     Traefik      |    | realtime-service |
+| (reverse proxy)  |    |     (8092)       |
 +--+---+---+---+---+    +--------+---------+
    |   |   |   |                 |
    v   v   v   v            +----+----+
@@ -167,8 +172,8 @@ Additional per-service directories:
            | REST                  | WebSocket
            v                       v
     +------+------+        +-------+--------+
-    |    nginx    |        |   Realtime     |
-    | (80 / 443) |        |    (8080)      |
+    |    Traefik    |        |   Realtime     |
+    | (80 / 443) |        |    (8092)      |
     +------+------+        +-------+--------+
            |                       |
   +--------+--------+         +----+----+
@@ -190,30 +195,32 @@ Auth User Guild Chan Chat         |
 
 ---
 
-## nginx Edge Proxy
+## Traefik Edge Proxy
 
-nginx replaces a custom API gateway service, handling all edge concerns:
+Traefik replaces a custom API gateway service, handling all edge concerns:
 
 ### Responsibilities
 
 - **REST Routing**: Routes `/v1/auth/*` to auth-service, `/v1/users/*` to user-service, etc.
-- **TLS Termination**: HTTPS at the edge, HTTP internally between nginx and services
-- **Rate Limiting**: `limit_req` zones per endpoint category (auth endpoints stricter)
+- **TLS Termination**: HTTPS at the edge, HTTP internally between Traefik and services
+- **Rate Limiting**: Centralized rate limiting (100 req/s average, 50 burst) applied at the edge
+- **Authentication (ForwardAuth)**: Delegates JWT validation to auth-service before forwarding requests
 - **CORS**: Centralized cross-origin configuration
 - **Compression**: gzip for JSON responses
 - **Static Files**: Serve OpenAPI/Swagger docs
 - **Health Checks**: Upstream health monitoring
 
-### What nginx Does NOT Handle
+### What Traefik Does NOT Handle
 
-- **WebSocket connections**: Clients connect directly to realtime-service (nginx can optionally proxy the upgrade, but realtime-service owns the connection lifecycle)
+- **WebSocket connections**: Clients connect directly to realtime-service (Traefik can optionally proxy the upgrade, but
+  realtime-service owns the connection lifecycle)
 - **Event fanout**: NATS subscription and per-client event delivery is realtime-service's job
-- **Authentication logic**: JWT validation happens in each backend service
-- **gRPC routing**: Service-to-service gRPC calls go direct, not through nginx
+- **Authentication logic**: JWT validation is delegated to auth-service via ForwardAuth middleware
+- **gRPC routing**: Service-to-service gRPC calls go direct, not through Traefik
 
 ### Example Routing Configuration
 
-```nginx
+```Traefik
 upstream auth_service {
     server 127.0.0.1:8081;
 }
@@ -230,7 +237,7 @@ upstream chat_service {
     server 127.0.0.1:8084;
 }
 upstream realtime_service {
-    server 127.0.0.1:8080;
+    server 127.0.0.1:8092;
 }
 
 server {
@@ -264,12 +271,13 @@ server {
 
 ## Communication Patterns
 
-### 1. Client to Backend (via nginx)
+### 1. Client to Backend (via Traefik)
 
-All REST API calls from clients go through nginx. nginx routes based on URL prefix to the correct backend service. Each service validates the JWT independently.
+All REST API calls from clients go through Traefik. Traefik routes based on URL prefix to the correct backend service.
+Traefik validates the JWT for each request using ForwardAuth middleware.
 
 ```
-Client --HTTPS--> nginx --HTTP--> auth-service (8081)
+Client --HTTPS--> Traefik --HTTP--> auth-service (8081)
                        |--------> user-service (8082)
                        |--------> guild-service (8086)
                        |--------> channel-service (8083)
@@ -278,19 +286,22 @@ Client --HTTPS--> nginx --HTTP--> auth-service (8081)
 
 ### 2. Client to Realtime (WebSocket)
 
-Clients establish a WebSocket connection to realtime-service. The service authenticates the connection (JWT on upgrade), subscribes to relevant NATS subjects, and pushes events to the client.
+Clients establish a WebSocket connection to realtime-service. The service authenticates the connection (JWT on upgrade),
+subscribes to relevant NATS subjects, and pushes events to the client.
 
 ```
-Client --WebSocket--> realtime-service (8080) --subscribe--> NATS
+Client --WebSocket--> realtime-service (8092) --subscribe--> NATS
                              |
                       push events to client
 ```
 
 ### 3. Synchronous Communication (gRPC)
 
-Used for service-to-service queries that require an immediate response. These go direct between services, not through nginx.
+Used for service-to-service queries that require an immediate response. These go direct between services, not through
+Traefik.
 
 **Current gRPC flows:**
+
 - Auth Service -> User Service: discriminator generation, username availability checks
 - Guild Service -> User Service: user lookups for member management
 - Channel Service -> Guild Service: permission verification
@@ -302,6 +313,7 @@ Used for service-to-service queries that require an immediate response. These go
 Used for event-driven workflows and the AI translation pipeline.
 
 **Event categories:**
+
 - **User events**: `user.created`, `user.updated`, `user.deleted`
 - **Relationship events**: `friend.request.sent`, `friend.request.accepted`
 - **Guild events**: `guild.created`, `member.joined`, `member.left`
@@ -339,16 +351,19 @@ User sends message
 ### Translation Phases
 
 **Phase 3a -- Text Translation:**
+
 - Language detection on incoming messages
 - Translation to target languages based on guild/user preferences
 - Original message preserved, translations stored alongside
 
 **Phase 3b -- Voice STT (Speech-to-Text):**
+
 - Audio stream from voice-service piped to ai-service
 - Real-time transcription with language detection
 - Translated subtitles pushed to clients via realtime-service
 
 **Phase 3c -- Voice TTS (Text-to-Speech):**
+
 - Transcribed and translated text synthesized to speech
 - Audio output streamed to target users in their language
 - Latency target: <500ms end-to-end for speech-to-speech
@@ -383,7 +398,8 @@ User sends message
 
 **Rationale:** Simple for MVP, no distributed transactions, ACID guarantees, easy local development.
 
-**Trade-offs:** Tight coupling, single point of failure, scaling limitations. Post-MVP will migrate to database-per-service.
+**Trade-offs:** Tight coupling, single point of failure, scaling limitations. Post-MVP will migrate to
+database-per-service.
 
 ### Post-MVP: Database per Service
 
@@ -399,6 +415,7 @@ User sends message
 ### Caching Strategy
 
 Redis is used for:
+
 - **Session cache** (15min TTL): JWT claims, active sessions
 - **User profile cache** (1hr TTL): Frequently accessed user data
 - **Relationship cache** (5min TTL): `are_friends(A, B)`, `is_blocked(A, B)` lookups
@@ -419,12 +436,12 @@ Redis is used for:
 ### JWT-Based Authentication
 
 ```
-1. Client -> nginx -> auth-service: POST /v1/auth/login {email, password}
+1. Client -> Traefik -> auth-service: POST /v1/auth/login {email, password}
 2. Auth Service validates credentials (Argon2 hash comparison)
 3. Generate JWT tokens: access (15 min) + refresh (7 days)
 4. Client stores tokens, sends Authorization: Bearer <token>
-5. nginx passes the header through; each backend service validates JWT independently
-6. Client -> nginx -> auth-service: POST /v1/auth/refresh for token renewal
+5. Traefik uses ForwardAuth middleware to validate the JWT via auth-service/internal/verify; on success, identity headers (X-User-Id, etc.) are injected
+6. Client -> Traefik -> auth-service: POST /v1/auth/refresh for token renewal
 ```
 
 For WebSocket: JWT is validated during the connection upgrade in realtime-service.
@@ -433,7 +450,8 @@ For WebSocket: JWT is validated during the connection upgrade in realtime-servic
 
 - **Resource ownership**: Users can only modify their own profiles
 - **Relationship-based**: Friends-only visibility for online status
-- **Role-based (guild-service)**: Bitflag permission system with role hierarchy. Guild owners, admins, and custom roles with granular permissions (manage channels, kick members, etc.)
+- **Role-based (guild-service)**: Bitflag permission system with role hierarchy. Guild owners, admins, and custom roles
+  with granular permissions (manage channels, kick members, etc.)
 
 ---
 
@@ -443,7 +461,7 @@ For WebSocket: JWT is validated during the connection upgrade in realtime-servic
 
 ```
 Language:        Rust (stable, 1.75+)
-Edge Proxy:      nginx (REST routing, TLS, rate limiting, CORS)
+Edge Proxy:      Traefik (REST routing, TLS, rate limiting, CORS)
 Web Framework:   Axum 0.7 (async, Tower middleware)
 gRPC:            Tonic 0.11 (Protocol Buffers, HTTP/2, streaming)
 Database:        PostgreSQL 16 (SQLx 0.8, compile-time checked)
@@ -460,13 +478,13 @@ API Docs:        utoipa 5 (OpenAPI/Swagger)
 Logging:   tracing + tracing-subscriber (structured, JSON output)
 Metrics:   Prometheus + Grafana (request duration, error rates, throughput)
 Health:    /health/live (liveness), /health/ready (readiness)
-nginx:     Access logs, upstream response time tracking
+Traefik:     Access logs, upstream response time tracking
 ```
 
 ### Infrastructure
 
 ```
-Edge Proxy:    nginx (reverse proxy, TLS, rate limiting)
+Edge Proxy:    Traefik (reverse proxy, TLS, rate limiting)
 Containers:    Docker + Docker Compose (development)
 CI/CD:         GitHub Actions (test, lint, build)
 Future:        Kubernetes (autoscaling, service discovery, rolling updates)
@@ -480,7 +498,7 @@ Future:        Kubernetes (autoscaling, service discovery, rolling updates)
 
 ```
 docker-compose.yml provides:
-  - nginx (port 80)
+  - Traefik (port 80)
   - PostgreSQL 16 (port 5432)
   - Redis 7 (port 6379)
   - NATS (port 4222, monitoring 8222)
@@ -493,7 +511,7 @@ Rust services run natively via cargo:
 
 ### Production (Future -- Kubernetes)
 
-- nginx Ingress Controller at the edge (or replace with cloud load balancer)
+- Traefik Ingress Controller at the edge (or replace with cloud load balancer)
 - Pod autoscaling per service based on CPU/request metrics
 - Service discovery via Kubernetes DNS
 - Rolling updates with health check gates
@@ -506,12 +524,14 @@ Rust services run natively via cargo:
 ### Horizontal Scaling
 
 All services are stateless:
+
 - No session state in memory (JWT for auth, Redis for state)
 - Any pod can handle any request
 - Independent scaling per service based on load
-- nginx distributes load across service replicas
+- Traefik distributes load across service replicas
 
-realtime-service scales horizontally with Redis-backed connection state: any instance can look up which users are connected where.
+realtime-service scales horizontally with Redis-backed connection state: any instance can look up which users are
+connected where.
 
 ### Database Scaling Path
 
@@ -521,13 +541,13 @@ realtime-service scales horizontally with Redis-backed connection state: any ins
 
 ### Performance Targets
 
-| Metric | Target |
-|--------|--------|
-| p50 response time | <50ms |
-| p95 response time | <100ms |
-| p99 response time | <200ms |
+| Metric                 | Target                        |
+|------------------------|-------------------------------|
+| p50 response time      | <50ms                         |
+| p95 response time      | <100ms                        |
+| p99 response time      | <200ms                        |
 | AI translation latency | <200ms (text), <500ms (voice) |
-| Throughput per pod | 10k req/s |
+| Throughput per pod     | 10k req/s                     |
 
 ---
 
@@ -552,13 +572,13 @@ Infrastructure:
   - db_connections_active
   - cache_hits_total / cache_misses_total
   - nats_messages_published / nats_messages_consumed
-  - nginx_requests_total, nginx_upstream_response_time
+  - Traefik_requests_total, Traefik_upstream_response_time
 ```
 
 ### Logging Standards
 
 - Structured logging with `tracing`
-- Request ID propagation across services (nginx generates, passes via header)
+- Request ID propagation across services (Traefik generates, passes via header)
 - Log levels: ERROR (immediate action), WARN (potentially harmful), INFO (operational), DEBUG/TRACE (development)
 
 ---
@@ -571,7 +591,7 @@ Infrastructure:
 +------------------------------------------+
 | Layer 1: Network (Firewall, DDoS)       |
 +------------------------------------------+
-| Layer 2: nginx (TLS, rate limit, CORS)  |
+| Layer 2: Traefik (TLS, rate limit, CORS)  |
 +------------------------------------------+
 | Layer 3: Authentication (JWT)           |
 +------------------------------------------+
@@ -583,11 +603,12 @@ Infrastructure:
 
 ### Security Measures
 
-- **nginx**: TLS 1.3 termination, rate limiting (`limit_req`), CORS headers, request size limits
+- **Traefik**: TLS 1.3 termination, rate limiting (`limit_req`), CORS headers, request size limits
 - **Argon2** password hashing with salt
 - **JWT** with short expiry (15min access, 7-day refresh with rotation)
 - **SQL injection prevention**: SQLx compile-time checked parameterized queries
 - **Input validation**: `validator` crate on all request DTOs
-- **Rate limiting**: nginx `limit_req` at the edge, Governor crate on auth endpoints as defense-in-depth
+- **Rate limiting**: Traefik `limit_req` at the edge, Governor crate on auth endpoints as defense-in-depth
 - **Lint policy**: `unsafe_code` is forbidden, `unwrap_used`/`expect_used`/`panic` are denied at workspace level
-- **Internal network**: Backend services only accessible from nginx and each other, not exposed to the internet directly
+- **Internal network**: Backend services only accessible from Traefik and each other, not exposed to the internet
+  directly

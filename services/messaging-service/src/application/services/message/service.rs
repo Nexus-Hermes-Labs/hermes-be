@@ -8,7 +8,7 @@ use super::error::MessageServiceError;
 
 pub struct MessageService {
     message_repo: Arc<dyn MessageRepository>,
-    nats:         Arc<NatsPublisher>,
+    nats: Arc<NatsPublisher>,
 }
 
 impl std::fmt::Debug for MessageService {
@@ -134,7 +134,10 @@ impl MessageService {
         Ok(())
     }
 
-    pub async fn delete_channel_messages(&self, channel_id: Uuid) -> Result<(), MessageServiceError> {
+    pub async fn delete_channel_messages(
+        &self,
+        channel_id: Uuid,
+    ) -> Result<(), MessageServiceError> {
         self.message_repo
             .delete_all_by_channel(channel_id)
             .await

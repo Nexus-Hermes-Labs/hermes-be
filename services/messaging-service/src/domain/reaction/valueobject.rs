@@ -1,5 +1,5 @@
-use std::fmt;
 use super::error::ReactionError;
+use std::fmt;
 
 /// Validated emoji (1–32 chars).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

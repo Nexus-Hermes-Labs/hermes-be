@@ -15,14 +15,17 @@ use crate::presentation::error::PresentationError;
 #[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct Server {
-    app_state:    AppState,
+    app_state: AppState,
     health_check: Arc<HealthCheck>,
 }
 
 impl Server {
     #[must_use]
     pub const fn new(app_state: AppState, health_check: Arc<HealthCheck>) -> Self {
-        Self { app_state, health_check }
+        Self {
+            app_state,
+            health_check,
+        }
     }
 
     pub async fn run(

@@ -17,7 +17,10 @@ pub trait ConversationRepository:
     async fn find_by_member(&self, user_id: Uuid) -> Result<Vec<Conversation>, Self::Error>;
 
     /// All members in a conversation.
-    async fn find_members(&self, conversation_id: Uuid) -> Result<Vec<ConversationMember>, Self::Error>;
+    async fn find_members(
+        &self,
+        conversation_id: Uuid,
+    ) -> Result<Vec<ConversationMember>, Self::Error>;
 
     /// Find the existing DM between exactly two users (returns None if it doesn't exist).
     async fn find_dm_between(
