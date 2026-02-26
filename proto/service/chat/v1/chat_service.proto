@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package chat.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+// ============================================
+// CHAT SERVICE
+// ============================================
+
+/// Chat message retrieval and management service (gRPC inter-service API)
+service ChatService {
+  /// Get paginated messages for a channel (cursor-based, newest-first)
+  rpc GetChannelMessages(GetChannelMessagesRequest) returns (GetChannelMessagesResponse);
+
+  /// Get a single message by ID
+  rpc GetMessage(GetMessageRequest) returns (MessageProto);
+
+  /// Bulk-delete all messages in a channel (e.g. on channel deletion)
+  rpc DeleteChannelMessages(DeleteChannelMessagesRequest) returns (google.protobuf.Empty);
+}
+
+// ============================================
+// REQUEST / RESPONSE MESSAGES
+// ============================================
+
+message GetChannelMessagesRequest {
+  string channel_id = 1;
+  /// Maximum number of messages to return (1–100)
+  int32 limit = 2;
+  /// Return messages created before this message ID (cursor)
+  optional string before_id = 3;
+}
+
+message GetChannelMessagesResponse {
+  repeated MessageProto messages = 1;
+  /// True if more messages exist before the oldest returned message
+  bool has_more = 2;
+}
+
+message GetMessageRequest {
+  string message_id = 1;
+}
+
+message DeleteChannelMessagesRequest {
+  string channel_id = 1;
+}
+
+// ============================================
+// MESSAGE TYPE
+// ============================================
+
+message MessageProto {
+  string id = 1;
+  string channel_id = 2;
+  string user_id = 3;
+  string content = 4;
+  string message_type = 5;
+  optional string reply_to_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+  optional google.protobuf.Timestamp edited_at = 8;
+}
