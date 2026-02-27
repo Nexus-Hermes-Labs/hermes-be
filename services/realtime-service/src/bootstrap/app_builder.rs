@@ -75,15 +75,15 @@ impl AppBuilder {
         let _service_name = self.service_name.ok_or_else(|| {
             BootstrapError::Initialization("service name must be set".to_string())
         })?;
-        let nats = self.nats.ok_or_else(|| {
-            BootstrapError::Initialization("NATS client must be set".to_string())
-        })?;
-        let jwt_manager = self.jwt_manager.ok_or_else(|| {
-            BootstrapError::Initialization("JWT manager must be set".to_string())
-        })?;
-        let metrics = self.metrics.ok_or_else(|| {
-            BootstrapError::Initialization("metrics must be set".to_string())
-        })?;
+        let nats = self
+            .nats
+            .ok_or_else(|| BootstrapError::Initialization("NATS client must be set".to_string()))?;
+        let jwt_manager = self
+            .jwt_manager
+            .ok_or_else(|| BootstrapError::Initialization("JWT manager must be set".to_string()))?;
+        let metrics = self
+            .metrics
+            .ok_or_else(|| BootstrapError::Initialization("metrics must be set".to_string()))?;
 
         // ── Shared registries ──────────────────────────────────────────────
         let client_registry: Arc<ClientRegistry> = Arc::new(DashMap::new());

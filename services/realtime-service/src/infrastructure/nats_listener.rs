@@ -164,10 +164,7 @@ fn extract_context_id(payload: &serde_json::Value) -> Option<Uuid> {
 ///
 /// Reactions carry only `message_id`; the cache was populated when the
 /// corresponding `hermes.message.created` event was processed.
-fn resolve_reaction_context(
-    payload: &serde_json::Value,
-    cache: &MsgContextCache,
-) -> Option<Uuid> {
+fn resolve_reaction_context(payload: &serde_json::Value, cache: &MsgContextCache) -> Option<Uuid> {
     let message_id = extract_uuid(payload, "message_id")?;
     cache.get(&message_id).map(|v| *v)
 }
