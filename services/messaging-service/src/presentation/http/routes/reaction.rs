@@ -10,13 +10,13 @@ use crate::state::AppState;
 
 pub fn reaction_routes() -> Router<AppState> {
     Router::new()
-        .route("/messages/{message_id}/reactions", get(get_reactions))
+        .route("/messages/:message_id/reactions", get(get_reactions))
         .route(
-            "/messages/{message_id}/reactions/{emoji}/count",
+            "/messages/:message_id/reactions/:emoji/count",
             get(count_reactions),
         )
         .route(
-            "/messages/{message_id}/reactions/{emoji}",
+            "/messages/:message_id/reactions/:emoji",
             put(add_reaction).delete(remove_reaction),
         )
 }
