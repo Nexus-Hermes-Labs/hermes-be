@@ -17,11 +17,12 @@ path = "src/main.rs"
 # LOCAL DEPENDENCIES
 # ============================================================================
 common = { path = "../common" }
+common-config = { path = "../common/common-config" }
 
 # ============================================================================
 # WEB FRAMEWORK
 # ============================================================================
-axum = { workspace = true }
+axum = { workspace = true, features = ["ws"] }
 axum-extra = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
@@ -70,6 +71,11 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 
 # ============================================================================
+# CONCURRENT DATA STRUCTURES
+# ============================================================================
+dashmap = { workspace = true }
+
+# ============================================================================
 # REDIS (for connection state)
 # ============================================================================
 redis = { workspace = true }
@@ -80,7 +86,7 @@ redis = { workspace = true }
 async-nats = { workspace = true }
 
 # ============================================================================
-# WEBSOCKET
+# WEBSOCKET (axum built-in ws feature used instead of tokio-tungstenite)
 # ============================================================================
 tokio-tungstenite = { workspace = true }
 
