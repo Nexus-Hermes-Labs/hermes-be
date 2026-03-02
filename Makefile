@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging db-seed db-seed-auth db-seed-user db-seed-guild db-seed-channel db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell sqlx-prepare run-messaging
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging db-seed db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell sqlx-prepare run-messaging
 
 # Colors for output
 BLUE := \033[0;34m
@@ -18,6 +18,7 @@ AUTH_SEED_PATH := services/auth-service/seeds/dev
 USER_SEED_PATH := services/user-service/seeds/dev
 GUILD_SEED_PATH := services/guild-service/seeds/dev
 CHANNEL_SEED_PATH := services/channel-service/seeds/dev
+MESSAGING_SEED_PATH := services/messaging-service/seeds/dev
 DB_URL := postgres://hermes:hermes@localhost:5432/hermes
 
 ##@ Help
@@ -169,7 +170,7 @@ db-migrate-messaging: ## Run messaging-service migrations
 	@sqlx migrate run --source $(MESSAGING_MIGRATION_PATH) --ignore-missing
 	@echo -e "$(GREEN)✅ Messaging migrations completed$(NC)"
 
-db-seed: db-seed-auth db-seed-user db-seed-guild db-seed-channel ## Run all database seeds
+db-seed: db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging ## Run all database seeds
 	@echo -e "$(GREEN)✅ All seeds completed$(NC)"
 
 db-seed-auth: ## Run auth-service seeds
@@ -209,6 +210,17 @@ db-seed-channel: ## Run channel-service seeds
 		done; \
 	fi
 	@echo -e "$(GREEN)✅ Channel database seeded$(NC)"
+
+db-seed-messaging: ## Run messaging-service seeds
+	@echo -e "$(BLUE)🌱 Seeding messaging database...$(NC)"
+	@set -e; \
+	if [ -d "$(MESSAGING_SEED_PATH)" ]; then \
+		for file in $$(ls $(MESSAGING_SEED_PATH)/*.sql | sort); do \
+			echo "Running $$file"; \
+			psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
+		done; \
+	fi
+	@echo -e "$(GREEN)✅ Messaging database seeded$(NC)"
 
 db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database
 	@echo -e "$(GREEN)✅ Database reset completed$(NC)"
