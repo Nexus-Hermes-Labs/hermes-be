@@ -1,4 +1,4 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging db-seed db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell sqlx-prepare run-messaging
+.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging db-seed db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell sqlx-prepare run-messaging run-chat
 
 # Colors for output
 BLUE := \033[0;34m
