@@ -153,10 +153,7 @@ impl MessageService {
         self.get_messages(channel_id, limit, before_id).await
     }
 
-    pub async fn get_message_grpc(
-        &self,
-        message_id: Uuid,
-    ) -> Result<Message, MessageServiceError> {
+    pub async fn get_message_grpc(&self, message_id: Uuid) -> Result<Message, MessageServiceError> {
         self.message_repo
             .find_by_id(message_id)
             .await

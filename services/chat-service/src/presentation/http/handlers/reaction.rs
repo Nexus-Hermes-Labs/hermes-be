@@ -98,5 +98,7 @@ pub async fn get_reactions(
         .get_reactions(message_id)
         .await?;
 
-    Ok(Json(reactions.into_iter().map(ReactionResponse::from).collect()))
+    Ok(Json(
+        reactions.into_iter().map(ReactionResponse::from).collect(),
+    ))
 }

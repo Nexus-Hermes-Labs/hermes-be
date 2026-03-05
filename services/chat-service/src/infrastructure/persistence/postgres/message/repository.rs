@@ -34,9 +34,8 @@ impl Repository<Message, Uuid> for PostgresMessageRepository {
     type Error = RepositoryError;
 
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Message>, Self::Error> {
-        let sql = format!(
-            "SELECT {MSG_COLS} FROM messages WHERE id = $1 AND channel_id IS NOT NULL"
-        );
+        let sql =
+            format!("SELECT {MSG_COLS} FROM messages WHERE id = $1 AND channel_id IS NOT NULL");
         let row = sqlx::query_as::<_, MessageRow>(&sql)
             .bind(id)
             .fetch_optional(&self.pool)

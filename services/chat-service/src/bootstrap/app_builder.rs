@@ -75,21 +75,21 @@ impl AppBuilder {
 
     /// Build the complete application with all dependencies.
     pub fn build(self) -> Result<(Server, ChatServiceServer<ChatServiceGrpc>), BootstrapError> {
-        let _service_name = self
-            .service_name
-            .ok_or_else(|| BootstrapError::Initialization("Service name must be provided".to_string()))?;
-        let db_pool = self
-            .db_pool
-            .ok_or_else(|| BootstrapError::Initialization("Database pool must be provided".to_string()))?;
-        let redis = self
-            .redis
-            .ok_or_else(|| BootstrapError::Initialization("Redis connection must be provided".to_string()))?;
-        let metrics = self
-            .metrics
-            .ok_or_else(|| BootstrapError::Initialization("Metrics must be provided".to_string()))?;
-        let nats_client = self
-            .nats
-            .ok_or_else(|| BootstrapError::Initialization("NATS client must be provided".to_string()))?;
+        let _service_name = self.service_name.ok_or_else(|| {
+            BootstrapError::Initialization("Service name must be provided".to_string())
+        })?;
+        let db_pool = self.db_pool.ok_or_else(|| {
+            BootstrapError::Initialization("Database pool must be provided".to_string())
+        })?;
+        let redis = self.redis.ok_or_else(|| {
+            BootstrapError::Initialization("Redis connection must be provided".to_string())
+        })?;
+        let metrics = self.metrics.ok_or_else(|| {
+            BootstrapError::Initialization("Metrics must be provided".to_string())
+        })?;
+        let nats_client = self.nats.ok_or_else(|| {
+            BootstrapError::Initialization("NATS client must be provided".to_string())
+        })?;
 
         // ── Infrastructure ────────────────────────────────────────────────
         let health_check = Arc::new(HealthCheck::new(db_pool.clone(), redis.clone()));
