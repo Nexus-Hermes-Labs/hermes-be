@@ -103,6 +103,7 @@ fake = { workspace = true }
 rstest = { workspace = true }
 testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
+http-body-util = { workspace = true }
 
 # ============================================================================
 # BUILD DEPENDENCIES (proto compilation)
