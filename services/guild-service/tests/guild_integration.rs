@@ -1157,3 +1157,308 @@ async fn list_invites_by_non_owner_returns_403() {
     assert_eq!(status, StatusCode::FORBIDDEN);
     assert_eq!(body["error"], "forbidden");
 }
+
+// ============================================================
+// GET /api/v1/guilds/@me
+// ============================================================
+
+#[tokio::test]
+async fn get_my_guilds_empty_when_not_a_member() {
+    let harness = TestHarness::new().await;
+    let user_id = Uuid::new_v4();
+    let token = harness.token_for(user_id);
+
+    let (status, body) = make_authenticated_request(
+        harness.router,
+        Method::GET,
+        "/api/v1/guilds/@me",
+        None,
+        &token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["total"], 0);
+    assert_eq!(body["guilds"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn get_my_guilds_returns_seeded_memberships() {
+    let harness = TestHarness::new().await;
+    let owner_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let owner_token = harness.token_for(owner_id);
+    let member_token = harness.token_for(member_id);
+
+    // Create two guilds and seed member into both
+    let (_, g1) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/guilds",
+        Some(json!({ "name": "Guild Alpha" })),
+        &owner_token,
+    )
+    .await;
+    let guild1_id: Uuid = g1["guild_id"].as_str().unwrap().parse().unwrap();
+
+    let (_, g2) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/guilds",
+        Some(json!({ "name": "Guild Beta" })),
+        &owner_token,
+    )
+    .await;
+    let guild2_id: Uuid = g2["guild_id"].as_str().unwrap().parse().unwrap();
+
+    harness.seed_member(guild1_id, member_id).await;
+    harness.seed_member(guild2_id, member_id).await;
+
+    let (status, body) = make_authenticated_request(
+        harness.router,
+        Method::GET,
+        "/api/v1/guilds/@me",
+        None,
+        &member_token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["total"], 2);
+    let guild_ids: Vec<&str> = body["guilds"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|g| g["guild_id"].as_str().unwrap())
+        .collect();
+    assert!(guild_ids.contains(&guild1_id.to_string().as_str()));
+    assert!(guild_ids.contains(&guild2_id.to_string().as_str()));
+}
+
+#[tokio::test]
+async fn get_my_guilds_without_auth_returns_401() {
+    let harness = TestHarness::new().await;
+
+    let (status, _) = make_json_request(
+        harness.router,
+        Method::GET,
+        "/api/v1/guilds/@me",
+        None,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+// ============================================================
+// ROLE ASSIGNMENT / REMOVAL
+// ============================================================
+
+#[tokio::test]
+async fn assign_role_by_owner_returns_200() {
+    let harness = TestHarness::new().await;
+    let owner_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let token = harness.token_for(owner_id);
+
+    // Create guild and seed member
+    let (_, created) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/guilds",
+        Some(json!({ "name": "Role Assign Guild" })),
+        &token,
+    )
+    .await;
+    let guild_id_str = created["guild_id"].as_str().unwrap();
+    let guild_id: Uuid = guild_id_str.parse().unwrap();
+
+    harness.seed_member(guild_id, member_id).await;
+
+    // Create a custom role
+    let (_, role_body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/guilds/{guild_id}/roles"),
+        Some(json!({ "name": "Moderator", "permissions": 0 })),
+        &token,
+    )
+    .await;
+    let role_id = role_body["role_id"].as_str().unwrap();
+
+    // Assign the role
+    let (status, body) = make_authenticated_request(
+        harness.router,
+        Method::PUT,
+        &format!("/api/v1/guilds/{guild_id}/members/{member_id}/roles"),
+        Some(json!({ "role_id": role_id })),
+        &token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["user_id"], member_id.to_string());
+    let role_ids = body["role_ids"].as_array().unwrap();
+    assert!(
+        role_ids.iter().any(|r| r.as_str() == Some(role_id)),
+        "role_ids should contain the assigned role"
+    );
+}
+
+#[tokio::test]
+async fn assign_role_by_non_owner_returns_403() {
+    let harness = TestHarness::new().await;
+    let owner_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let owner_token = harness.token_for(owner_id);
+    let member_token = harness.token_for(member_id);
+
+    let (_, created) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/guilds",
+        Some(json!({ "name": "Forbidden Assign" })),
+        &owner_token,
+    )
+    .await;
+    let guild_id_str = created["guild_id"].as_str().unwrap();
+    let guild_id: Uuid = guild_id_str.parse().unwrap();
+
+    harness.seed_member(guild_id, member_id).await;
+
+    let (_, role_body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/guilds/{guild_id}/roles"),
+        Some(json!({ "name": "SomeRole", "permissions": 0 })),
+        &owner_token,
+    )
+    .await;
+    let role_id = role_body["role_id"].as_str().unwrap();
+
+    // Member tries to assign role to themselves
+    let (status, body) = make_authenticated_request(
+        harness.router,
+        Method::PUT,
+        &format!("/api/v1/guilds/{guild_id}/members/{member_id}/roles"),
+        Some(json!({ "role_id": role_id })),
+        &member_token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(body["error"], "forbidden");
+}
+
+#[tokio::test]
+async fn remove_role_by_owner_returns_200() {
+    let harness = TestHarness::new().await;
+    let owner_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let token = harness.token_for(owner_id);
+
+    let (_, created) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/guilds",
+        Some(json!({ "name": "Role Remove Guild" })),
+        &token,
+    )
+    .await;
+    let guild_id_str = created["guild_id"].as_str().unwrap();
+    let guild_id: Uuid = guild_id_str.parse().unwrap();
+
+    harness.seed_member(guild_id, member_id).await;
+
+    // Create and assign a role
+    let (_, role_body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/guilds/{guild_id}/roles"),
+        Some(json!({ "name": "Temp Role", "permissions": 0 })),
+        &token,
+    )
+    .await;
+    let role_id = role_body["role_id"].as_str().unwrap();
+
+    make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/v1/guilds/{guild_id}/members/{member_id}/roles"),
+        Some(json!({ "role_id": role_id })),
+        &token,
+    )
+    .await;
+
+    // Remove the role
+    let (status, body) = make_authenticated_request(
+        harness.router,
+        Method::DELETE,
+        &format!("/api/v1/guilds/{guild_id}/members/{member_id}/roles/{role_id}"),
+        None,
+        &token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["user_id"], member_id.to_string());
+    let role_ids = body["role_ids"].as_array().unwrap();
+    assert!(
+        !role_ids.iter().any(|r| r.as_str() == Some(role_id)),
+        "role_ids should no longer contain the removed role"
+    );
+}
+
+#[tokio::test]
+async fn remove_role_by_non_owner_returns_403() {
+    let harness = TestHarness::new().await;
+    let owner_id = Uuid::new_v4();
+    let member_id = Uuid::new_v4();
+    let owner_token = harness.token_for(owner_id);
+    let member_token = harness.token_for(member_id);
+
+    let (_, created) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/guilds",
+        Some(json!({ "name": "Remove Forbidden" })),
+        &owner_token,
+    )
+    .await;
+    let guild_id_str = created["guild_id"].as_str().unwrap();
+    let guild_id: Uuid = guild_id_str.parse().unwrap();
+
+    harness.seed_member(guild_id, member_id).await;
+
+    let (_, role_body) = make_authenticated_request(
+        harness.router.clone(),
+        Method::POST,
+        &format!("/api/v1/guilds/{guild_id}/roles"),
+        Some(json!({ "name": "Target Role", "permissions": 0 })),
+        &owner_token,
+    )
+    .await;
+    let role_id = role_body["role_id"].as_str().unwrap();
+
+    make_authenticated_request(
+        harness.router.clone(),
+        Method::PUT,
+        &format!("/api/v1/guilds/{guild_id}/members/{member_id}/roles"),
+        Some(json!({ "role_id": role_id })),
+        &owner_token,
+    )
+    .await;
+
+    // Member tries to remove their own role
+    let (status, body) = make_authenticated_request(
+        harness.router,
+        Method::DELETE,
+        &format!("/api/v1/guilds/{guild_id}/members/{member_id}/roles/{role_id}"),
+        None,
+        &member_token,
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(body["error"], "forbidden");
+}
