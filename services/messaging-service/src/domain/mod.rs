@@ -1,6 +1,7 @@
 pub mod conversation;
 pub mod message;
 pub mod reaction;
+pub mod unit_of_work;
 
 pub use conversation::{
     validate_members, Conversation, ConversationError, ConversationMember, ConversationRepository,
@@ -10,3 +11,4 @@ pub use message::{
     Message, MessageContent, MessageError, MessageRepository, MessageTarget, MessageType,
 };
 pub use reaction::{Emoji, Reaction, ReactionError, ReactionRepository};
+pub use unit_of_work::{ConversationMemberWriter, ConversationWriter};

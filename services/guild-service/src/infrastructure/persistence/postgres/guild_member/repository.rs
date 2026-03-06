@@ -48,56 +48,6 @@ impl PostgresGuildMemberRepository {
 
 #[async_trait]
 impl GuildMemberRepository for PostgresGuildMemberRepository {
-    // ── CRUD ────────────────────────────────────────────────────────────────
-
-    async fn save(&self, member: &GuildMember) -> Result<(), RepositoryError> {
-        sqlx::query(
-            r"
-            INSERT INTO guild_members (guild_id, user_id, nickname, joined_at, updated_at, left_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            ",
-        )
-        .bind(member.guild_id())
-        .bind(member.user_id())
-        .bind(member.nickname().map(|n| n.as_str().to_string()))
-        .bind(member.joined_at())
-        .bind(member.updated_at())
-        .bind(if member.is_active() {
-            None
-        } else {
-            Some(member.updated_at())
-        })
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
-    async fn update(&self, member: &GuildMember) -> Result<(), RepositoryError> {
-        sqlx::query(
-            r"
-            UPDATE guild_members
-            SET nickname   = $3,
-                updated_at = $4,
-                left_at    = $5
-            WHERE guild_id = $1 AND user_id = $2
-            ",
-        )
-        .bind(member.guild_id())
-        .bind(member.user_id())
-        .bind(member.nickname().map(|n| n.as_str().to_string()))
-        .bind(member.updated_at())
-        .bind(if member.is_active() {
-            None
-        } else {
-            Some(member.updated_at())
-        })
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
     async fn find_by_user(
         &self,
         guild_id: Uuid,

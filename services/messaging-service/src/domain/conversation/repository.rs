@@ -10,7 +10,11 @@ use super::entity::{Conversation, ConversationMember};
 pub trait ConversationRepository:
     Repository<Conversation, Uuid, Error = RepositoryError> + Send + Sync
 {
-    /// Save a batch of conversation members atomically.
+    /// Save a batch of conversation members (single-aggregate, non-transactional).
+    ///
+    /// Used when adding a member to an existing conversation. For atomic
+    /// creation of a new conversation with its initial members, use
+    /// [`MessagingUnitOfWork`](crate::application::ports::unit_of_work::MessagingUnitOfWork).
     async fn save_members(&self, members: &[ConversationMember]) -> Result<(), Self::Error>;
 
     /// All conversations a user is part of (for listing a user's DMs).

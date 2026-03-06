@@ -1,7 +1,7 @@
 use auth_service::application::services::authentication::service::AuthService;
 use auth_service::infrastructure::grpc::UserGrpcClient;
 use auth_service::infrastructure::persistence::postgres::{
-    PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
+    PgAuthUnitOfWorkFactory, PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
 use auth_service::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use auth_service::infrastructure::security::token::sha256_service::Sha256TokenHasher;
@@ -338,6 +338,7 @@ impl TestHarness {
         );
         let credential_repo = Arc::new(PostgresAuthCredentialRepository::new(pool.clone()));
         let session_repo = Arc::new(PostgresAuthSessionRepository::new(pool.clone()));
+        let uow_factory = Arc::new(PgAuthUnitOfWorkFactory::new(pool.clone()));
         let password_service = Arc::new(Argon2PasswordService::new());
         let token_hasher = Arc::new(Sha256TokenHasher::new());
         let email_service = Arc::new(MockEmailService);
@@ -346,6 +347,7 @@ impl TestHarness {
             "test-auth-service",
             credential_repo.clone(),
             session_repo.clone(),
+            uow_factory,
             password_service,
             token_hasher,
             event_publisher,

@@ -7,17 +7,14 @@ use super::entity::GuildMember;
 
 /// Guild member repository trait
 ///
+/// Read-only and role-management operations. All writes (join, leave, kick)
+/// are performed through [`GuildMemberWriter`](crate::domain::unit_of_work::GuildMemberWriter)
+/// inside a [`GuildUnitOfWork`](crate::application::ports::unit_of_work::GuildUnitOfWork).
+///
 /// Keyed by composite (`guild_id`, `user_id`) rather than a single Uuid,
 /// so we do not implement the generic `Repository<GuildMember, Uuid>` here.
 #[async_trait]
 pub trait GuildMemberRepository: Send + Sync {
-    // ============================================
-    // CRUD
-    // ============================================
-
-    async fn save(&self, member: &GuildMember) -> Result<(), RepositoryError>;
-    async fn update(&self, member: &GuildMember) -> Result<(), RepositoryError>;
-
     /// Find active member by (`guild_id`, `user_id`)
     async fn find_by_user(
         &self,

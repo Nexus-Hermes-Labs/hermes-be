@@ -6,8 +6,8 @@ use crate::domain::guild_member::GuildMemberRepository;
 use crate::domain::guild_role::GuildRoleRepository;
 use crate::infrastructure::grpc::{ChannelGrpcClient, UserGrpcClient};
 use crate::infrastructure::persistence::{
-    PostgresGuildInviteRepository, PostgresGuildMemberRepository, PostgresGuildRepository,
-    PostgresGuildRoleRepository,
+    PgGuildUnitOfWorkFactory, PostgresGuildInviteRepository, PostgresGuildMemberRepository,
+    PostgresGuildRepository, PostgresGuildRoleRepository,
 };
 use crate::presentation::grpc::proto::guild::v1::guild_service_server::GuildServiceServer;
 use crate::presentation::grpc::server::GuildServiceGrpc;
@@ -152,22 +152,30 @@ impl AppBuilder {
         info!("✅ Persistence layer ready");
 
         // ========================================
+        // UNIT OF WORK FACTORY
+        // ========================================
+        let uow_factory: Arc<PgGuildUnitOfWorkFactory> =
+            Arc::new(PgGuildUnitOfWorkFactory::new(db_pool.clone()));
+
+        // ========================================
         // APPLICATION LAYER
         // ========================================
         let guild_service = Arc::new(GuildService::new(
             guild_repo.clone(),
             member_repo.clone(),
-            role_repo.clone(),
+            uow_factory.clone(),
         ));
         let member_service = Arc::new(GuildMemberService::new(
             guild_repo.clone(),
             member_repo.clone(),
+            uow_factory.clone(),
         ));
         let role_service = Arc::new(GuildRoleService::new(guild_repo.clone(), role_repo.clone()));
         let invite_service = Arc::new(GuildInviteService::new(
             guild_repo.clone(),
             invite_repo,
             member_repo,
+            uow_factory,
         ));
 
         info!("✅ Application layer ready");

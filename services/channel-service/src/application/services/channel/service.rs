@@ -2,6 +2,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::domain::channel::{Channel, ChannelName, ChannelRepository, ChannelType};
+use crate::application::ports::unit_of_work::ChannelUnitOfWorkFactory;
 use crate::infrastructure::grpc::guild_client::GuildGrpcClient;
 
 use super::error::ChannelServiceError;
@@ -12,6 +13,7 @@ use super::error::ChannelServiceError;
 /// repository and guild authorization to the guild gRPC client.
 pub struct ChannelService {
     channel_repo: Arc<dyn ChannelRepository>,
+    uow_factory: Arc<dyn ChannelUnitOfWorkFactory>,
     guild_client: Arc<GuildGrpcClient>,
 }
 
@@ -25,10 +27,12 @@ impl ChannelService {
     /// Create a new `ChannelService` with required dependencies.
     pub fn new(
         channel_repo: Arc<dyn ChannelRepository>,
+        uow_factory: Arc<dyn ChannelUnitOfWorkFactory>,
         guild_client: Arc<GuildGrpcClient>,
     ) -> Self {
         Self {
             channel_repo,
+            uow_factory,
             guild_client,
         }
     }
@@ -116,13 +120,23 @@ impl ChannelService {
         let voice_channel = Channel::new(guild_id, None, voice_name, ChannelType::Voice, None, 2)
             .map_err(ChannelServiceError::DomainError)?;
 
-        self.channel_repo
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| ChannelServiceError::RepositoryError(e.to_string()))?;
+
+        uow.channels()
             .save(&text_channel)
             .await
             .map_err(|e| ChannelServiceError::RepositoryError(e.to_string()))?;
 
-        self.channel_repo
+        uow.channels()
             .save(&voice_channel)
+            .await
+            .map_err(|e| ChannelServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| ChannelServiceError::RepositoryError(e.to_string()))?;
 

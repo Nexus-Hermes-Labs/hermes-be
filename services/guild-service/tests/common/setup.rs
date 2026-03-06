@@ -4,8 +4,14 @@ use guild_service::application::{
     GuildInviteService, GuildMemberService, GuildRoleService, GuildService,
 };
 use guild_service::infrastructure::persistence::{
-    PostgresGuildInviteRepository, PostgresGuildMemberRepository, PostgresGuildRepository,
-    PostgresGuildRoleRepository,
+    PgGuildUnitOfWorkFactory, PostgresGuildInviteRepository, PostgresGuildMemberRepository,
+    PostgresGuildRepository, PostgresGuildRoleRepository,
+};
+use guild_service::presentation::grpc::proto::channel::v1::{
+    channel_service_server::{ChannelService, ChannelServiceServer},
+    ChannelResponse, ChannelType, CreateChannelRequest, CreateDefaultChannelsRequest,
+    CreateDefaultChannelsResponse, DeleteChannelRequest, GetChannelRequest,
+    ListGuildChannelsRequest, ListGuildChannelsResponse, UpdateChannelRequest,
 };
 use guild_service::state::guild_state::GuildState;
 use guild_service::state::shared_state::SharedState;
@@ -15,6 +21,8 @@ use std::sync::Arc;
 use testcontainers::runners::AsyncRunner;
 use testcontainers::{ContainerAsync, GenericImage};
 use testcontainers_modules::postgres::Postgres;
+use tokio::net::TcpListener;
+use tonic::{Request, Response, Status};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use uuid::Uuid;
@@ -48,6 +56,109 @@ fn get_or_init_metrics() -> Metrics {
     METRICS
         .get_or_init(|| Metrics::init().expect("init metrics"))
         .clone()
+}
+
+// ============================================
+// MOCK channel-service gRPC SERVER
+// ============================================
+
+struct MockChannelService;
+
+#[tonic::async_trait]
+impl ChannelService for MockChannelService {
+    async fn create_channel(
+        &self,
+        _request: Request<CreateChannelRequest>,
+    ) -> Result<Response<ChannelResponse>, Status> {
+        Err(Status::unimplemented("not needed for guild tests"))
+    }
+
+    async fn get_channel(
+        &self,
+        _request: Request<GetChannelRequest>,
+    ) -> Result<Response<ChannelResponse>, Status> {
+        Err(Status::unimplemented("not needed for guild tests"))
+    }
+
+    async fn list_guild_channels(
+        &self,
+        _request: Request<ListGuildChannelsRequest>,
+    ) -> Result<Response<ListGuildChannelsResponse>, Status> {
+        Err(Status::unimplemented("not needed for guild tests"))
+    }
+
+    async fn update_channel(
+        &self,
+        _request: Request<UpdateChannelRequest>,
+    ) -> Result<Response<ChannelResponse>, Status> {
+        Err(Status::unimplemented("not needed for guild tests"))
+    }
+
+    async fn delete_channel(
+        &self,
+        _request: Request<DeleteChannelRequest>,
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("not needed for guild tests"))
+    }
+
+    async fn create_default_channels(
+        &self,
+        request: Request<CreateDefaultChannelsRequest>,
+    ) -> Result<Response<CreateDefaultChannelsResponse>, Status> {
+        let req = request.into_inner();
+        let now = prost_types::Timestamp {
+            seconds: chrono::Utc::now().timestamp(),
+            nanos: 0,
+        };
+        let text_channel = ChannelResponse {
+            id: uuid::Uuid::new_v4().to_string(),
+            guild_id: req.guild_id.clone(),
+            parent_id: None,
+            name: "general".to_string(),
+            r#type: ChannelType::Text as i32,
+            description: None,
+            position: 0,
+            created_at: Some(now.clone()),
+            updated_at: Some(now.clone()),
+        };
+        let voice_channel = ChannelResponse {
+            id: uuid::Uuid::new_v4().to_string(),
+            guild_id: req.guild_id,
+            parent_id: None,
+            name: "General".to_string(),
+            r#type: ChannelType::Voice as i32,
+            description: None,
+            position: 1,
+            created_at: Some(now.clone()),
+            updated_at: Some(now),
+        };
+        Ok(Response::new(CreateDefaultChannelsResponse {
+            text_channel: Some(text_channel),
+            voice_channel: Some(voice_channel),
+        }))
+    }
+}
+
+/// Bind to an ephemeral port, start the mock channel gRPC server, and return
+/// the address string (`http://127.0.0.1:<port>`).
+async fn start_mock_channel_grpc_server() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind mock channel gRPC listener");
+    let addr = listener.local_addr().expect("get local addr");
+    let addr_str = format!("http://127.0.0.1:{}", addr.port());
+
+    tokio::spawn(async move {
+        tonic::transport::Server::builder()
+            .add_service(ChannelServiceServer::new(MockChannelService))
+            .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(listener))
+            .await
+            .expect("mock channel gRPC server failed");
+    });
+
+    // Give the server a moment to start accepting connections.
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    addr_str
 }
 
 // ============================================
@@ -130,24 +241,30 @@ impl TestHarness {
         let invite_repo: Arc<dyn guild_service::domain::guild_invite::GuildInviteRepository> =
             Arc::new(PostgresGuildInviteRepository::new(pool.clone()));
 
-        // ── 4. Build application services ───────────────────────────────────
+        // ── 4. Unit of work factory ──────────────────────────────────────────
+        let uow_factory: Arc<PgGuildUnitOfWorkFactory> =
+            Arc::new(PgGuildUnitOfWorkFactory::new(pool.clone()));
+
+        // ── 5. Build application services ───────────────────────────────────
         let guild_service = Arc::new(GuildService::new(
             guild_repo.clone(),
             member_repo.clone(),
-            role_repo.clone(),
+            uow_factory.clone(),
         ));
         let member_service = Arc::new(GuildMemberService::new(
             guild_repo.clone(),
             member_repo.clone(),
+            uow_factory.clone(),
         ));
         let role_service = Arc::new(GuildRoleService::new(guild_repo.clone(), role_repo.clone()));
         let invite_service = Arc::new(GuildInviteService::new(
             guild_repo,
             invite_repo,
             member_repo,
+            uow_factory,
         ));
 
-        // ── 5. Assemble state ────────────────────────────────────────────────
+        // ── 6. Assemble state ────────────────────────────────────────────────
         let metrics = get_or_init_metrics();
 
         let guild_state =
@@ -157,8 +274,9 @@ impl TestHarness {
             guild_service::infrastructure::grpc::UserGrpcClient::new("http://[::1]:50052")
                 .expect("create user grpc client");
 
+        let channel_grpc_addr = start_mock_channel_grpc_server().await;
         let channel_grpc_client =
-            guild_service::infrastructure::grpc::ChannelGrpcClient::new("http://[::1]:50053")
+            guild_service::infrastructure::grpc::ChannelGrpcClient::new(channel_grpc_addr)
                 .expect("create channel grpc client");
 
         let shared_state = SharedState {

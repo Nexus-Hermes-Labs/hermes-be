@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::domain::guild::GuildRepository;
 use crate::domain::guild_member::{GuildMember, GuildMemberRepository};
+use crate::application::ports::unit_of_work::GuildUnitOfWorkFactory;
 
 use super::error::GuildMemberServiceError;
 
@@ -12,6 +13,7 @@ use super::error::GuildMemberServiceError;
 pub struct GuildMemberService {
     guild_repo: Arc<dyn GuildRepository>,
     member_repo: Arc<dyn GuildMemberRepository>,
+    uow_factory: Arc<dyn GuildUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for GuildMemberService {
@@ -25,10 +27,12 @@ impl GuildMemberService {
     pub fn new(
         guild_repo: Arc<dyn GuildRepository>,
         member_repo: Arc<dyn GuildMemberRepository>,
+        uow_factory: Arc<dyn GuildUnitOfWorkFactory>,
     ) -> Self {
         Self {
             guild_repo,
             member_repo,
+            uow_factory,
         }
     }
 
@@ -65,13 +69,23 @@ impl GuildMemberService {
 
         let member = GuildMember::new(guild_id, user_id);
 
-        self.member_repo
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
+
+        uow.members()
             .save(&member)
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
-        self.guild_repo
+        uow.guilds()
             .increment_member_count(guild_id)
+            .await
+            .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
@@ -156,13 +170,23 @@ impl GuildMemberService {
         let mut member = self.get_member(guild_id, target_user_id).await?;
         member.leave();
 
-        self.member_repo
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
+
+        uow.members()
             .update(&member)
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
-        self.guild_repo
+        uow.guilds()
             .decrement_member_count(guild_id)
+            .await
+            .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
@@ -192,13 +216,23 @@ impl GuildMemberService {
         let mut member = self.get_member(guild_id, user_id).await?;
         member.leave();
 
-        self.member_repo
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
+
+        uow.members()
             .update(&member)
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 
-        self.guild_repo
+        uow.guilds()
             .decrement_member_count(guild_id)
+            .await
+            .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| GuildMemberServiceError::RepositoryError(e.to_string()))?;
 

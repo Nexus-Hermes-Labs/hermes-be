@@ -3,7 +3,8 @@ use uuid::Uuid;
 
 use crate::domain::guild::{Guild, GuildName, GuildRepository, GuildVisibility};
 use crate::domain::guild_member::GuildMemberRepository;
-use crate::domain::guild_role::{GuildRole, GuildRoleRepository};
+use crate::domain::guild_role::GuildRole;
+use crate::application::ports::unit_of_work::GuildUnitOfWorkFactory;
 
 use super::error::GuildServiceError;
 
@@ -14,7 +15,7 @@ use super::error::GuildServiceError;
 pub struct GuildService {
     guild_repo: Arc<dyn GuildRepository>,
     member_repo: Arc<dyn GuildMemberRepository>,
-    role_repo: Arc<dyn GuildRoleRepository>,
+    uow_factory: Arc<dyn GuildUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for GuildService {
@@ -28,12 +29,12 @@ impl GuildService {
     pub fn new(
         guild_repo: Arc<dyn GuildRepository>,
         member_repo: Arc<dyn GuildMemberRepository>,
-        role_repo: Arc<dyn GuildRoleRepository>,
+        uow_factory: Arc<dyn GuildUnitOfWorkFactory>,
     ) -> Self {
         Self {
             guild_repo,
             member_repo,
-            role_repo,
+            uow_factory,
         }
     }
 
@@ -41,7 +42,7 @@ impl GuildService {
     // GUILD MANAGEMENT
     // ============================================
 
-    /// Create a new guild (and its @everyone role)
+    /// Create a new guild and its mandatory `@everyone` role atomically.
     pub async fn create_guild(
         &self,
         owner_id: Uuid,
@@ -53,15 +54,25 @@ impl GuildService {
         let guild = Guild::new(owner_id, guild_name, description)
             .map_err(GuildServiceError::DomainError)?;
 
-        self.guild_repo
+        let everyone_role = GuildRole::new_everyone(guild.id());
+
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| GuildServiceError::RepositoryError(e.to_string()))?;
+
+        uow.guilds()
             .save(&guild)
             .await
             .map_err(|e| GuildServiceError::RepositoryError(e.to_string()))?;
 
-        // Create default @everyone role
-        let everyone_role = GuildRole::new_everyone(guild.id());
-        self.role_repo
-            .save(&everyone_role)
+        uow.guilds()
+            .save_role(&everyone_role)
+            .await
+            .map_err(|e| GuildServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| GuildServiceError::RepositoryError(e.to_string()))?;
 

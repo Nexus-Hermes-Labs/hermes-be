@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::domain::guild::GuildRepository;
 use crate::domain::guild_invite::{GuildInvite, GuildInviteRepository, InviteCode};
 use crate::domain::guild_member::{GuildMember, GuildMemberRepository};
+use crate::application::ports::unit_of_work::GuildUnitOfWorkFactory;
 
 use super::error::GuildInviteServiceError;
 
@@ -15,6 +16,7 @@ pub struct GuildInviteService {
     guild_repo: Arc<dyn GuildRepository>,
     invite_repo: Arc<dyn GuildInviteRepository>,
     member_repo: Arc<dyn GuildMemberRepository>,
+    uow_factory: Arc<dyn GuildUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for GuildInviteService {
@@ -29,11 +31,13 @@ impl GuildInviteService {
         guild_repo: Arc<dyn GuildRepository>,
         invite_repo: Arc<dyn GuildInviteRepository>,
         member_repo: Arc<dyn GuildMemberRepository>,
+        uow_factory: Arc<dyn GuildUnitOfWorkFactory>,
     ) -> Self {
         Self {
             guild_repo,
             invite_repo,
             member_repo,
+            uow_factory,
         }
     }
 
@@ -140,21 +144,30 @@ impl GuildInviteService {
             .use_invite()
             .map_err(GuildInviteServiceError::DomainError)?;
 
-        self.invite_repo
+        let member = GuildMember::new(guild_id, user_id);
+
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| GuildInviteServiceError::RepositoryError(e.to_string()))?;
+
+        uow.invites()
             .update(&invite)
             .await
             .map_err(|e| GuildInviteServiceError::RepositoryError(e.to_string()))?;
 
-        // Create member record
-        let member = GuildMember::new(guild_id, user_id);
-
-        self.member_repo
+        uow.members()
             .save(&member)
             .await
             .map_err(|e| GuildInviteServiceError::RepositoryError(e.to_string()))?;
 
-        self.guild_repo
+        uow.guilds()
             .increment_member_count(guild_id)
+            .await
+            .map_err(|e| GuildInviteServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| GuildInviteServiceError::RepositoryError(e.to_string()))?;
 

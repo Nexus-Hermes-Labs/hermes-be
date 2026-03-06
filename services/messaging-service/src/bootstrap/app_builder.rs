@@ -10,7 +10,8 @@ use crate::domain::conversation::ConversationRepository;
 use crate::domain::message::MessageRepository;
 use crate::domain::reaction::ReactionRepository;
 use crate::infrastructure::persistence::{
-    PostgresConversationRepository, PostgresMessageRepository, PostgresReactionRepository,
+    PgMessagingUnitOfWorkFactory, PostgresConversationRepository, PostgresMessageRepository,
+    PostgresReactionRepository,
 };
 use crate::infrastructure::NatsPublisher;
 use crate::presentation::grpc::proto::messaging::v1::messaging_service_server::MessagingServiceServer;
@@ -114,6 +115,7 @@ impl AppBuilder {
             Arc::new(PostgresReactionRepository::new(db_pool.clone()));
         let conversation_repo: Arc<dyn ConversationRepository> =
             Arc::new(PostgresConversationRepository::new(db_pool.clone()));
+        let uow_factory = Arc::new(PgMessagingUnitOfWorkFactory::new(db_pool.clone()));
 
         info!("✅ Persistence layer ready");
 
@@ -123,8 +125,11 @@ impl AppBuilder {
         let message_service = Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
         let reaction_service =
             Arc::new(ReactionService::new(reaction_repo, nats_publisher.clone()));
-        let conversation_service =
-            Arc::new(ConversationService::new(conversation_repo, nats_publisher));
+        let conversation_service = Arc::new(ConversationService::new(
+            conversation_repo,
+            uow_factory,
+            nats_publisher,
+        ));
 
         info!("✅ Application layer ready");
 

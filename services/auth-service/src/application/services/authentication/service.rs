@@ -6,6 +6,7 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
+use crate::application::ports::unit_of_work::AuthUnitOfWorkFactory;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
@@ -40,6 +41,7 @@ pub struct AuthService {
     service_name: String,
     credential_repo: Arc<dyn AuthCredentialRepository>,
     session_repo: Arc<dyn AuthSessionRepository>,
+    uow_factory: Arc<dyn AuthUnitOfWorkFactory>,
     password_service: Arc<dyn PasswordService>,
     token_hasher: Arc<dyn TokenHasher>,
     event_publisher: Arc<dyn EventPublisher>,
@@ -56,6 +58,7 @@ impl AuthService {
         service_name: impl Into<String>,
         credential_repo: Arc<dyn AuthCredentialRepository>,
         session_repo: Arc<dyn AuthSessionRepository>,
+        uow_factory: Arc<dyn AuthUnitOfWorkFactory>,
         password_service: Arc<dyn PasswordService>,
         token_hasher: Arc<dyn TokenHasher>,
         event_publisher: Arc<dyn EventPublisher>,
@@ -67,6 +70,7 @@ impl AuthService {
             service_name: service_name.into(),
             credential_repo,
             session_repo,
+            uow_factory,
             password_service,
             token_hasher,
             event_publisher,
@@ -142,10 +146,6 @@ impl AuthService {
         // STEP 4: Create Auth Credential using obtained user_id
         // ═══════════════════════════════════════════════════
         let credential = AuthCredential::new(profile_info.user_id, email.clone(), password_hash);
-        self.credential_repo.save(&credential).await.map_err(|e| {
-            error!(error = %e, "STEP 4 FAILED: credential_repo.save");
-            e
-        })?;
 
         info!(
             credential_id = %credential.id(),
@@ -171,24 +171,9 @@ impl AuthService {
         );
 
         // ═══════════════════════════════════════════════════
-        // STEP 5: Generate verification token and send email
+        // STEP 5: Generate verification token
         // ═══════════════════════════════════════════════════
         let verification_token = self.generate_verification_token();
-        self.credential_repo
-            .set_verification_token(
-                credential.id(),
-                &verification_token,
-                VERIFICATION_TOKEN_EXPIRY_HOURS,
-            )
-            .await?;
-
-        if let Err(e) = self
-            .email_service
-            .send_verification_email(credential.email().as_str(), &verification_token)
-            .await
-        {
-            error!(error = %e, user_id = %credential.id(), "Failed to send verification email (non-critical)");
-        }
 
         // ═══════════════════════════════════════════════════
         // STEP 6: Generate Tokens
@@ -213,7 +198,7 @@ impl AuthService {
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
 
         // ═══════════════════════════════════════════════════
-        // STEP 7: Create Session
+        // STEP 7: Persist credential + verification token + session atomically
         // ═══════════════════════════════════════════════════
         let token_hash = self
             .token_hasher
@@ -227,16 +212,49 @@ impl AuthService {
             client_info.user_agent,
         );
 
-        self.session_repo.save(&session).await.map_err(|e| {
-            error!(error = %e, "STEP 7 FAILED: session_repo.save");
-            e
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        uow.credentials().save(&credential).await.map_err(|e| {
+            error!(error = %e, "STEP 7 FAILED: credential save");
+            AuthApplicationError::RepositoryError(e.to_string())
         })?;
+
+        uow.credentials()
+            .set_verification_token(
+                credential.id(),
+                &verification_token,
+                VERIFICATION_TOKEN_EXPIRY_HOURS,
+            )
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        uow.sessions().save(&session).await.map_err(|e| {
+            error!(error = %e, "STEP 7 FAILED: session save");
+            AuthApplicationError::RepositoryError(e.to_string())
+        })?;
+
+        uow.commit()
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
 
         info!(
             user_id = %credential.id(),
             session_id = %session.id(),
             "Session created"
         );
+
+        // Send verification email after successful commit (fire and forget)
+        if let Err(e) = self
+            .email_service
+            .send_verification_email(credential.email().as_str(), &verification_token)
+            .await
+        {
+            error!(error = %e, user_id = %credential.id(), "Failed to send verification email (non-critical)");
+        }
 
         // ═══════════════════════════════════════════════════
         // STEP 8: Publish Event (ASYNC, Non-blocking)
@@ -404,7 +422,6 @@ impl AuthService {
         // STEP 4: Record Successful Login
         // ═══════════════════════════════════════════════════
         credential.record_successful_login(client_info.ip_address.clone());
-        self.credential_repo.update(&credential).await?;
 
         info!(user_id = %credential.id(), "Login successful");
 
@@ -431,7 +448,7 @@ impl AuthService {
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
 
         // ═══════════════════════════════════════════════════
-        // STEP 6: Create Session
+        // STEP 6: Persist login record + new session atomically
         // ═══════════════════════════════════════════════════
         let token_hash = self
             .token_hasher
@@ -445,7 +462,25 @@ impl AuthService {
             client_info.user_agent,
         );
 
-        self.session_repo.save(&session).await?;
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        uow.credentials()
+            .update(&credential)
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        uow.sessions()
+            .save(&session)
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
 
         Ok(AuthResponse::new(
             access_token,

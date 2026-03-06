@@ -111,6 +111,7 @@ rstest = { workspace = true }
 testcontainers = { workspace = true }
 testcontainers-modules = { workspace = true }
 http-body-util = "0.1"
+tokio-stream = { workspace = true }
 
 # ============================================================================
 # BUILD DEPENDENCIES (proto compilation)

@@ -4,6 +4,7 @@ use uuid::Uuid;
 use crate::domain::conversation::{
     validate_members, Conversation, ConversationMember, ConversationRepository,
 };
+use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::ConversationType;
 use crate::infrastructure::NatsPublisher;
 
@@ -11,6 +12,7 @@ use super::error::ConversationServiceError;
 
 pub struct ConversationService {
     conversation_repo: Arc<dyn ConversationRepository>,
+    uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
     nats: Arc<NatsPublisher>,
 }
 
@@ -24,10 +26,12 @@ impl std::fmt::Debug for ConversationService {
 impl ConversationService {
     pub fn new(
         conversation_repo: Arc<dyn ConversationRepository>,
+        uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
         nats: Arc<NatsPublisher>,
     ) -> Self {
         Self {
             conversation_repo,
+            uow_factory,
             nats,
         }
     }
@@ -87,17 +91,28 @@ impl ConversationService {
         validate_members(ConversationType::Dm, &member_ids)?;
 
         let conversation = Conversation::new_dm();
-        self.conversation_repo
-            .save(&conversation)
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
         let members: Vec<ConversationMember> = member_ids
             .iter()
             .map(|&uid| ConversationMember::new(conversation.id(), uid))
             .collect();
-        self.conversation_repo
-            .save_members(&members)
+
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        uow.conversations()
+            .save(&conversation)
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        uow.members()
+            .save_batch(&members)
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
 
@@ -115,17 +130,28 @@ impl ConversationService {
         validate_members(ConversationType::GroupDm, &member_ids)?;
 
         let conversation = Conversation::new_group_dm();
-        self.conversation_repo
-            .save(&conversation)
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
         let members: Vec<ConversationMember> = member_ids
             .iter()
             .map(|&uid| ConversationMember::new(conversation.id(), uid))
             .collect();
-        self.conversation_repo
-            .save_members(&members)
+
+        let uow = self
+            .uow_factory
+            .begin()
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        uow.conversations()
+            .save(&conversation)
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        uow.members()
+            .save_batch(&members)
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        uow.commit()
             .await
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
 

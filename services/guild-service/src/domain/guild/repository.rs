@@ -9,14 +9,6 @@ use super::entity::Guild;
 /// Guild repository trait
 #[async_trait]
 pub trait GuildRepository: Repository<Guild, Uuid, Error = RepositoryError> + Send + Sync {
-    // Inherits from Repository<Guild, Uuid>:
-    // - find_by_id(id: Uuid) -> Result<Option<Guild>>
-    // - save(entity: &Guild) -> Result<()>
-    // - update(entity: &Guild) -> Result<()>
-    // - delete(id: Uuid) -> Result<()>
-    // - exists(id: Uuid) -> Result<bool>
-    // - count() -> Result<i64>
-
     // ============================================
     // OWNER QUERIES
     // ============================================
@@ -38,14 +30,4 @@ pub trait GuildRepository: Repository<Guild, Uuid, Error = RepositoryError> + Se
 
     /// Get guilds by multiple IDs (batch lookup)
     async fn find_by_ids(&self, ids: Vec<Uuid>) -> Result<Vec<Guild>, Self::Error>;
-
-    // ============================================
-    // MEMBER COUNT
-    // ============================================
-
-    /// Atomically increment member count
-    async fn increment_member_count(&self, guild_id: Uuid) -> Result<(), Self::Error>;
-
-    /// Atomically decrement member count
-    async fn decrement_member_count(&self, guild_id: Uuid) -> Result<(), Self::Error>;
 }

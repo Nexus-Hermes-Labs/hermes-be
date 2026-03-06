@@ -6,7 +6,7 @@ use crate::domain::auth_credential::EmailService;
 use crate::infrastructure::grpc::UserGrpcClient;
 // Changed from LazyUserProfileGrpcClient and LazyUserProfileClientAdapter
 use crate::infrastructure::persistence::postgres::{
-    PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
+    PgAuthUnitOfWorkFactory, PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
 use crate::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use crate::infrastructure::security::token::sha256_service::Sha256TokenHasher;
@@ -234,6 +234,7 @@ impl AppBuilder {
         Ok(Repositories {
             credential: Arc::new(PostgresAuthCredentialRepository::new(infra.pool.clone())),
             session: Arc::new(PostgresAuthSessionRepository::new(infra.pool.clone())),
+            uow_factory: Arc::new(PgAuthUnitOfWorkFactory::new(infra.pool.clone())),
         })
     }
 
@@ -258,6 +259,7 @@ impl AppBuilder {
             config().service.name.clone(),
             repos.credential.clone(),
             repos.session.clone(),
+            repos.uow_factory.clone(),
             services.password,
             services.token_hasher,
             event_publisher,
@@ -318,6 +320,7 @@ struct Infrastructure {
 struct Repositories {
     credential: Arc<PostgresAuthCredentialRepository>,
     session: Arc<PostgresAuthSessionRepository>,
+    uow_factory: Arc<PgAuthUnitOfWorkFactory>,
 }
 
 #[derive(Clone)]

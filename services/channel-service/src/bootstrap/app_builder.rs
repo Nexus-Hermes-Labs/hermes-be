@@ -3,6 +3,7 @@ use crate::bootstrap::error::BootstrapError;
 use crate::domain::channel::ChannelRepository;
 use crate::infrastructure::grpc::GuildGrpcClient;
 use crate::infrastructure::persistence::postgres::channel::repository::PostgresChannelRepository;
+use crate::infrastructure::persistence::postgres::PgChannelUnitOfWorkFactory;
 use crate::presentation::grpc::proto::channel::v1::channel_service_server::ChannelServiceServer;
 use crate::presentation::grpc::server::ChannelServiceGrpc;
 use crate::presentation::http::server::Server;
@@ -119,14 +120,18 @@ impl AppBuilder {
         // ========================================
         let channel_repo: Arc<dyn ChannelRepository> =
             Arc::new(PostgresChannelRepository::new(db_pool.clone()));
+        let uow_factory = Arc::new(PgChannelUnitOfWorkFactory::new(db_pool.clone()));
 
         info!("✅ Persistence layer ready");
 
         // ========================================
         // APPLICATION LAYER
         // ========================================
-        let channel_service =
-            Arc::new(ChannelService::new(channel_repo, guild_grpc_client.clone()));
+        let channel_service = Arc::new(ChannelService::new(
+            channel_repo,
+            uow_factory,
+            guild_grpc_client.clone(),
+        ));
 
         info!("✅ Application layer ready");
 

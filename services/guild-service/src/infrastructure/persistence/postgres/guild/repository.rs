@@ -185,26 +185,4 @@ impl GuildRepository for PostgresGuildRepository {
 
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
-
-    async fn increment_member_count(&self, guild_id: Uuid) -> Result<(), Self::Error> {
-        sqlx::query(
-            "UPDATE guilds SET member_count = member_count + 1, updated_at = NOW() WHERE id = $1",
-        )
-        .bind(guild_id)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
-    async fn decrement_member_count(&self, guild_id: Uuid) -> Result<(), Self::Error> {
-        sqlx::query(
-            "UPDATE guilds SET member_count = GREATEST(member_count - 1, 0), updated_at = NOW() WHERE id = $1",
-        )
-        .bind(guild_id)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
 }
