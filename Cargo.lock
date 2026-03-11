@@ -687,6 +687,7 @@ dependencies = [
  "common",
  "common-config",
  "fake",
+ "http-body-util",
  "metrics 0.22.4",
  "metrics-exporter-prometheus",
  "mockall",
