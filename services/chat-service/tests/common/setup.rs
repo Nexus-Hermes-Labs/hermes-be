@@ -165,7 +165,7 @@ impl TestHarness {
             .get_host_port_ipv4(4222)
             .await
             .expect("get nats port");
-        let nats_url = format!("nats://{}:{}", nats_host, nats_port);
+        let nats_url = format!("nats://{nats_host}:{nats_port}");
 
         let mut nats_client = None;
         for attempt in 0..10 {
