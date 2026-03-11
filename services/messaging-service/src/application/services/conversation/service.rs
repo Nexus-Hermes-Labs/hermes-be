@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::conversation::{
     validate_members, Conversation, ConversationMember, ConversationRepository,
 };
-use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::ConversationType;
 use crate::infrastructure::NatsPublisher;
 

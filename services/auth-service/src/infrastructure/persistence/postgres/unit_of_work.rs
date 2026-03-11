@@ -11,9 +11,9 @@ use uuid::Uuid;
 
 use common::infrastructure::persistence::error::RepositoryError;
 
+use crate::application::ports::unit_of_work::{AuthUnitOfWork, AuthUnitOfWorkFactory};
 use crate::domain::auth_credential::AuthCredential;
 use crate::domain::auth_session::AuthSession;
-use crate::application::ports::unit_of_work::{AuthUnitOfWork, AuthUnitOfWorkFactory};
 use crate::domain::unit_of_work::{CredentialWriter, SessionWriter};
 
 // ─────────────────────────────────────────────────────────────────────────────

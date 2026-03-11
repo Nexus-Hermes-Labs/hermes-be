@@ -33,4 +33,3 @@ pub trait GuildMemberWriter: Send + Sync {
 pub trait GuildInviteWriter: Send + Sync {
     async fn update(&self, invite: &GuildInvite) -> Result<(), RepositoryError>;
 }
-

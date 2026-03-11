@@ -28,4 +28,3 @@ pub trait CredentialWriter: Send + Sync {
 pub trait SessionWriter: Send + Sync {
     async fn save(&self, session: &AuthSession) -> Result<(), RepositoryError>;
 }
-

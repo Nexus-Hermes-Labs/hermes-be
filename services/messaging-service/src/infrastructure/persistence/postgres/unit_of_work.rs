@@ -10,8 +10,8 @@ use tokio::sync::Mutex;
 
 use common::infrastructure::persistence::error::RepositoryError;
 
-use crate::domain::conversation::{Conversation, ConversationMember};
 use crate::application::ports::unit_of_work::{MessagingUnitOfWork, MessagingUnitOfWorkFactory};
+use crate::domain::conversation::{Conversation, ConversationMember};
 use crate::domain::unit_of_work::{ConversationMemberWriter, ConversationWriter};
 
 // ─────────────────────────────────────────────────────────────────────────────

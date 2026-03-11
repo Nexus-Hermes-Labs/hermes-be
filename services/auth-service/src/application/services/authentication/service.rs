@@ -1,12 +1,12 @@
 use super::error::AuthApplicationError;
 use super::user_profile_client::UserProfileClient;
 use crate::application::events::UserCreatedEvent;
+use crate::application::ports::unit_of_work::AuthUnitOfWorkFactory;
 use crate::domain::auth_credential::EmailService;
 use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
-use crate::application::ports::unit_of_work::AuthUnitOfWorkFactory;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,

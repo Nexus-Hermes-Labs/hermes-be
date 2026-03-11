@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::application::ports::unit_of_work::GuildUnitOfWorkFactory;
 use crate::domain::guild::GuildRepository;
 use crate::domain::guild_member::{GuildMember, GuildMemberRepository};
-use crate::application::ports::unit_of_work::GuildUnitOfWorkFactory;
 
 use super::error::GuildMemberServiceError;
 

@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::domain::channel::{Channel, ChannelName, ChannelRepository, ChannelType};
 use crate::application::ports::unit_of_work::ChannelUnitOfWorkFactory;
+use crate::domain::channel::{Channel, ChannelName, ChannelRepository, ChannelType};
 use crate::infrastructure::grpc::guild_client::GuildGrpcClient;
 
 use super::error::ChannelServiceError;

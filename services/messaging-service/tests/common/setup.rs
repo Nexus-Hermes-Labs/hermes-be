@@ -21,16 +21,12 @@ use tower_http::trace::TraceLayer;
 // SQL MIGRATIONS (embedded at compile-time)
 // ============================================
 
-const ENUMS_SQL: &str =
-    include_str!("../../migrations/20260226000000_create_enums.sql");
+const ENUMS_SQL: &str = include_str!("../../migrations/20260226000000_create_enums.sql");
 const CONVERSATIONS_SQL: &str =
     include_str!("../../migrations/20260226000001_create_conversations.sql");
-const MESSAGES_SQL: &str =
-    include_str!("../../migrations/20260226000002_create_messages.sql");
-const REACTIONS_SQL: &str =
-    include_str!("../../migrations/20260226000003_create_reactions.sql");
-const INDEXES_SQL: &str =
-    include_str!("../../migrations/20260226000004_create_indexes.sql");
+const MESSAGES_SQL: &str = include_str!("../../migrations/20260226000002_create_messages.sql");
+const REACTIONS_SQL: &str = include_str!("../../migrations/20260226000003_create_reactions.sql");
+const INDEXES_SQL: &str = include_str!("../../migrations/20260226000004_create_indexes.sql");
 
 // ============================================
 // METRICS SINGLETON (init only once per process)
@@ -151,8 +147,7 @@ impl TestHarness {
         let conversation_repo = Arc::new(PostgresConversationRepository::new(pool.clone()));
         let uow_factory = Arc::new(PgMessagingUnitOfWorkFactory::new(pool.clone()));
 
-        let message_service =
-            Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
+        let message_service = Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
         let reaction_service =
             Arc::new(ReactionService::new(reaction_repo, nats_publisher.clone()));
         let conversation_service = Arc::new(ConversationService::new(

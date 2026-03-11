@@ -10,8 +10,8 @@ use tokio::sync::Mutex;
 
 use common::infrastructure::persistence::error::RepositoryError;
 
-use crate::domain::channel::Channel;
 use crate::application::ports::unit_of_work::{ChannelUnitOfWork, ChannelUnitOfWorkFactory};
+use crate::domain::channel::Channel;
 use crate::domain::unit_of_work::ChannelWriter;
 
 // ─────────────────────────────────────────────────────────────────────────────

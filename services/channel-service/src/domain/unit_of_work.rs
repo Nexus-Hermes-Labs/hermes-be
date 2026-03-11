@@ -9,4 +9,3 @@ use crate::domain::channel::Channel;
 pub trait ChannelWriter: Send + Sync {
     async fn save(&self, channel: &Channel) -> Result<(), RepositoryError>;
 }
-

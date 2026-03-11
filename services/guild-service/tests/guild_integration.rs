@@ -1239,13 +1239,8 @@ async fn get_my_guilds_returns_seeded_memberships() {
 async fn get_my_guilds_without_auth_returns_401() {
     let harness = TestHarness::new().await;
 
-    let (status, _) = make_json_request(
-        harness.router,
-        Method::GET,
-        "/api/v1/guilds/@me",
-        None,
-    )
-    .await;
+    let (status, _) =
+        make_json_request(harness.router, Method::GET, "/api/v1/guilds/@me", None).await;
 
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }

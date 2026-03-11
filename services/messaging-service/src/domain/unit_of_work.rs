@@ -15,4 +15,3 @@ pub trait ConversationWriter: Send + Sync {
 pub trait ConversationMemberWriter: Send + Sync {
     async fn save_batch(&self, members: &[ConversationMember]) -> Result<(), RepositoryError>;
 }
-
