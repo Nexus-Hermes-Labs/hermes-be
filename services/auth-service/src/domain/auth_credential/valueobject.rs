@@ -1,7 +1,15 @@
 use std::fmt;
 use std::str::FromStr;
 
+use once_cell::sync::Lazy;
+
 use super::error::AuthCredentialError;
+
+static EMAIL_REGEX: Lazy<regex::Regex> = Lazy::new(|| {
+    // Safety: this pattern is a well-known valid regex literal.
+    #[allow(clippy::unwrap_used)]
+    regex::Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap()
+});
 
 // Re-export SystemRole from common so domain layer can use it cleanly
 pub use common::SystemRole;
@@ -24,11 +32,7 @@ impl Email {
             return Err(AuthCredentialError::InvalidEmail);
         }
 
-        // Simple regex check
-        let email_regex =
-            regex::Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
-
-        if !email_regex.is_match(&email) {
+        if !EMAIL_REGEX.is_match(&email) {
             return Err(AuthCredentialError::InvalidEmail);
         }
 

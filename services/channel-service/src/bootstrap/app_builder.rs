@@ -1,3 +1,4 @@
+use crate::application::ports::guild_client::GuildClient;
 use crate::application::ChannelService;
 use crate::bootstrap::error::BootstrapError;
 use crate::domain::channel::ChannelRepository;
@@ -109,9 +110,10 @@ impl AppBuilder {
             })?
             .to_string();
 
-        let guild_grpc_client = Arc::new(GuildGrpcClient::new(guild_grpc_url).map_err(|e| {
-            BootstrapError::Infrastructure(format!("Invalid guild-service gRPC endpoint: {e}"))
-        })?);
+        let guild_grpc_client: Arc<dyn GuildClient> =
+            Arc::new(GuildGrpcClient::new(guild_grpc_url).map_err(|e| {
+                BootstrapError::Infrastructure(format!("Invalid guild-service gRPC endpoint: {e}"))
+            })?);
 
         info!("✅ Infrastructure layer ready");
 

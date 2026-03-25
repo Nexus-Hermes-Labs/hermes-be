@@ -1,9 +1,11 @@
+use async_trait::async_trait;
 use std::time::Duration;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
+use crate::application::ports::guild_client::{GuildClient, GuildInfo};
 use crate::presentation::grpc::proto::guild::v1::{
-    guild_service_client::GuildServiceClient, GetGuildRequest, GuildResponse,
+    guild_service_client::GuildServiceClient, GetGuildRequest,
 };
 
 /// Wraps the generated tonic guild-service client for inter-service authorization.
@@ -45,8 +47,11 @@ impl GuildGrpcClient {
         GuildServiceClient::new(channel)
     }
 
-    /// Get a guild by ID. Returns `None` if the guild does not exist.
-    pub async fn get_guild(&self, guild_id: Uuid) -> Result<Option<GuildResponse>, tonic::Status> {
+}
+
+#[async_trait]
+impl GuildClient for GuildGrpcClient {
+    async fn get_guild(&self, guild_id: Uuid) -> Result<Option<GuildInfo>, String> {
         let mut client = self.create_client();
         let request = tonic::Request::new(GetGuildRequest {
             guild_id: guild_id.to_string(),
@@ -54,9 +59,16 @@ impl GuildGrpcClient {
         });
 
         match client.get_guild(request).await {
-            Ok(response) => Ok(Some(response.into_inner())),
+            Ok(response) => {
+                let resp = response.into_inner();
+                let owner_id = resp
+                    .owner_id
+                    .parse::<Uuid>()
+                    .map_err(|e| format!("Invalid owner_id from guild-service: {e}"))?;
+                Ok(Some(GuildInfo { owner_id }))
+            }
             Err(status) if status.code() == tonic::Code::NotFound => Ok(None),
-            Err(e) => Err(e),
+            Err(e) => Err(e.to_string()),
         }
     }
 }

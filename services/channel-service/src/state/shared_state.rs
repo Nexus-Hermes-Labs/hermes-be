@@ -1,4 +1,4 @@
-use crate::infrastructure::grpc::GuildGrpcClient;
+use crate::application::ports::guild_client::GuildClient;
 use common::observability::Metrics;
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -16,5 +16,5 @@ pub struct SharedState {
     /// Prometheus metrics
     pub metrics: Metrics,
     /// gRPC client for guild-service authorization checks
-    pub guild_grpc_client: Arc<GuildGrpcClient>,
+    pub guild_grpc_client: Arc<dyn GuildClient>,
 }

@@ -1,9 +1,9 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::application::ports::guild_client::GuildClient;
 use crate::application::ports::unit_of_work::ChannelUnitOfWorkFactory;
 use crate::domain::channel::{Channel, ChannelName, ChannelRepository, ChannelType};
-use crate::infrastructure::grpc::guild_client::GuildGrpcClient;
 
 use super::error::ChannelServiceError;
 
@@ -14,7 +14,7 @@ use super::error::ChannelServiceError;
 pub struct ChannelService {
     channel_repo: Arc<dyn ChannelRepository>,
     uow_factory: Arc<dyn ChannelUnitOfWorkFactory>,
-    guild_client: Arc<GuildGrpcClient>,
+    guild_client: Arc<dyn GuildClient>,
 }
 
 impl std::fmt::Debug for ChannelService {
@@ -28,7 +28,7 @@ impl ChannelService {
     pub fn new(
         channel_repo: Arc<dyn ChannelRepository>,
         uow_factory: Arc<dyn ChannelUnitOfWorkFactory>,
-        guild_client: Arc<GuildGrpcClient>,
+        guild_client: Arc<dyn GuildClient>,
     ) -> Self {
         Self {
             channel_repo,
@@ -59,14 +59,10 @@ impl ChannelService {
             .guild_client
             .get_guild(guild_id)
             .await
-            .map_err(|e| ChannelServiceError::GrpcError(e.to_string()))?
+            .map_err(ChannelServiceError::GrpcError)?
             .ok_or(ChannelServiceError::GuildNotFound)?;
 
-        let owner_id: Uuid = guild.owner_id.parse().map_err(|_| {
-            ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string())
-        })?;
-
-        if owner_id != requester_id {
+        if guild.owner_id != requester_id {
             return Err(ChannelServiceError::Forbidden(
                 "Only the guild owner can create channels".to_string(),
             ));
@@ -183,14 +179,10 @@ impl ChannelService {
             .guild_client
             .get_guild(channel.guild_id())
             .await
-            .map_err(|e| ChannelServiceError::GrpcError(e.to_string()))?
+            .map_err(ChannelServiceError::GrpcError)?
             .ok_or(ChannelServiceError::GuildNotFound)?;
 
-        let owner_id: Uuid = guild.owner_id.parse().map_err(|_| {
-            ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string())
-        })?;
-
-        if owner_id != requester_id {
+        if guild.owner_id != requester_id {
             return Err(ChannelServiceError::Forbidden(
                 "Only the guild owner can update channels".to_string(),
             ));
@@ -227,14 +219,10 @@ impl ChannelService {
             .guild_client
             .get_guild(channel.guild_id())
             .await
-            .map_err(|e| ChannelServiceError::GrpcError(e.to_string()))?
+            .map_err(ChannelServiceError::GrpcError)?
             .ok_or(ChannelServiceError::GuildNotFound)?;
 
-        let owner_id: Uuid = guild.owner_id.parse().map_err(|_| {
-            ChannelServiceError::GrpcError("Invalid owner_id from guild".to_string())
-        })?;
-
-        if owner_id != requester_id {
+        if guild.owner_id != requester_id {
             return Err(ChannelServiceError::Forbidden(
                 "Only the guild owner can delete channels".to_string(),
             ));

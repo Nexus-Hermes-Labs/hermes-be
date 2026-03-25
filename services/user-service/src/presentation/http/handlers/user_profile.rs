@@ -105,22 +105,6 @@ pub async fn create_profile(
 ) -> Result<(StatusCode, Json<ProfileResponse>), ApiError> {
     request.validate()?;
 
-    if request.username.len() < 3 || request.username.len() > 32 {
-        return Err(ApiError::validation(
-            "Username must be between 3 and 32 characters",
-        ));
-    }
-
-    if request.display_name.is_empty() || request.display_name.len() > 100 {
-        return Err(ApiError::validation(
-            "Display name must be between 1 and 100 characters",
-        ));
-    }
-
-    if request.username.contains('\0') || request.display_name.contains('\0') {
-        return Err(ApiError::bad_request("Input contains invalid characters"));
-    }
-
     let service = &state.user.user_profile_service;
     let profile = service
         .create_profile(request.username, request.display_name)
@@ -346,12 +330,6 @@ pub async fn search_users(
     Query(request): Query<SearchUsersRequest>,
 ) -> Result<Json<ProfileListResponse>, ApiError> {
     request.validate()?;
-
-    if request.query.contains('\0') {
-        return Err(ApiError::bad_request(
-            "Search query contains invalid characters",
-        ));
-    }
 
     let requester_id = auth_user.map(|u| u.id);
     let service = &state.user.user_profile_service;

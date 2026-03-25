@@ -4,7 +4,7 @@ pub mod shared_state;
 pub use channel_state::ChannelState;
 pub use shared_state::SharedState;
 
-use crate::infrastructure::grpc::GuildGrpcClient;
+use crate::application::ports::guild_client::GuildClient;
 use axum::extract::FromRef;
 use std::sync::Arc;
 
@@ -18,7 +18,7 @@ pub struct AppState {
     pub shared: SharedState,
 }
 
-impl FromRef<AppState> for Arc<GuildGrpcClient> {
+impl FromRef<AppState> for Arc<dyn GuildClient> {
     fn from_ref(state: &AppState) -> Self {
         state.shared.guild_grpc_client.clone()
     }
