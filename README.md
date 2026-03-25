@@ -8,27 +8,27 @@ Hermes enables seamless cross-language communication through real-time text tran
 
 Most communication platforms treat language as a barrier users must solve themselves. Hermes integrates translation at the infrastructure level:
 
-- **Text Translation** -- Messages are translated in real-time as they're sent, with the original preserved alongside translations for each participant's language
-- **Voice Subtitles** -- Speech-to-text transcription with live translation, displayed as subtitles during voice calls
-- **Voice Dubbing** -- Full speech-to-speech translation: speak in your language, others hear it in theirs (future)
+- **Text Translation** — Messages are translated in real-time as they're sent, with the original preserved alongside translations for each participant's language
+- **Voice Subtitles** — Speech-to-text transcription with live translation, displayed as subtitles during voice calls
+- **Voice Dubbing** — Full speech-to-speech translation: speak in your language, others hear it in theirs (Phase 3)
 
 This turns every guild and channel into a multilingual space by default, not as an afterthought.
 
 ## Architecture Overview
 
-Hermes uses Traefik as the edge proxy for REST routing, ForwardAuth JWT validation, and rate limiting. Behind Traefik, 12 backend services handle domain logic, and a dedicated realtime-service manages WebSocket connections and event fanout.
+Traefik sits at the edge handling REST routing, TLS termination, rate limiting, and centralized JWT validation via ForwardAuth. Behind Traefik, 12 backend services handle domain logic. A dedicated realtime-service manages WebSocket connections and NATS event fanout independently of Traefik.
 
 ```
                     Clients
                        |
                 +------+------+
-                |   Traefik   |  (REST routing, ForwardAuth, rate limit)
+                |   Traefik   |  REST routing, ForwardAuth JWT, rate limiting
                 +------+------+
                        |
        +-------+-------+-------+-------+
        |       |       |       |       |
        v       v       v       v       v
-    +------+ +----+ +-----+ +----+ +----+   ...other services
+    +------+ +----+ +-----+ +----+ +----+   ... other services
     | Auth | |User| |Guild| |Chan| |Chat|
     | 8081 | |8082| |8086 | |8083| |8084|
     +------+ +----+ +-----+ +----+ +----+
@@ -38,7 +38,7 @@ Hermes uses Traefik as the edge proxy for REST routing, ForwardAuth JWT validati
                   WebSocket
                        |
                 +------+------+
-                |  Realtime   |  (WebSocket, NATS fanout)
+                |  Realtime   |  WebSocket + NATS fanout
                 |    8080     |
                 +------+------+
                        |
@@ -47,11 +47,11 @@ Hermes uses Traefik as the edge proxy for REST routing, ForwardAuth JWT validati
                   +---------+
 ```
 
-### Service Table
+## Service Table
 
 | Service | Port | Purpose | Phase | Status |
-|---------|------|---------|-------|--------|
-| **Traefik** | 80 (dashboard 8080) | REST reverse proxy, ForwardAuth JWT validation, rate limiting | Infrastructure | ✅ Complete |
+|---|---|---|---|---|
+| **Traefik** | 80 / 8080 | REST proxy, ForwardAuth JWT validation, rate limiting | Infrastructure | ✅ Complete |
 | **auth-service** | 8081 | Authentication, JWT, sessions | MVP | ✅ Complete |
 | **user-service** | 8082 | Profiles, relationships, privacy | MVP | ✅ Complete |
 | **guild-service** | 8086 | Guilds, roles, members, invites, permissions | MVP | ✅ Complete |
@@ -65,25 +65,10 @@ Hermes uses Traefik as the edge proxy for REST routing, ForwardAuth JWT validati
 | **search-service** | 8090 | Full-text search (messages, users, guilds) | Phase 4 | ⬜ Not started |
 | **voice-service** | 8085 | WebRTC P2P signaling, voice channels | Phase 4 | ⬜ Not started |
 
-### Service Map
-
-```
-Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        Phase 4 (Scale)
- +-----------------+             +------------------+        +--------------+    +----------------+
- | auth-service ✅  |             | presence-service |        | ai-service   |    | search-service |
- | user-service ✅  |             | media-service    |        |  - text xlat |    | voice-service  |
- | guild-service ✅ |             | notification-svc |        |  - STT       |    +----------------+
- | channel-service✅|             +------------------+        |  - TTS       |
- | chat-service 🔧  |                                         +--------------+
- | realtime-svc 🔧  |
- | Traefik (infra) ✅ |
- +-----------------+
-```
-
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|---|---|
 | Language | Rust (stable) |
 | Edge Proxy | Traefik v3 (ForwardAuth, rate limiting, routing) |
 | Web Framework | Axum 0.7, Tower middleware |
@@ -94,30 +79,9 @@ Phase 1 (MVP Core)              Phase 2 (Real-time)         Phase 3 (AI)        
 | Auth | JWT (jsonwebtoken 9.3), Argon2 password hashing |
 | Real-time | WebSocket (Tokio Tungstenite), WebRTC (voice) |
 | API Docs | utoipa 5 (OpenAPI/Swagger) |
-| API Testing | Schemathesis (property-based, stateful) |
 | Observability | Prometheus + Grafana, tracing |
 | Testing | testcontainers, mockall, fake, rstest |
 | Infrastructure | Docker Compose |
-
-## API Quality & Testing
-
-All MVP REST APIs are **battle-tested** using [Schemathesis](https://schemathesis.io/), a property-based API testing tool that auto-generates test cases directly from OpenAPI schemas.
-
-### What Schemathesis covers
-
-- **Schema conformance** -- every endpoint validated against its OpenAPI spec
-- **Edge case fuzzing** -- boundary values, unexpected inputs, and malformed payloads
-- **Stateful testing** -- multi-step flows (e.g. register → login → create guild → invite member)
-- **Error handling** -- ensures 5xx responses never leak from unexpected inputs
-
-### Services validated
-
-| Service | OpenAPI Spec | Schemathesis Status |
-|---------|-------------|---------------------|
-| auth-service | ✅ | ✅ Battle-tested |
-| user-service | ✅ | ✅ Battle-tested |
-| guild-service | ✅ | ✅ Battle-tested |
-| channel-service | ✅ | ✅ Battle-tested |
 
 ## Quick Start
 
@@ -156,75 +120,59 @@ make ci                              # Format check + lint + test
 ## Project Structure
 
 ```
-hermes/
+hermes-be/
 +-- services/
-|   +-- common/              # Shared library (models, errors, utilities)
-|   |   +-- common-config/   # Configuration loading
+|   +-- common/              # Shared library (models, errors, utilities, middleware)
+|   |   +-- common-config/   # Configuration loading (OnceCell singleton)
 |   |   +-- migrations/      # Database migrations
 |   +-- auth-service/        # Authentication (complete ✅)
 |   +-- user-service/        # User management (complete ✅)
 |   +-- guild-service/       # Guild management (complete ✅)
 |   +-- channel-service/     # Channel management (complete ✅)
 |   +-- chat-service/        # Messaging (in progress 🔧)
-|   +-- voice-service/       # Voice signaling (stub)
-|   +-- presence-service/    # Online status (stub)
 |   +-- realtime-service/    # WebSocket + event fanout (in progress 🔧)
-|   +-- media-service/       # File uploads (stub)
-|   +-- notification-service/# Notifications (stub)
-|   +-- search-service/      # Full-text search (stub)
-|   +-- ai-service/          # AI translation (stub)
+|   +-- presence-service/    # Online status (stub ⬜)
+|   +-- media-service/       # File uploads (stub ⬜)
+|   +-- notification-service/# Notifications (stub ⬜)
+|   +-- search-service/      # Full-text search (stub ⬜)
+|   +-- ai-service/          # AI translation (stub ⬜)
+|   +-- voice-service/       # Voice signaling (stub ⬜)
 +-- proto/                   # Protocol Buffer definitions
 +-- infra/
-|   # Note: Traefik config lives in the root hermes repo (../infra/traefik/)
-|   +-- postgres/             # Database init scripts
-|   +-- prometheus/           # Metrics
-|   +-- grafana/              # Dashboards
+|   +-- postgres/            # Database init scripts
+|   +-- prometheus/          # Metrics config
+|   +-- grafana/             # Dashboards
 +-- docs/
-|   +-- ARCHITECTURE.md      # System architecture
-|   +-- ROADMAP.md           # Development roadmap
+|   +-- ARCHITECTURE.md      # System design, service responsibilities, data architecture
+|   +-- PATTERNS.md          # Code patterns used inside every service
+|   +-- ROADMAP.md           # Phased development plan with completion tracking
 +-- docker-compose.yml
 +-- Cargo.toml               # Workspace configuration
 ```
 
-## DDD Layer Pattern
-
-Each service follows Domain-Driven Design:
-
-```
-service/
-+-- domain/          # Pure business logic: entities, value objects, repository traits, errors
-+-- application/     # Use case orchestration: application services, events
-+-- infrastructure/  # External concerns: PostgreSQL repos, gRPC clients, messaging
-+-- presentation/    # HTTP handlers (Axum), gRPC service definitions
-+-- state/           # Application state
-+-- bootstrap/       # Service initialization and wiring
-```
-
 ## Communication Patterns
 
-- **Traefik** (edge): REST reverse proxy, ForwardAuth JWT validation via auth-service, rate limiting
-- **HTTP REST** (client-facing): Axum with JSON, JWT bearer auth. Clients hit Traefik, which routes to backend services.
-- **gRPC** (service-to-service): Tonic with Protocol Buffers, compile-time codegen via `build.rs`
-- **NATS** (async events): Cross-service notifications, AI translation pipeline
-- **WebSocket** (real-time): Clients connect to realtime-service for live event streaming. NATS events are fanned out to connected clients.
+- **Traefik** (edge): REST routing, ForwardAuth JWT validation via auth-service, rate limiting, CORS
+- **HTTP REST** (client-facing): Axum with JSON. Clients hit Traefik, which validates the JWT, injects `X-User-Id`/`X-User-Role`/`X-User-Email` headers, then forwards to the service.
+- **gRPC** (service-to-service): Tonic with Protocol Buffers. Direct between services, not through Traefik. Compile-time codegen via `build.rs`.
+- **NATS** (async events): Cross-service notifications, AI translation pipeline.
+- **WebSocket** (real-time): Clients connect directly to realtime-service. NATS events are fanned out to connected clients.
 
 ## Roadmap
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the full development roadmap.
-
 | Phase | Focus | Status |
-|-------|-------|--------|
+|---|---|---|
 | Phase 1 | MVP Core (auth, users, guilds, channels, chat, realtime, Traefik) | 🔧 In progress |
-| Phase 1.5 | Frontend (web client) | 🆕 Starting now |
-| Phase 2 | Real-time and Supporting (presence, media, notifications) | Not started |
-| Phase 3 | AI Innovation (text translation, STT, TTS) | Not started |
-| Phase 4 | Scale and Polish (search, voice, moderation) | Not started |
+| Phase 2 | Real-time and Supporting (presence, media, notifications) | ⬜ Not started |
+| Phase 3 | AI Innovation (text translation, STT, TTS) | ⬜ Not started |
+| Phase 4 | Scale and Polish (search, voice, moderation) | ⬜ Not started |
 
 ## Documentation
 
-- [Architecture Guide](docs/ARCHITECTURE.md) -- System design, service responsibilities, data architecture
-- [Development Roadmap](docs/ROADMAP.md) -- Phased development plan with completion tracking
+- [Architecture](docs/ARCHITECTURE.md) — System design, service map, communication, data, deployment
+- [Patterns](docs/PATTERNS.md) — 18 code patterns used inside every service (DDD layers, Repository, Unit of Work, error handling, etc.)
+- [Roadmap](docs/ROADMAP.md) — Phased development plan with per-service completion tracking
 
 ## License
 
-MIT License -- see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.
