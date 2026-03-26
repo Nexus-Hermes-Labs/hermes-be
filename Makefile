@@ -1,359 +1,482 @@
-.PHONY: help up down restart clean logs db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging db-seed db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging db-reset dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell sqlx-prepare run-messaging run-chat
+.PHONY: help \
+	up up-all up-auth up-user up-guild up-channel up-messaging up-chat up-realtime \
+	down down-all down-auth down-user down-guild down-channel down-messaging down-chat down-realtime \
+	restart restart-auth restart-user restart-guild restart-channel restart-messaging \
+	clean logs \
+	logs-postgres logs-redis logs-nats logs-grafana logs-prometheus \
+	logs-auth logs-user logs-guild logs-channel logs-messaging logs-chat logs-realtime \
+	db-migrate db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging \
+	db-seed db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging \
+	db-reset db-shell-auth db-shell-user db-shell-guild db-shell-channel db-shell-messaging \
+	dev test build format lint check install test-api test-api-auth test-api-user test-api-guild test-api-shell \
+	sqlx-prepare sqlx-prepare-auth sqlx-prepare-user sqlx-prepare-guild sqlx-prepare-channel sqlx-prepare-messaging \
+	run-auth run-user run-guild run-channel run-messaging run-chat run-realtime
 
 # Colors for output
-BLUE := \033[0;34m
+BLUE  := \033[0;34m
 GREEN := \033[0;32m
 YELLOW := \033[1;33m
-RED := \033[0;31m
-NC := \033[0m # No Color
+RED   := \033[0;31m
+NC    := \033[0m
 
-# Variables
-COMPOSE := docker-compose
-AUTH_MIGRATION_PATH := services/auth-service/migrations
-USER_MIGRATION_PATH := services/user-service/migrations
-GUILD_MIGRATION_PATH := services/guild-service/migrations
-CHANNEL_MIGRATION_PATH := services/channel-service/migrations
+# Docker Compose files
+INFRA_COMPOSE    := docker-compose.infra.yml
+AUTH_COMPOSE     := docker-compose.auth.yml
+USER_COMPOSE     := docker-compose.user.yml
+GUILD_COMPOSE    := docker-compose.guild.yml
+CHANNEL_COMPOSE  := docker-compose.channel.yml
+MESSAGING_COMPOSE := docker-compose.messaging.yml
+CHAT_COMPOSE     := docker-compose.chat.yml
+REALTIME_COMPOSE := docker-compose.realtime.yml
+
+# Migration paths
+AUTH_MIGRATION_PATH      := services/auth-service/migrations
+USER_MIGRATION_PATH      := services/user-service/migrations
+GUILD_MIGRATION_PATH     := services/guild-service/migrations
+CHANNEL_MIGRATION_PATH   := services/channel-service/migrations
 MESSAGING_MIGRATION_PATH := services/messaging-service/migrations
-AUTH_SEED_PATH := services/auth-service/seeds/dev
-USER_SEED_PATH := services/user-service/seeds/dev
-GUILD_SEED_PATH := services/guild-service/seeds/dev
-CHANNEL_SEED_PATH := services/channel-service/seeds/dev
+
+# Seed paths
+AUTH_SEED_PATH      := services/auth-service/seeds/dev
+USER_SEED_PATH      := services/user-service/seeds/dev
+GUILD_SEED_PATH     := services/guild-service/seeds/dev
+CHANNEL_SEED_PATH   := services/channel-service/seeds/dev
 MESSAGING_SEED_PATH := services/messaging-service/seeds/dev
-DB_URL := postgres://hermes:hermes@localhost:5432/hermes
+
+# Per-service database URLs
+DB_URL_AUTH      := postgres://hermes:hermes@localhost:5432/hermes_auth
+DB_URL_USER      := postgres://hermes:hermes@localhost:5432/hermes_user
+DB_URL_GUILD     := postgres://hermes:hermes@localhost:5432/hermes_guild
+DB_URL_CHANNEL   := postgres://hermes:hermes@localhost:5432/hermes_channel
+DB_URL_MESSAGING := postgres://hermes:hermes@localhost:5432/hermes_messaging
 
 ##@ Help
 
 help: ## Display this help message
 	@echo -e "$(BLUE)Hermes - Microservices Platform$(NC)"
 	@echo ""
-	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make $(GREEN)<target>$(NC)\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make $(GREEN)<target>$(NC)\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-28s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 ##@ Setup
 
 install: ## Install development dependencies
-	@echo -e "$(BLUE)📦 Installing dependencies...$(NC)"
+	@echo -e "$(BLUE)Installing dependencies...$(NC)"
 	@cargo install sqlx-cli --no-default-features --features postgres
 	@cargo install cargo-watch
 	@cargo install cargo-audit
-	@echo -e "$(GREEN)✅ Dependencies installed$(NC)"
+	@echo -e "$(GREEN)Done$(NC)"
 
-setup: docker-up ## Initial project setup
-	@echo -e "$(BLUE)⚙️  Setting up project...$(NC)"
+setup: up ## Initial project setup (infra up + migrate + seed)
+	@echo -e "$(BLUE)Setting up project...$(NC)"
 	@cp -n .env.example .env || true
 	@make db-migrate
 	@make db-seed
-	@echo ""
-	@echo -e "$(GREEN)✅ Setup complete!$(NC)"
-	@echo -e "$(YELLOW)Edit .env file if needed.$(NC)"
-	@echo -e "$(YELLOW)Run 'make build' to build all services.$(NC)"
+	@echo -e "$(GREEN)Setup complete! Edit .env if needed.$(NC)"
 
-##@ Docker Management
+##@ Docker — Infrastructure
 
-up: ## Start all Docker services
-	@echo -e "$(BLUE)🚀 Starting all services...$(NC)"
-	@$(COMPOSE) up -d --wait
-	@echo -e "$(YELLOW)⏳ Waiting for services to be healthy...$(NC)"
-	@sleep 10
-	@$(COMPOSE) ps
-	@echo -e "$(GREEN)✅ Services started successfully$(NC)"
+up: ## Start infrastructure services (postgres, redis, nats, mailpit, monitoring)
+	@echo -e "$(BLUE)Starting infrastructure...$(NC)"
+	@docker-compose -f $(INFRA_COMPOSE) up -d --wait
+	@sleep 3
+	@echo -e "$(GREEN)Infrastructure ready$(NC)"
 
-docker-up: up ## Alias for up
-
-down: ## Stop all Docker services
-	@echo -e "$(YELLOW)🛑 Stopping all services...$(NC)"
-	@$(COMPOSE) down
-	@echo -e "$(GREEN)✅ Services stopped$(NC)"
-
-docker-down: down ## Alias for down
-
-restart: down up ## Restart all Docker services
+down: ## Stop infrastructure services
+	@echo -e "$(YELLOW)Stopping infrastructure...$(NC)"
+	@docker-compose -f $(INFRA_COMPOSE) down
+	@echo -e "$(GREEN)Done$(NC)"
 
 clean: ## Remove all containers, volumes, and networks
-	@echo -e "$(RED)🗑️  Cleaning up Docker resources...$(NC)"
-	@$(COMPOSE) down -v
-	@docker rm -f $$(docker ps -aq) 2>/dev/null || true
+	@echo -e "$(RED)Cleaning up Docker resources...$(NC)"
+	@docker-compose -f $(INFRA_COMPOSE) down -v
+	@for f in $(AUTH_COMPOSE) $(USER_COMPOSE) $(GUILD_COMPOSE) $(CHANNEL_COMPOSE) $(MESSAGING_COMPOSE) $(CHAT_COMPOSE) $(REALTIME_COMPOSE); do \
+		docker-compose -f $$f down -v 2>/dev/null || true; \
+	done
 	@docker volume rm $$(docker volume ls -q | grep hermes) 2>/dev/null || true
-	@echo -e "$(GREEN)✅ Cleanup completed$(NC)"
+	@echo -e "$(GREEN)Cleanup completed$(NC)"
 
-docker-clean: clean ## Alias for clean
+##@ Docker — Services
 
-logs: ## Show logs from all services
-	@$(COMPOSE) logs -f
+up-auth: ## Start auth-service container
+	@echo -e "$(BLUE)Starting auth-service...$(NC)"
+	@docker-compose -f $(AUTH_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)auth-service ready$(NC)"
+
+up-user: ## Start user-service container
+	@echo -e "$(BLUE)Starting user-service...$(NC)"
+	@docker-compose -f $(USER_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)user-service ready$(NC)"
+
+up-guild: ## Start guild-service container
+	@echo -e "$(BLUE)Starting guild-service...$(NC)"
+	@docker-compose -f $(GUILD_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)guild-service ready$(NC)"
+
+up-channel: ## Start channel-service container
+	@echo -e "$(BLUE)Starting channel-service...$(NC)"
+	@docker-compose -f $(CHANNEL_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)channel-service ready$(NC)"
+
+up-messaging: ## Start messaging-service container
+	@echo -e "$(BLUE)Starting messaging-service...$(NC)"
+	@docker-compose -f $(MESSAGING_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)messaging-service ready$(NC)"
+
+up-chat: ## Start chat-service container
+	@echo -e "$(BLUE)Starting chat-service...$(NC)"
+	@docker-compose -f $(CHAT_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)chat-service ready$(NC)"
+
+up-realtime: ## Start realtime-service container
+	@echo -e "$(BLUE)Starting realtime-service...$(NC)"
+	@docker-compose -f $(REALTIME_COMPOSE) up -d --wait
+	@echo -e "$(GREEN)realtime-service ready$(NC)"
+
+up-all: up up-auth up-user up-guild up-channel up-messaging up-chat up-realtime ## Start infra + all service containers
+
+down-auth: ## Stop auth-service container
+	@docker-compose -f $(AUTH_COMPOSE) down
+
+down-user: ## Stop user-service container
+	@docker-compose -f $(USER_COMPOSE) down
+
+down-guild: ## Stop guild-service container
+	@docker-compose -f $(GUILD_COMPOSE) down
+
+down-channel: ## Stop channel-service container
+	@docker-compose -f $(CHANNEL_COMPOSE) down
+
+down-messaging: ## Stop messaging-service container
+	@docker-compose -f $(MESSAGING_COMPOSE) down
+
+down-chat: ## Stop chat-service container
+	@docker-compose -f $(CHAT_COMPOSE) down
+
+down-realtime: ## Stop realtime-service container
+	@docker-compose -f $(REALTIME_COMPOSE) down
+
+down-all: down-auth down-user down-guild down-channel down-messaging down-chat down-realtime down ## Stop all service containers + infra
+
+restart-auth: down-auth up-auth ## Restart auth-service container
+restart-user: down-user up-user ## Restart user-service container
+restart-guild: down-guild up-guild ## Restart guild-service container
+restart-channel: down-channel up-channel ## Restart channel-service container
+restart-messaging: down-messaging up-messaging ## Restart messaging-service container
+
+restart: down up ## Restart infrastructure
+
+##@ Logs
+
+logs: ## Show infra logs
+	@docker-compose -f $(INFRA_COMPOSE) logs -f
 
 logs-postgres: ## Show PostgreSQL logs
-	@$(COMPOSE) logs -f postgres
+	@docker-compose -f $(INFRA_COMPOSE) logs -f postgres
 
 logs-redis: ## Show Redis logs
-	@$(COMPOSE) logs -f redis
+	@docker-compose -f $(INFRA_COMPOSE) logs -f redis
 
 logs-nats: ## Show NATS logs
-	@$(COMPOSE) logs -f nats
+	@docker-compose -f $(INFRA_COMPOSE) logs -f nats
 
 logs-grafana: ## Show Grafana logs
-	@$(COMPOSE) logs -f grafana
+	@docker-compose -f $(INFRA_COMPOSE) logs -f grafana
 
 logs-prometheus: ## Show Prometheus logs
-	@$(COMPOSE) logs -f prometheus
+	@docker-compose -f $(INFRA_COMPOSE) logs -f prometheus
 
-health: ## Check health status of all services
-	@echo -e "$(BLUE)🏥 Checking service health...$(NC)"
-	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+logs-auth: ## Show auth-service logs
+	@docker-compose -f $(AUTH_COMPOSE) logs -f auth-service
+
+logs-user: ## Show user-service logs
+	@docker-compose -f $(USER_COMPOSE) logs -f user-service
+
+logs-guild: ## Show guild-service logs
+	@docker-compose -f $(GUILD_COMPOSE) logs -f guild-service
+
+logs-channel: ## Show channel-service logs
+	@docker-compose -f $(CHANNEL_COMPOSE) logs -f channel-service
+
+logs-messaging: ## Show messaging-service logs
+	@docker-compose -f $(MESSAGING_COMPOSE) logs -f messaging-service
+
+logs-chat: ## Show chat-service logs
+	@docker-compose -f $(CHAT_COMPOSE) logs -f chat-service
+
+logs-realtime: ## Show realtime-service logs
+	@docker-compose -f $(REALTIME_COMPOSE) logs -f realtime-service
 
 ##@ Protobuf / gRPC
 
 proto-generate: ## Generate protobuf for all services
-	@echo -e "$(BLUE)🧬 Generating all gRPC protobuf code...$(NC)"
+	@echo -e "$(BLUE)Generating all gRPC protobuf code...$(NC)"
 	@cargo build -p auth-service
 	@cargo build -p user-service
-	@echo -e "$(GREEN)✅ All protobuf generated$(NC)"
-
+	@echo -e "$(GREEN)Done$(NC)"
 
 proto-generate-auth:
-	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code (auth-service)...$(NC)"
 	@cargo build -p auth-service
-	@echo -e "$(GREEN)✅ Auth protobuf generated$(NC)"
 
 proto-generate-user:
-	@echo -e "$(BLUE)🧬 Generating gRPC protobuf code (user-service)...$(NC)"
 	@cargo build -p user-service
-	@echo -e "$(GREEN)✅ User protobuf generated$(NC)"
 
 proto-clean: ## Clean all protobuf artifacts
-	@echo -e "$(YELLOW)🧹 Cleaning all protobuf artifacts...$(NC)"
 	@cargo clean -p auth-service
 	@cargo clean -p user-service
-	@echo -e "$(GREEN)✅ All cleaned$(NC)"
 
+##@ Database — Migrations
+# Migrations are embedded via sqlx::migrate!() and run automatically on service startup.
+# These targets are kept for CI/CD environments with direct postgres access.
 
-proto-clean-auth:
-	@echo -e "$(YELLOW)🧹 Cleaning auth-service protobuf...$(NC)"
-	@cargo clean -p auth-service
-	@echo -e "$(GREEN)✅ Auth cleaned$(NC)"
+# Docker-network database URLs (used from within hermes-network)
+DB_URL_AUTH_NET      := postgres://hermes:hermes@hermes-postgres:5432/hermes_auth
+DB_URL_USER_NET      := postgres://hermes:hermes@hermes-postgres:5432/hermes_user
+DB_URL_GUILD_NET     := postgres://hermes:hermes@hermes-postgres:5432/hermes_guild
+DB_URL_CHANNEL_NET   := postgres://hermes:hermes@hermes-postgres:5432/hermes_channel
+DB_URL_MESSAGING_NET := postgres://hermes:hermes@hermes-postgres:5432/hermes_messaging
 
-proto-clean-user:
-	@echo -e "$(YELLOW)🧹 Cleaning user-service protobuf...$(NC)"
-	@cargo clean -p user-service
-	@echo -e "$(GREEN)✅ User cleaned$(NC)"
+db-migrate: ## Migrations run automatically on service startup (see db-migrate-{service} for manual runs)
+	@echo -e "$(YELLOW)Migrations run automatically when services start.$(NC)"
+	@echo -e "$(YELLOW)Use 'make up-all' to start services and apply migrations.$(NC)"
 
-##@ Database
+db-migrate-auth: ## Run auth-service migrations via Docker network
+	@echo -e "$(BLUE)Running auth-service migrations...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(AUTH_MIGRATION_PATH):/migrations:ro \
+		-e DATABASE_URL=$(DB_URL_AUTH_NET) \
+		postgres:16-alpine \
+		sh -c 'for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" && echo "Applied: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-sqlx-prepare: ## Generate SQLx offline metadata (run once before first Docker build)
-	@echo -e "$(BLUE)🗄️  Preparing SQLx offline metadata...$(NC)"
-	@cargo sqlx prepare --workspace
-	@echo -e "$(GREEN)✅ Done. Commit the .sqlx/ directories.$(NC)"
+db-migrate-user: ## Run user-service migrations via Docker network
+	@echo -e "$(BLUE)Running user-service migrations...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(USER_MIGRATION_PATH):/migrations:ro \
+		-e DATABASE_URL=$(DB_URL_USER_NET) \
+		postgres:16-alpine \
+		sh -c 'for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" && echo "Applied: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-migrate: db-migrate-auth db-migrate-user db-migrate-guild db-migrate-channel db-migrate-messaging ## Run all database migrations
-	@echo -e "$(GREEN)✅ All migrations completed$(NC)"
+db-migrate-guild: ## Run guild-service migrations via Docker network
+	@echo -e "$(BLUE)Running guild-service migrations...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(GUILD_MIGRATION_PATH):/migrations:ro \
+		-e DATABASE_URL=$(DB_URL_GUILD_NET) \
+		postgres:16-alpine \
+		sh -c 'for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" && echo "Applied: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-migrate-auth: ## Run auth-service migrations
-	@echo -e "$(BLUE)📦 Running auth-service migrations...$(NC)"
-	@sqlx migrate run --source $(AUTH_MIGRATION_PATH) --ignore-missing
-	@echo -e "$(GREEN)✅ Auth migrations completed$(NC)"
+db-migrate-channel: ## Run channel-service migrations via Docker network
+	@echo -e "$(BLUE)Running channel-service migrations...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(CHANNEL_MIGRATION_PATH):/migrations:ro \
+		-e DATABASE_URL=$(DB_URL_CHANNEL_NET) \
+		postgres:16-alpine \
+		sh -c 'for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" && echo "Applied: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-migrate-user: ## Run user-service migrations
-	@echo -e "$(BLUE)📦 Running user-service migrations...$(NC)"
-	@sqlx migrate run --source $(USER_MIGRATION_PATH) --ignore-missing
-	@echo -e "$(GREEN)✅ User migrations completed$(NC)"
+db-migrate-messaging: ## Run messaging-service migrations via Docker network
+	@echo -e "$(BLUE)Running messaging-service migrations...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(MESSAGING_MIGRATION_PATH):/migrations:ro \
+		-e DATABASE_URL=$(DB_URL_MESSAGING_NET) \
+		postgres:16-alpine \
+		sh -c 'for f in /migrations/*.sql; do psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$$f" && echo "Applied: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-migrate-guild: ## Run guild-service migrations
-	@echo -e "$(BLUE)📦 Running guild-service migrations...$(NC)"
-	@sqlx migrate run --source $(GUILD_MIGRATION_PATH) --ignore-missing
-	@echo -e "$(GREEN)✅ Guild migrations completed$(NC)"
+##@ Database — Seeds
 
-db-migrate-channel: ## Run channel-service migrations
-	@echo -e "$(BLUE)📦 Running channel-service migrations...$(NC)"
-	@sqlx migrate run --source $(CHANNEL_MIGRATION_PATH) --ignore-missing
-	@echo -e "$(GREEN)✅ Channel migrations completed$(NC)"
+db-seed: db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging ## Run all seeds via Docker network
+	@echo -e "$(GREEN)All seeds completed$(NC)"
 
-db-migrate-messaging: ## Run messaging-service migrations
-	@echo -e "$(BLUE)📦 Running messaging-service migrations...$(NC)"
-	@sqlx migrate run --source $(MESSAGING_MIGRATION_PATH) --ignore-missing
-	@echo -e "$(GREEN)✅ Messaging migrations completed$(NC)"
+db-seed-auth: ## Run auth-service seeds via Docker network
+	@echo -e "$(BLUE)Seeding hermes_auth...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(AUTH_SEED_PATH):/seeds:ro \
+		postgres:16-alpine \
+		sh -c 'for f in /seeds/*.sql; do psql "$(DB_URL_AUTH_NET)" -v ON_ERROR_STOP=1 -f "$$f" && echo "Seeded: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-seed: db-seed-auth db-seed-user db-seed-guild db-seed-channel db-seed-messaging ## Run all database seeds
-	@echo -e "$(GREEN)✅ All seeds completed$(NC)"
+db-seed-user: ## Run user-service seeds via Docker network
+	@echo -e "$(BLUE)Seeding hermes_user...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(USER_SEED_PATH):/seeds:ro \
+		postgres:16-alpine \
+		sh -c 'for f in /seeds/*.sql; do psql "$(DB_URL_USER_NET)" -v ON_ERROR_STOP=1 -f "$$f" && echo "Seeded: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-seed-auth: ## Run auth-service seeds
-	@echo -e "$(BLUE)🌱 Seeding auth database...$(NC)"
-	@set -e; \
-	for file in $$(ls $(AUTH_SEED_PATH)/*.sql | sort); do \
-		echo "Running $$file"; \
-		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
-	done
-	@echo -e "$(GREEN)✅ Auth database seeded$(NC)"
+db-seed-guild: ## Run guild-service seeds via Docker network
+	@echo -e "$(BLUE)Seeding hermes_guild...$(NC)"
+	@docker run --rm --network hermes-network \
+		-v $(CURDIR)/$(GUILD_SEED_PATH):/seeds:ro \
+		postgres:16-alpine \
+		sh -c 'for f in /seeds/*.sql; do psql "$(DB_URL_GUILD_NET)" -v ON_ERROR_STOP=1 -f "$$f" && echo "Seeded: $$f"; done'
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-seed-user: ## Run user-service seeds
-	@echo -e "$(BLUE)🌱 Seeding user database...$(NC)"
-	@set -e; \
-	for file in $$(ls $(USER_SEED_PATH)/*.sql | sort); do \
-		echo "Running $$file"; \
-		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
-	done
-	@echo -e "$(GREEN)✅ User database seeded$(NC)"
-
-db-seed-guild: ## Run guild-service seeds
-	@echo -e "$(BLUE)🌱 Seeding guild database...$(NC)"
-	@set -e; \
-	for file in $$(ls $(GUILD_SEED_PATH)/*.sql | sort); do \
-		echo "Running $$file"; \
-		psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
-	done
-	@echo -e "$(GREEN)✅ Guild database seeded$(NC)"
-
-db-seed-channel: ## Run channel-service seeds
-	@echo -e "$(BLUE)🌱 Seeding channel database...$(NC)"
-	@set -e; \
-	if [ -d "$(CHANNEL_SEED_PATH)" ]; then \
-		for file in $$(ls $(CHANNEL_SEED_PATH)/*.sql | sort); do \
-			echo "Running $$file"; \
-			psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
-		done; \
+db-seed-channel: ## Run channel-service seeds via Docker network
+	@echo -e "$(BLUE)Seeding hermes_channel...$(NC)"
+	@if [ -d "$(CHANNEL_SEED_PATH)" ] && ls $(CHANNEL_SEED_PATH)/*.sql 1>/dev/null 2>&1; then \
+		docker run --rm --network hermes-network \
+			-v $(CURDIR)/$(CHANNEL_SEED_PATH):/seeds:ro \
+			postgres:16-alpine \
+			sh -c 'for f in /seeds/*.sql; do psql "$(DB_URL_CHANNEL_NET)" -v ON_ERROR_STOP=1 -f "$$f" && echo "Seeded: $$f"; done'; \
 	fi
-	@echo -e "$(GREEN)✅ Channel database seeded$(NC)"
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-seed-messaging: ## Run messaging-service seeds
-	@echo -e "$(BLUE)🌱 Seeding messaging database...$(NC)"
-	@set -e; \
-	if [ -d "$(MESSAGING_SEED_PATH)" ]; then \
-		for file in $$(ls $(MESSAGING_SEED_PATH)/*.sql | sort); do \
-			echo "Running $$file"; \
-			psql $(DB_URL) -v ON_ERROR_STOP=1 -f $$file; \
-		done; \
+db-seed-messaging: ## Run messaging-service seeds via Docker network
+	@echo -e "$(BLUE)Seeding hermes_messaging...$(NC)"
+	@if [ -d "$(MESSAGING_SEED_PATH)" ] && ls $(MESSAGING_SEED_PATH)/*.sql 1>/dev/null 2>&1; then \
+		docker run --rm --network hermes-network \
+			-v $(CURDIR)/$(MESSAGING_SEED_PATH):/seeds:ro \
+			postgres:16-alpine \
+			sh -c 'for f in /seeds/*.sql; do psql "$(DB_URL_MESSAGING_NET)" -v ON_ERROR_STOP=1 -f "$$f" && echo "Seeded: $$f"; done'; \
 	fi
-	@echo -e "$(GREEN)✅ Messaging database seeded$(NC)"
+	@echo -e "$(GREEN)Done$(NC)"
 
-db-reset: clean up db-migrate db-seed ## Clean, start, migrate, and seed database
-	@echo -e "$(GREEN)✅ Database reset completed$(NC)"
+db-reset: clean up ## Clean, restart infra (services apply migrations on startup)
+	@echo -e "$(GREEN)Database reset completed — start services to apply migrations$(NC)"
 
-db-shell: ## Open PostgreSQL shell
-	@$(COMPOSE) exec postgres psql -U hermes -d hermes
+##@ Database — Shells
 
-db-create: ## Create database (if not exists)
-	@echo -e "$(BLUE)📦 Creating database...$(NC)"
-	@sqlx database create
-	@echo -e "$(GREEN)✅ Database created$(NC)"
+db-shell-auth: ## Open psql shell for hermes_auth
+	@docker exec -it hermes-postgres psql -U hermes -d hermes_auth
 
-db-drop: ## Drop database
-	@echo -e "$(RED)⚠️  Dropping database...$(NC)"
-	@sqlx database drop -y
-	@echo -e "$(GREEN)✅ Database dropped$(NC)"
+db-shell-user: ## Open psql shell for hermes_user
+	@docker exec -it hermes-postgres psql -U hermes -d hermes_user
 
-##@ Development
+db-shell-guild: ## Open psql shell for hermes_guild
+	@docker exec -it hermes-postgres psql -U hermes -d hermes_guild
 
-dev: ## Start development environment
-	@make up
-	@sleep 3
-	@make db-migrate
-	@make db-seed
-	@echo -e "$(GREEN)🎯 Development environment ready!$(NC)"
-	@echo -e "$(YELLOW)Run services with: make run-auth, make run-user, etc.$(NC)"
+db-shell-channel: ## Open psql shell for hermes_channel
+	@docker exec -it hermes-postgres psql -U hermes -d hermes_channel
 
-run-infra: up ## Start infrastructure services (alias)
+db-shell-messaging: ## Open psql shell for hermes_messaging
+	@docker exec -it hermes-postgres psql -U hermes -d hermes_messaging
 
-run-realtime: ## Run realtime service
-	@echo -e "$(BLUE)🚀 Starting Realtime Service...$(NC)"
-	@cargo run --bin realtime-service
+##@ SQLx Offline Metadata
 
-run-auth: ## Run auth service
-	@echo -e "$(BLUE)🚀 Starting Auth Service...$(NC)"
-	@cargo run --bin auth-service
+sqlx-prepare: sqlx-prepare-auth sqlx-prepare-user sqlx-prepare-guild sqlx-prepare-channel sqlx-prepare-messaging ## Generate SQLx offline metadata for all services
+	@echo -e "$(GREEN)Done. Commit the .sqlx/ directories.$(NC)"
 
-run-user: ## Run user service
-	@echo -e "$(BLUE)🚀 Starting User Service...$(NC)"
-	@cargo run --bin user-service
+sqlx-prepare-auth: ## Generate SQLx offline metadata for auth-service
+	@echo -e "$(BLUE)Preparing SQLx metadata for auth-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_AUTH) cargo sqlx prepare -p auth-service
+	@echo -e "$(GREEN)Done$(NC)"
 
-run-channel: ## Run channel service
-	@echo -e "$(BLUE)🚀 Starting Channel Service...$(NC)"
-	@cargo run --bin channel-service
+sqlx-prepare-user: ## Generate SQLx offline metadata for user-service
+	@echo -e "$(BLUE)Preparing SQLx metadata for user-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_USER) cargo sqlx prepare -p user-service
+	@echo -e "$(GREEN)Done$(NC)"
 
-run-chat: ## Run chat service
-	@echo -e "$(BLUE)🚀 Starting Chat Service...$(NC)"
+sqlx-prepare-guild: ## Generate SQLx offline metadata for guild-service
+	@echo -e "$(BLUE)Preparing SQLx metadata for guild-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_GUILD) cargo sqlx prepare -p guild-service
+	@echo -e "$(GREEN)Done$(NC)"
+
+sqlx-prepare-channel: ## Generate SQLx offline metadata for channel-service
+	@echo -e "$(BLUE)Preparing SQLx metadata for channel-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_CHANNEL) cargo sqlx prepare -p channel-service
+	@echo -e "$(GREEN)Done$(NC)"
+
+sqlx-prepare-messaging: ## Generate SQLx offline metadata for messaging-service
+	@echo -e "$(BLUE)Preparing SQLx metadata for messaging-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_MESSAGING) cargo sqlx prepare -p messaging-service
+	@echo -e "$(GREEN)Done$(NC)"
+
+##@ Development — Local (cargo run)
+
+dev: up ## Start infra (migrations run automatically on service startup)
+	@echo -e "$(GREEN)Infrastructure ready!$(NC)"
+	@echo -e "$(YELLOW)Start services: make run-{service}  — migrations apply on first startup$(NC)"
+	@echo -e "$(YELLOW)Seed data:      make db-seed        — run after services are up$(NC)"
+
+run-auth: ## Run auth-service locally
+	@echo -e "$(BLUE)Starting auth-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_AUTH) cargo run --bin auth-service
+
+run-user: ## Run user-service locally
+	@echo -e "$(BLUE)Starting user-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_USER) cargo run --bin user-service
+
+run-guild: ## Run guild-service locally
+	@echo -e "$(BLUE)Starting guild-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_GUILD) cargo run --bin guild-service
+
+run-channel: ## Run channel-service locally
+	@echo -e "$(BLUE)Starting channel-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_CHANNEL) cargo run --bin channel-service
+
+run-messaging: ## Run messaging-service locally
+	@echo -e "$(BLUE)Starting messaging-service...$(NC)"
+	@DATABASE_URL=$(DB_URL_MESSAGING) cargo run --bin messaging-service
+
+run-chat: ## Run chat-service locally
+	@echo -e "$(BLUE)Starting chat-service...$(NC)"
 	@cargo run --bin chat-service
 
-run-voice: ## Run voice service
-	@echo -e "$(BLUE)🚀 Starting Voice Service...$(NC)"
+run-realtime: ## Run realtime-service locally
+	@echo -e "$(BLUE)Starting realtime-service...$(NC)"
+	@cargo run --bin realtime-service
+
+run-voice: ## Run voice-service locally
 	@cargo run --bin voice-service
 
-run-presence: ## Run presence service
-	@echo -e "$(BLUE)🚀 Starting Presence Service...$(NC)"
+run-presence: ## Run presence-service locally
 	@cargo run --bin presence-service
 
-run-guild: ## Run guild service
-	@echo -e "$(BLUE)🚀 Starting Guild Service...$(NC)"
-	@cargo run --bin guild-service
-
-run-messaging: ## Run messaging service
-	@echo -e "$(BLUE)🚀 Starting Messaging Service...$(NC)"
-	@cargo run --bin messaging-service
-
-run-media: ## Run media service
-	@echo -e "$(BLUE)🚀 Starting Media Service...$(NC)"
+run-media: ## Run media-service locally
 	@cargo run --bin media-service
 
-run-notification: ## Run notification service
-	@echo -e "$(BLUE)🚀 Starting Notification Service...$(NC)"
+run-notification: ## Run notification-service locally
 	@cargo run --bin notification-service
 
-run-search: ## Run search service
-	@echo -e "$(BLUE)🚀 Starting Search Service...$(NC)"
+run-search: ## Run search-service locally
 	@cargo run --bin search-service
 
-run-ai: ## Run AI service
-	@echo -e "$(BLUE)🚀 Starting AI Service...$(NC)"
+run-ai: ## Run AI service locally
 	@cargo run --bin ai-service
 
-dev-all: ## Run all services (requires tmux or separate terminals)
-	@echo -e "$(YELLOW)⚠️  Starting all services requires multiple terminals$(NC)"
-	@echo ""
-	@echo -e "$(BLUE)Run these commands in separate terminals:$(NC)"
+dev-all: ## Print commands to start all services in separate terminals
+	@echo -e "$(YELLOW)Run these commands in separate terminals:$(NC)"
 	@echo "  make run-auth"
 	@echo "  make run-user"
 	@echo "  make run-guild"
 	@echo "  make run-channel"
+	@echo "  make run-messaging"
 	@echo "  make run-chat"
-	@echo "  make run-voice"
-	@echo "  make run-presence"
 	@echo "  make run-realtime"
-	@echo "  make run-media"
-	@echo "  make run-notification"
-	@echo "  make run-search"
-	@echo "  make run-ai"
 
 ##@ Building & Testing
 
 build: ## Build all services
-	@echo -e "$(BLUE)🔨 Building all services...$(NC)"
+	@echo -e "$(BLUE)Building all services...$(NC)"
 	@cargo build --workspace
-	@echo -e "$(GREEN)✅ Build completed$(NC)"
+	@echo -e "$(GREEN)Build completed$(NC)"
 
 build-release: ## Build optimized release version
-	@echo -e "$(BLUE)🔨 Building release...$(NC)"
 	@cargo build --workspace --release
-	@echo -e "$(GREEN)✅ Release build completed$(NC)"
+	@echo -e "$(GREEN)Release build completed$(NC)"
 
 test: ## Run all tests
-	@echo -e "$(BLUE)🧪 Running tests...$(NC)"
+	@echo -e "$(BLUE)Running tests...$(NC)"
 	@cargo test --workspace
-	@echo -e "$(GREEN)✅ Tests passed$(NC)"
+	@echo -e "$(GREEN)Tests passed$(NC)"
 
 test-verbose: ## Run all tests with output
-	@echo -e "$(BLUE)🧪 Running tests with output...$(NC)"
 	@cargo test --workspace -- --nocapture
 
 test-watch: ## Run tests in watch mode
 	@cargo watch -x test
 
 check: ## Check code without building
-	@echo -e "$(BLUE)🔍 Running cargo check...$(NC)"
 	@cargo check --workspace --all-targets
-	@echo -e "$(GREEN)✅ Check passed$(NC)"
+	@echo -e "$(GREEN)Check passed$(NC)"
 
 ##@ Code Quality
 
 format: ## Format code with rustfmt
-	@echo -e "$(BLUE)✨ Formatting code...$(NC)"
 	@cargo fmt --all
-	@echo -e "$(GREEN)✅ Code formatted$(NC)"
+	@echo -e "$(GREEN)Code formatted$(NC)"
 
 fmt: format ## Alias for format
 
@@ -361,26 +484,26 @@ format-check: ## Check code formatting
 	@cargo fmt --all -- --check
 
 lint: ## Run clippy linter
-	@echo -e "$(BLUE)🔍 Running clippy...$(NC)"
 	@cargo clippy --workspace --all-targets --all-features -- -D warnings
-	@echo -e "$(GREEN)✅ Lint passed$(NC)"
+	@echo -e "$(GREEN)Lint passed$(NC)"
 
 fix: ## Auto-fix linting issues
 	@cargo clippy --fix --allow-dirty --allow-staged
 
 audit: ## Run security audit
-	@echo -e "$(BLUE)🔒 Running security audit...$(NC)"
 	@cargo audit
-	@echo -e "$(GREEN)✅ Audit completed$(NC)"
+	@echo -e "$(GREEN)Audit completed$(NC)"
 
 ##@ Dependencies
 
 update: ## Update dependencies
-	@echo -e "$(BLUE)📦 Updating dependencies...$(NC)"
 	@cargo update
-	@echo -e "$(GREEN)✅ Dependencies updated$(NC)"
+	@echo -e "$(GREEN)Dependencies updated$(NC)"
 
 ##@ Monitoring & Tools
+
+health: ## Check health status of all containers
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 grafana: ## Open Grafana dashboard
 	@open http://localhost:3000 || xdg-open http://localhost:3000
@@ -389,10 +512,9 @@ prometheus: ## Open Prometheus dashboard
 	@open http://localhost:9090 || xdg-open http://localhost:9090
 
 redis-cli: ## Open Redis CLI
-	@$(COMPOSE) exec redis redis-cli -a redis_dev_password
+	@docker-compose -f $(INFRA_COMPOSE) exec redis redis-cli -a redis_dev_password
 
 nats-status: ## Check NATS status
-	@echo -e "$(BLUE)📊 NATS Server Status:$(NC)"
 	@curl -s http://localhost:8222/varz | jq . || curl http://localhost:8222/varz
 
 ##@ Utility
@@ -411,59 +533,43 @@ shell-nats: ## Shell into NATS container
 
 ##@ API Testing (Schemathesis)
 
-test-api: ## Run Schemathesis tests against all running services (auth + user + guild)
-	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (all services)...$(NC)"
+test-api: ## Run Schemathesis tests against all running services
 	@bash scripts/test-api.sh all
 
 test-api-auth: ## Run Schemathesis tests against auth-service only
-	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (auth-service)...$(NC)"
 	@bash scripts/test-api.sh auth
 
 test-api-user: ## Run Schemathesis tests against user-service only
-	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (user-service)...$(NC)"
 	@bash scripts/test-api.sh user
 
 test-api-guild: ## Run Schemathesis tests against guild-service only
-	@echo -e "$(BLUE)🔬 Running Schemathesis API tests (guild-service)...$(NC)"
 	@bash scripts/test-api.sh guild
 
-test-api-shell: ## Open interactive Schemathesis shell (docker-compose)
-	@$(COMPOSE) --profile testing run --rm schemathesis sh
+test-api-shell: ## Open interactive Schemathesis shell
+	@docker-compose -f $(INFRA_COMPOSE) --profile testing run --rm schemathesis sh
 
 ##@ CI/CD
 
 ci: format-check lint test ## Run CI checks locally
-	@echo -e "$(GREEN)✅ All CI checks passed$(NC)"
+	@echo -e "$(GREEN)All CI checks passed$(NC)"
 
 pre-commit: format lint test ## Run before committing
-	@echo -e "$(GREEN)✅ Ready to commit$(NC)"
+	@echo -e "$(GREEN)Ready to commit$(NC)"
 
 ##@ Quick Actions
 
-fresh: clean dev ## Fresh start (clean + dev environment)
-	@echo -e "$(GREEN)🎉 Fresh environment ready!$(NC)"
+fresh: clean dev ## Fresh start (clean + dev)
+	@echo -e "$(GREEN)Fresh environment ready!$(NC)"
 
-quick-test: ## Quick test (no Docker restart)
-	@make db-migrate
-	@make db-seed
-	@make test
+quick-test: test ## Quick test (no Docker restart)
 
 status: ## Show project status
-	@echo -e "$(BLUE)📊 Project Status$(NC)"
-	@echo ""
-	@echo -e "$(YELLOW)Docker Services:$(NC)"
+	@echo -e "$(BLUE)Docker Services:$(NC)"
 	@docker ps --format "table {{.Names}}\t{{.Status}}"
-	@echo ""
-	@echo -e "$(YELLOW)Database:$(NC)"
-	@psql $(DB_URL) -c "SELECT COUNT(*) as user_count FROM users;" 2>/dev/null || echo "Database not accessible"
-	@echo ""
-	@echo -e "$(YELLOW)NATS:$(NC)"
-	@curl -s http://localhost:8222/varz | jq -r '.server_id, .version' 2>/dev/null || echo "NATS not accessible"
 
 ##@ Advanced
 
 tmux-dev: ## Start all services in tmux
-	@echo -e "$(BLUE)🚀 Starting all services in tmux...$(NC)"
 	@tmux new-session -d -s hermes 'make run-realtime'
 	@tmux split-window -h 'make run-auth'
 	@tmux split-window -v 'make run-chat'
@@ -474,5 +580,5 @@ tmux-dev: ## Start all services in tmux
 kill-tmux: ## Kill tmux session
 	@tmux kill-session -t hermes 2>/dev/null || echo "No tmux session found"
 
-watch-logs: ## Watch logs with color highlighting
-	@$(COMPOSE) logs -f | grep --color=auto -E 'ERROR|WARN|INFO|$$'
+watch-logs: ## Watch infra logs with color highlighting
+	@docker-compose -f $(INFRA_COMPOSE) logs -f | grep --color=auto -E 'ERROR|WARN|INFO|$$'

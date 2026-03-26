@@ -1,0 +1,32 @@
+services:
+  user-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: user-service
+    container_name: hermes-user-service
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_SERVICE__NAME: user-service
+      APP_SERVICE__VERSION: "1.0.0"
+      APP_SERVICE__HOST: "0.0.0.0"
+      APP_SERVICE__PORT: "8082"
+      APP_SERVICE__GRPC_PORT: "50052"
+      APP_SERVICE__ENVIRONMENT: development
+      APP_DATABASE__HOST: hermes-postgres
+      APP_DATABASE__DATABASE: hermes_user
+      APP_REDIS__HOST: hermes-redis
+      APP_NATS__SERVERS: hermes-nats:4222
+      APP_SMTP__HOST: hermes-mailpit
+      APP_GRPC_ENDPOINTS__AUTH_SERVICE: http://hermes-auth-service:50051
+    ports:
+      - "8082:8082"
+      - "50052:50052"
+    networks:
+      - hermes-network
+
+networks:
+  hermes-network:
+    external: true

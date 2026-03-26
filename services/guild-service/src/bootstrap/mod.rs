@@ -31,6 +31,16 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     info!("✅ Database connected");
 
     // ========================================
+    // 2.1. RUN MIGRATIONS
+    // ========================================
+    info!("📦 Running database migrations...");
+    sqlx::migrate!("./migrations")
+        .run(&db_pool)
+        .await
+        .map_err(|e| BootstrapError::Initialization(format!("Migration failed: {}", e)))?;
+    info!("✅ Migrations applied");
+
+    // ========================================
     // 3. INITIALIZE REDIS
     // ========================================
     info!("🔴 Connecting to Redis...");

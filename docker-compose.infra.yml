@@ -1,0 +1,183 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hermes-postgres
+    environment:
+      POSTGRES_USER: hermes
+      POSTGRES_PASSWORD: hermes
+      POSTGRES_DB: hermes
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hermes && psql -U hermes -d hermes_auth -c 'SELECT 1' > /dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    networks:
+      - hermes-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: hermes-redis
+    command: redis-server --appendonly yes --requirepass redis_dev_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_dev_password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hermes-network
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: hermes-nats
+    command: "-js --store_dir=/data -m 8222"
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - hermes-network
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: hermes-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - hermes-network
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: hermes-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - hermes-network
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: hermes-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - hermes-network
+
+  # Stub services (traefik/whoami placeholder until implemented)
+  voice-service:
+    image: traefik/whoami
+    container_name: hermes-voice-service
+    restart: unless-stopped
+    command: --port=8085
+    networks:
+      - hermes-network
+
+  presence-service:
+    image: traefik/whoami
+    container_name: hermes-presence-service
+    restart: unless-stopped
+    command: --port=8087
+    networks:
+      - hermes-network
+
+  media-service:
+    image: traefik/whoami
+    container_name: hermes-media-service
+    restart: unless-stopped
+    command: --port=8088
+    networks:
+      - hermes-network
+
+  notification-service:
+    image: traefik/whoami
+    container_name: hermes-notification-service
+    restart: unless-stopped
+    command: --port=8089
+    networks:
+      - hermes-network
+
+  search-service:
+    image: traefik/whoami
+    container_name: hermes-search-service
+    restart: unless-stopped
+    command: --port=8090
+    networks:
+      - hermes-network
+
+  ai-service:
+    image: traefik/whoami
+    container_name: hermes-ai-service
+    restart: unless-stopped
+    command: --port=8091
+    networks:
+      - hermes-network
+
+  # Schemathesis API Tester (only starts with: --profile testing)
+  schemathesis:
+    image: schemathesis/schemathesis:stable
+    container_name: hermes-schemathesis
+    profiles:
+      - testing
+    environment:
+      AUTH_URL: "${AUTH_URL:-http://hermes-auth-service:8081}"
+      USER_URL: "${USER_URL:-http://hermes-user-service:8082}"
+      GUILD_URL: "${GUILD_URL:-http://hermes-guild-service:8086}"
+    volumes:
+      - ./reports:/reports
+    networks:
+      - hermes-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  hermes-network:
+    external: true
