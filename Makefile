@@ -20,14 +20,14 @@ RED   := \033[0;31m
 NC    := \033[0m
 
 # Docker Compose files
-INFRA_COMPOSE    := docker-compose.infra.yml
-AUTH_COMPOSE     := docker-compose.auth.yml
-USER_COMPOSE     := docker-compose.user.yml
-GUILD_COMPOSE    := docker-compose.guild.yml
-CHANNEL_COMPOSE  := docker-compose.channel.yml
-MESSAGING_COMPOSE := docker-compose.messaging.yml
-CHAT_COMPOSE     := docker-compose.chat.yml
-REALTIME_COMPOSE := docker-compose.realtime.yml
+INFRA_COMPOSE     := infra/docker-compose.yml
+AUTH_COMPOSE      := services/auth-service/docker-compose.yml
+USER_COMPOSE      := services/user-service/docker-compose.yml
+GUILD_COMPOSE     := services/guild-service/docker-compose.yml
+CHANNEL_COMPOSE   := services/channel-service/docker-compose.yml
+MESSAGING_COMPOSE := services/messaging-service/docker-compose.yml
+CHAT_COMPOSE      := services/chat-service/docker-compose.yml
+REALTIME_COMPOSE  := services/realtime-service/docker-compose.yml
 
 # Migration paths
 AUTH_MIGRATION_PATH      := services/auth-service/migrations

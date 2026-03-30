@@ -1,25 +1,27 @@
 services:
-  realtime-service:
+  chat-service:
     build:
-      context: .
+      context: ../..
       dockerfile: Dockerfile
       args:
-        SERVICE_NAME: realtime-service
-    container_name: hermes-realtime-service
+        SERVICE_NAME: chat-service
+    container_name: hermes-chat-service
     restart: unless-stopped
-    env_file: .env
+    env_file: ../../.env
     environment:
-      APP_SERVICE__NAME: realtime-service
+      APP_SERVICE__NAME: chat-service
       APP_SERVICE__VERSION: "1.0.0"
       APP_SERVICE__HOST: "0.0.0.0"
-      APP_SERVICE__PORT: "8092"
+      APP_SERVICE__PORT: "8094"
+      APP_SERVICE__GRPC_PORT: "50064"
       APP_SERVICE__ENVIRONMENT: development
       APP_DATABASE__HOST: hermes-postgres
       APP_REDIS__HOST: hermes-redis
       APP_NATS__SERVERS: hermes-nats:4222
       APP_SMTP__HOST: hermes-mailpit
     ports:
-      - "8092:8092"
+      - "8094:8094"
+      - "50064:50064"
     networks:
       - hermes-network
 

@@ -10,7 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hermes && psql -U hermes -d hermes_auth -c 'SELECT 1' > /dev/null 2>&1"]
       interval: 5s
@@ -61,7 +61,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -85,7 +85,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./infra/grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       prometheus:
         condition: service_healthy
@@ -167,7 +167,7 @@ services:
       USER_URL: "${USER_URL:-http://hermes-user-service:8082}"
       GUILD_URL: "${GUILD_URL:-http://hermes-guild-service:8086}"
     volumes:
-      - ./reports:/reports
+      - ../reports:/reports
     networks:
       - hermes-network
 
