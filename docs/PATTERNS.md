@@ -3,7 +3,7 @@
 **Version:** 1.0.0
 **Last Updated:** March 25, 2026
 
-This document describes the canonical code patterns used inside every service. It is the reference for developers writing or reviewing code. For system-level architecture (services, communication, deployment) see [ARCHITECTURE.md](./ARCHITECTURE.md).
+This document describes the canonical code patterns used inside every service. It is the reference for developers writing or reviewing code. For system-level architecture (services, communication, deployment) see [ARCHITECTURE.md](../../ARCHITECTURE.md).
 
 ## Table of Contents
 
@@ -317,7 +317,7 @@ pub struct AdminOnly;         // 403 if role != Admin
 pub struct ModeratorOrAbove;  // 403 if role < Moderator
 ```
 
-For the Traefik-level flow diagram, see [ARCHITECTURE.md — Authentication and Authorization](./ARCHITECTURE.md#authentication-and-authorization).
+For the Traefik-level flow diagram, see [ARCHITECTURE.md — Authentication Flow](../../ARCHITECTURE.md#authentication-flow).
 
 ---
 

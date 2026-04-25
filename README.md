@@ -79,7 +79,7 @@ Traefik sits at the edge handling REST routing, TLS termination, rate limiting, 
 | Auth | JWT (jsonwebtoken 9.3), Argon2 password hashing |
 | Real-time | WebSocket (Tokio Tungstenite), WebRTC (voice) |
 | API Docs | utoipa 5 (OpenAPI/Swagger) |
-| Observability | Prometheus + Grafana, tracing |
+| Observability | Prometheus + Grafana, Loki + Promtail (centralized logging), tracing |
 | Testing | testcontainers, mockall, fake, rstest |
 | Infrastructure | Docker Compose |
 
@@ -141,9 +141,10 @@ hermes-be/
 +-- infra/
 |   +-- postgres/            # Database init scripts
 |   +-- prometheus/          # Metrics config
-|   +-- grafana/             # Dashboards
+|   +-- loki/                # Loki log aggregation config
+|   +-- promtail/            # Promtail log collector config
+|   +-- grafana/             # Dashboards and datasource provisioning (Prometheus + Loki)
 +-- docs/
-|   +-- ARCHITECTURE.md      # System design, service responsibilities, data architecture
 |   +-- PATTERNS.md          # Code patterns used inside every service
 |   +-- ROADMAP.md           # Phased development plan with completion tracking
 +-- docker-compose.yml
@@ -169,7 +170,7 @@ hermes-be/
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) — System design, service map, communication, data, deployment
+- [Architecture](../ARCHITECTURE.md) — System design, service map, communication, data, deployment
 - [Patterns](docs/PATTERNS.md) — 18 code patterns used inside every service (DDD layers, Repository, Unit of Work, error handling, etc.)
 - [Roadmap](docs/ROADMAP.md) — Phased development plan with per-service completion tracking
 

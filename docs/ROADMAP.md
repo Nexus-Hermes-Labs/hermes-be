@@ -288,7 +288,7 @@ Cross-cutting concern, implemented as extensions to existing services:
 | realtime-service typing indicator + heartbeat | High | Blocks MVP completion | Remaining WS features |
 | chat-service HTTP endpoints incomplete | High | Blocks MVP completion | Remaining handlers and DTOs |
 | No integration tests for gRPC flows | Medium | Quality risk | Cross-service gRPC communication untested end-to-end |
-| No observability beyond basic logging | Medium | Ops risk | Prometheus metrics and health checks not on all services |
+| Centralized logging partially complete | Low | Ops risk | Loki + Promtail deployed; Prometheus metrics and health checks not on all services |
 | Shared database for all services | Low | Scale risk | Acceptable for MVP, plan migration post-MVP |
 | No Redis caching layer in use | Low | Performance risk | Infrastructure wired, caching logic not yet applied |
 
