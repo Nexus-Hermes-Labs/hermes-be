@@ -14,6 +14,7 @@ services:
       APP_SERVICE__HOST: "0.0.0.0"
       APP_SERVICE__PORT: "8092"
       APP_SERVICE__ENVIRONMENT: development
+      APP_LOGGING__FORMAT: json
       APP_DATABASE__HOST: hermes-postgres
       APP_REDIS__HOST: hermes-redis
       APP_NATS__SERVERS: hermes-nats:4222

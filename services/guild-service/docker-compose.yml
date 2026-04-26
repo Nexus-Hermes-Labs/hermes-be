@@ -15,6 +15,7 @@ services:
       APP_SERVICE__PORT: "8086"
       APP_SERVICE__GRPC_PORT: "50056"
       APP_SERVICE__ENVIRONMENT: development
+      APP_LOGGING__FORMAT: json
       APP_DATABASE__HOST: hermes-postgres
       APP_DATABASE__DATABASE: hermes_guild
       APP_REDIS__HOST: hermes-redis
