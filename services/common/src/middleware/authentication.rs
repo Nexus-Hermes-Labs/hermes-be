@@ -52,6 +52,10 @@ where
             .unwrap_or("")
             .to_string();
 
+        // Surface the authenticated user on the active `http_request` span so
+        // every log line emitted within this request carries `user_id`.
+        tracing::Span::current().record("user_id", tracing::field::display(&id));
+
         Ok(RequestUser { id, role, email })
     }
 }

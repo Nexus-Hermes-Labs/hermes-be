@@ -5,14 +5,13 @@ use chat_service::infrastructure::persistence::{
     PostgresMessageRepository, PostgresReactionRepository,
 };
 use chat_service::state::{AppState, ChatState, SharedState};
-use common::observability::{HealthCheck, Metrics};
+use common::observability::{request_trace_layer, HealthCheck, Metrics};
 use sqlx::PgPool;
 use std::sync::Arc;
 use testcontainers::runners::AsyncRunner;
 use testcontainers::{ContainerAsync, GenericImage};
 use testcontainers_modules::postgres::Postgres;
 use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
 
 // ============================================
 // SQL MIGRATIONS (inlined — chat-service uses
@@ -214,7 +213,7 @@ impl TestHarness {
         // ── 6. Build router ──────────────────────────────────────────────────
         let health_check = Arc::new(HealthCheck::new(pool, redis_conn));
         let cors = CorsLayer::permissive();
-        let trace = TraceLayer::new_for_http();
+        let trace = request_trace_layer();
 
         let router = chat_service::presentation::http::routes::create_router(
             app_state,

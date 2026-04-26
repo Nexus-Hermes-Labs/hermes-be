@@ -3,9 +3,9 @@ mod channel;
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
 use axum::Router;
-use common::observability::HealthCheck;
+use common::observability::{HealthCheck, HermesTraceLayer};
 use std::sync::Arc;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -13,9 +13,7 @@ pub fn create_router(
     app_state: AppState,
     _health_check: Arc<HealthCheck>,
     cors: CorsLayer,
-    trace_layer: TraceLayer<
-        tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
-    >,
+    trace_layer: HermesTraceLayer,
 ) -> Router {
     // Mutating routes — identity injected by Traefik ForwardAuth via RequestUser extractor
     let authenticated_routes = Router::new().merge(channel::authenticated_channel_routes());

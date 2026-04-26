@@ -1,13 +1,9 @@
 use crate::state::AppState;
 use axum::http::{header, HeaderValue, Method};
-use common::observability::HealthCheck;
+use common::observability::{request_trace_layer, HealthCheck, HermesTraceLayer};
 use common_config::config;
 use std::{net::SocketAddr, sync::Arc};
-use tower_http::{
-    cors::CorsLayer,
-    trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
-    LatencyUnit,
-};
+use tower_http::cors::CorsLayer;
 use tracing::info;
 
 use crate::presentation::error::PresentationError;
@@ -77,16 +73,8 @@ impl Server {
             .allow_origin(origins)
     }
 
-    fn trace_layer() -> TraceLayer<
-        tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
-    > {
-        TraceLayer::new_for_http()
-            .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
-            .on_response(
-                DefaultOnResponse::new()
-                    .level(tracing::Level::INFO)
-                    .latency_unit(LatencyUnit::Millis),
-            )
+    fn trace_layer() -> HermesTraceLayer {
+        request_trace_layer()
     }
 
     fn server_address() -> SocketAddr {

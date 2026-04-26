@@ -14,10 +14,10 @@ use axum::{
     Router,
 };
 use common::middleware::authorization::require_admin;
-use common::observability::HealthCheck;
+use common::observability::{HealthCheck, HermesTraceLayer};
 use once_cell::sync::Lazy;
 use std::sync::Arc;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -72,9 +72,7 @@ pub fn create_router(
     app_state: AppState,
     health_check: Arc<HealthCheck>,
     cors: CorsLayer,
-    trace_layer: TraceLayer<
-        tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
-    >,
+    trace_layer: HermesTraceLayer,
 ) -> Router {
     // @me routes — RequestUser extractor enforces 401 when headers are missing
     let me_routes = user_me::user_me_routes();

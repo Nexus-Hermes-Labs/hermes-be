@@ -19,7 +19,7 @@ use auth_service::state::shared_state::SharedState;
 use axum::Router;
 use common::infrastructure::messaging::NatsEventPublisher;
 use common::infrastructure::security::jwt_manager::JwtManager;
-use common::observability::{HealthCheck, Metrics};
+use common::observability::{request_trace_layer, HealthCheck, Metrics};
 use sqlx::PgPool;
 use std::sync::Arc;
 use testcontainers::runners::AsyncRunner;
@@ -28,7 +28,6 @@ use testcontainers_modules::postgres::Postgres;
 use tokio::net::TcpListener;
 use tonic::{Request, Response, Status};
 use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
 
 // User-service migrations (auth-service depends on user schema for mock gRPC)
 const USER_ENUMS_SQL: &str =
@@ -378,7 +377,7 @@ impl TestHarness {
             app_state.shared.redis.clone(),
         ));
         let cors = CorsLayer::permissive();
-        let trace = TraceLayer::new_for_http();
+        let trace = request_trace_layer();
 
         let router = auth_service::presentation::http::routes::create_router(
             app_state,

@@ -1,5 +1,5 @@
 use axum::Router;
-use common::observability::{HealthCheck, Metrics};
+use common::observability::{request_trace_layer, HealthCheck, Metrics};
 use messaging_service::application::{ConversationService, MessageService, ReactionService};
 use messaging_service::infrastructure::persistence::{
     PgMessagingUnitOfWorkFactory, PostgresConversationRepository, PostgresMessageRepository,
@@ -15,7 +15,6 @@ use testcontainers::runners::AsyncRunner;
 use testcontainers::{ContainerAsync, GenericImage};
 use testcontainers_modules::postgres::Postgres;
 use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
 
 // ============================================
 // SQL MIGRATIONS (embedded at compile-time)
@@ -174,7 +173,7 @@ impl TestHarness {
         // ── 6. Build router ──────────────────────────────────────────────────
         let health_check = Arc::new(HealthCheck::new(pool.clone(), redis_conn));
         let cors = CorsLayer::permissive();
-        let trace = TraceLayer::new_for_http();
+        let trace = request_trace_layer();
 
         let router = messaging_service::presentation::http::routes::create_router(
             app_state,

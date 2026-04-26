@@ -1,12 +1,11 @@
 use axum::Router;
-use common::observability::{HealthCheck, Metrics};
+use common::observability::{request_trace_layer, HealthCheck, Metrics};
 use sqlx::PgPool;
 use std::sync::Arc; // used for service composition
 use testcontainers::runners::AsyncRunner;
 use testcontainers::{ContainerAsync, GenericImage};
 use testcontainers_modules::postgres::Postgres;
 use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
 use user_service::application::services::{
     UserPrivacyService, UserProfileService, UserRelationshipService,
 };
@@ -157,7 +156,7 @@ impl TestHarness {
         // 4. Build router (same as production, but with minimal layers)
         let health_check = Arc::new(HealthCheck::new(pool, redis_conn));
         let cors = CorsLayer::permissive();
-        let trace = TraceLayer::new_for_http();
+        let trace = request_trace_layer();
 
         let router = user_service::presentation::http::routes::create_router(
             app_state,

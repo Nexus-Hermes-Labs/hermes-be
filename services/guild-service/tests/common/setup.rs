@@ -1,5 +1,5 @@
 use axum::Router;
-use common::observability::{HealthCheck, Metrics};
+use common::observability::{request_trace_layer, HealthCheck, Metrics};
 use guild_service::application::{
     GuildInviteService, GuildMemberService, GuildRoleService, GuildService,
 };
@@ -24,7 +24,6 @@ use testcontainers_modules::postgres::Postgres;
 use tokio::net::TcpListener;
 use tonic::{Request, Response, Status};
 use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
 use uuid::Uuid;
 
 // ============================================
@@ -294,7 +293,7 @@ impl TestHarness {
         // ── 7. Build router ──────────────────────────────────────────────────
         let health_check = Arc::new(HealthCheck::new(pool.clone(), redis_conn));
         let cors = CorsLayer::permissive();
-        let trace = TraceLayer::new_for_http();
+        let trace = request_trace_layer();
 
         let router = guild_service::presentation::http::routes::create_router(
             app_state,
