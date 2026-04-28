@@ -1,4 +1,5 @@
 use axum::http::{Request, Response};
+use metrics::{counter, histogram};
 use std::time::Duration;
 use tower_http::classify::{ServerErrorsAsFailures, SharedClassifier};
 use tower_http::trace::{DefaultOnRequest, MakeSpan, OnResponse, TraceLayer};
@@ -37,8 +38,14 @@ impl<B> MakeSpan<B> for HermesMakeSpan {
     }
 }
 
-/// Records the response status onto the request span and emits a single
-/// completion event with latency and status.
+/// Records the response status onto the request span, emits a single
+/// completion event with latency and status, and increments the
+/// `http_request_duration_seconds` histogram + `http_requests_total`
+/// counter so Prometheus can drive per-service latency / error-rate panels.
+///
+/// Labels are kept to `status` only — per-service breakdown comes from
+/// Prometheus's automatic `job` / `instance` labels, and per-method labels
+/// are skipped so cardinality stays bounded as routes proliferate.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HermesOnResponse;
 
@@ -46,6 +53,19 @@ impl<B> OnResponse<B> for HermesOnResponse {
     fn on_response(self, response: &Response<B>, latency: Duration, span: &Span) {
         let status = response.status().as_u16();
         span.record("status", status);
+
+        let status_label = status.to_string();
+        histogram!(
+            "http_request_duration_seconds",
+            "status" => status_label.clone()
+        )
+        .record(latency.as_secs_f64());
+        counter!(
+            "http_requests_total",
+            "status" => status_label
+        )
+        .increment(1);
+
         tracing::info!(
             latency_ms = latency.as_millis() as u64,
             status,

@@ -6,7 +6,7 @@ pub mod tracing;
 
 pub use health::HealthCheck;
 pub use http_trace::{request_trace_layer, HermesTraceLayer};
-pub use metrics::Metrics;
+pub use metrics::{metrics_routes, Metrics};
 pub use request_context::{
     current_request_id, HermesRequestId, PropagateRequestIdResponseLayer, RequestIdInterceptor,
     RequestIdScopeLayer, REQUEST_ID, REQUEST_ID_HEADER,
