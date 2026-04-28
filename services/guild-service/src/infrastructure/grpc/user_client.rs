@@ -1,4 +1,6 @@
+use common::observability::RequestIdInterceptor;
 use std::time::Duration;
+use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
@@ -39,10 +41,14 @@ impl UserGrpcClient {
         Ok(Self { endpoint })
     }
 
-    /// Create a fresh client backed by a lazily-connected channel.
-    fn create_client(&self) -> UserServiceClient<Channel> {
+    /// Create a fresh client backed by a lazily-connected channel. The
+    /// channel is wrapped with [`RequestIdInterceptor`] so every outbound
+    /// call carries the active `x-request-id`.
+    fn create_client(
+        &self,
+    ) -> UserServiceClient<InterceptedService<Channel, RequestIdInterceptor>> {
         let channel = self.endpoint.connect_lazy();
-        UserServiceClient::new(channel)
+        UserServiceClient::with_interceptor(channel, RequestIdInterceptor)
     }
 
     /// Get a user profile by ID. Returns `None` if the user does not exist.

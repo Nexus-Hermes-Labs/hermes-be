@@ -1,5 +1,7 @@
 use async_trait::async_trait;
+use common::observability::RequestIdInterceptor;
 use std::time::Duration;
+use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
@@ -41,10 +43,14 @@ impl GuildGrpcClient {
         Ok(Self { endpoint })
     }
 
-    /// Create a fresh client backed by a lazily-connected channel.
-    fn create_client(&self) -> GuildServiceClient<Channel> {
+    /// Create a fresh client backed by a lazily-connected channel. The
+    /// channel is wrapped with [`RequestIdInterceptor`] so every outbound
+    /// call carries the active `x-request-id`.
+    fn create_client(
+        &self,
+    ) -> GuildServiceClient<InterceptedService<Channel, RequestIdInterceptor>> {
         let channel = self.endpoint.connect_lazy();
-        GuildServiceClient::new(channel)
+        GuildServiceClient::with_interceptor(channel, RequestIdInterceptor)
     }
 
 }

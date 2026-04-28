@@ -101,6 +101,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     let grpc_shutdown_rx = shutdown_rx.clone();
     let grpc_handle = tokio::spawn(async move {
         tonic::transport::Server::builder()
+            .layer(observability::RequestIdScopeLayer)
             .add_service(grpc_router)
             .serve_with_shutdown(grpc_addr, async move {
                 let mut rx = grpc_shutdown_rx;

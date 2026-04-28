@@ -1,4 +1,6 @@
+use common::observability::RequestIdInterceptor;
 use std::time::Duration;
+use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
@@ -33,9 +35,11 @@ impl ChannelGrpcClient {
         Ok(Self { endpoint })
     }
 
-    fn create_client(&self) -> ChannelServiceClient<Channel> {
+    fn create_client(
+        &self,
+    ) -> ChannelServiceClient<InterceptedService<Channel, RequestIdInterceptor>> {
         let channel = self.endpoint.connect_lazy();
-        ChannelServiceClient::new(channel)
+        ChannelServiceClient::with_interceptor(channel, RequestIdInterceptor)
     }
 
     /// Create default `general` (text) and `General` (voice) channels for a new guild.

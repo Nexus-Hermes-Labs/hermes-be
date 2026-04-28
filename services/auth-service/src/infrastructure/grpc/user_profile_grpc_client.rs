@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use common::observability::RequestIdInterceptor;
 use std::time::Duration;
+use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Endpoint};
 use uuid::Uuid;
 
@@ -33,10 +35,14 @@ impl UserGrpcClient {
         Ok(Self { endpoint })
     }
 
-    /// Create a new client instance
-    fn create_client(&self) -> UserServiceClient<Channel> {
+    /// Create a new client instance. The channel is wrapped with
+    /// [`RequestIdInterceptor`] so every outbound call carries the active
+    /// `x-request-id`.
+    fn create_client(
+        &self,
+    ) -> UserServiceClient<InterceptedService<Channel, RequestIdInterceptor>> {
         let channel = self.endpoint.connect_lazy();
-        UserServiceClient::new(channel)
+        UserServiceClient::with_interceptor(channel, RequestIdInterceptor)
     }
 }
 

@@ -14,7 +14,9 @@ use axum::{
     Router,
 };
 use common::middleware::authorization::require_admin;
-use common::observability::{HealthCheck, HermesTraceLayer};
+use common::observability::{
+    HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+};
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
@@ -101,7 +103,9 @@ pub fn create_router(
         .nest("/health", health::routes().with_state(health_check))
         .nest("/api/v1", api_router)
         .layer(cors)
-        .layer(trace_layer)
         .layer(axum::middleware::from_fn(reject_json_surrogates))
         .layer(axum::middleware::from_fn(reject_percent_encoded_paths))
+        .layer(trace_layer)
+        .layer(PropagateRequestIdResponseLayer)
+        .layer(RequestIdScopeLayer)
 }

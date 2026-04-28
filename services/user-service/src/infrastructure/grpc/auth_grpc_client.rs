@@ -2,7 +2,9 @@ use crate::presentation::grpc::proto::auth::v1::auth_service_client::AuthService
 use crate::presentation::grpc::proto::auth::v1::{
     CheckPermissionRequest, CheckPermissionResponse, ValidateTokenRequest, ValidateTokenResponse,
 };
+use common::observability::RequestIdInterceptor;
 use std::time::Duration;
+use tonic::service::interceptor::InterceptedService;
 use tonic::transport::{Channel, Endpoint};
 use tracing::{error, info};
 
@@ -33,10 +35,14 @@ impl AuthGrpcClient {
         Ok(Self { endpoint })
     }
 
-    /// Create a new client instance
-    fn create_client(&self) -> AuthServiceClient<Channel> {
+    /// Create a new client instance. The channel is wrapped with
+    /// [`RequestIdInterceptor`] so every outbound call carries the active
+    /// `x-request-id`.
+    fn create_client(
+        &self,
+    ) -> AuthServiceClient<InterceptedService<Channel, RequestIdInterceptor>> {
         let channel = self.endpoint.connect_lazy();
-        AuthServiceClient::new(channel)
+        AuthServiceClient::with_interceptor(channel, RequestIdInterceptor)
     }
 
     /// Validate an access token

@@ -5,7 +5,9 @@ mod health;
 use crate::presentation::ws::handler::ws_handler;
 use crate::state::AppState;
 use axum::Router;
-use common::observability::request_trace_layer;
+use common::observability::{
+    request_trace_layer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+};
 use tower_http::cors::CorsLayer;
 
 /// Build the top-level [`Router`] that serves both HTTP and WebSocket traffic.
@@ -19,4 +21,6 @@ pub fn create_router(app_state: AppState, cors: CorsLayer) -> Router {
         .nest("/health", health::routes())
         .layer(cors)
         .layer(trace)
+        .layer(PropagateRequestIdResponseLayer)
+        .layer(RequestIdScopeLayer)
 }

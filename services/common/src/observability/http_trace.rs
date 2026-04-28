@@ -5,18 +5,27 @@ use tower_http::trace::{DefaultOnRequest, MakeSpan, OnResponse, TraceLayer};
 use tracing::{field, info_span, Span};
 use uuid::Uuid;
 
+use crate::observability::request_context::HermesRequestId;
+
 /// `MakeSpan` that opens an `http_request` span carrying the Hermes-standard
 /// log fields. Populated at creation: `method`, `uri`, `request_id`. Declared
 /// empty (filled later in the request lifecycle): `user_id` (recorded by the
 /// `RequestUser` extractor), `status` (recorded on response).
+///
+/// Reads `request_id` from a `HermesRequestId` extension placed by
+/// `RequestIdScopeLayer`. Falls back to generating a UUIDv4 only when that
+/// layer is absent (e.g. an integration test that wires up `TraceLayer` alone).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct HermesMakeSpan;
 
 impl<B> MakeSpan<B> for HermesMakeSpan {
     fn make_span(&mut self, request: &Request<B>) -> Span {
-        // Locally generated for now. Step 4 will prefer an inbound `x-request-id`
-        // so the same id flows across services.
-        let request_id = Uuid::new_v4();
+        let request_id = request
+            .extensions()
+            .get::<HermesRequestId>()
+            .map(|id| id.as_str().to_owned())
+            .unwrap_or_else(|| Uuid::new_v4().to_string());
+
         info_span!(
             "http_request",
             method = %request.method(),

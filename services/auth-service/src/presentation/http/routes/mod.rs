@@ -5,7 +5,9 @@ mod internal;
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::app_state::AppState;
 use axum::Router;
-use common::observability::{HealthCheck, HermesTraceLayer};
+use common::observability::{
+    HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+};
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use utoipa::OpenApi;
@@ -36,4 +38,6 @@ pub fn create_router(
         .nest("/api/v1", api_routes)
         .layer(cors)
         .layer(trace_layer)
+        .layer(PropagateRequestIdResponseLayer)
+        .layer(RequestIdScopeLayer)
 }
