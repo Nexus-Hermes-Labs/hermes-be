@@ -1,0 +1,33 @@
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: false
+    editable: true
+    jsonData:
+      # Click a span → search Loki for log lines tagged with the same trace_id
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+        filterByTraceID: true
+        filterBySpanID: false
+        customQuery: true
+        query: '{service=~".+-service"} |= "$${__span.traceId}"'
+      # Click a span → jump to Prometheus dashboards for that service
+      tracesToMetrics:
+        datasourceUid: prometheus
+        tags:
+          - { key: 'service.name', value: 'job' }
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki
