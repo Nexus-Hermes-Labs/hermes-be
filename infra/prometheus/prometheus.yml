@@ -2,49 +2,41 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
+# Scrape application services on their HTTP port. The `/metrics` route is
+# mounted outside the trace_layer so scrape requests don't pollute
+# `http_requests_total` or generate request-id spans.
 scrape_configs:
-  # NATS Monitoring
-  - job_name: 'nats'
-    static_configs:
-      - targets: ['nats:8222']
-
-  # Redis Exporter (add if needed)
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis:6379']
-
-  # Application Services
   - job_name: 'auth-service'
     static_configs:
-      - targets: ['auth-service:9091']
+      - targets: ['hermes-auth-service:8081']
     metrics_path: '/metrics'
 
-  - job_name: 'user_profile-service'
+  - job_name: 'user-service'
     static_configs:
-      - targets: ['user_profile-service:9092']
+      - targets: ['hermes-user-service:8082']
     metrics_path: '/metrics'
 
   - job_name: 'channel-service'
     static_configs:
-      - targets: ['channel-service:9093']
+      - targets: ['hermes-channel-service:8083']
+    metrics_path: '/metrics'
+
+  - job_name: 'messaging-service'
+    static_configs:
+      - targets: ['hermes-messaging-service:8084']
+    metrics_path: '/metrics'
+
+  - job_name: 'guild-service'
+    static_configs:
+      - targets: ['hermes-guild-service:8086']
+    metrics_path: '/metrics'
+
+  - job_name: 'realtime-service'
+    static_configs:
+      - targets: ['hermes-realtime-service:8092']
     metrics_path: '/metrics'
 
   - job_name: 'chat-service'
     static_configs:
-      - targets: ['chat-service:9094']
-    metrics_path: '/metrics'
-
-  - job_name: 'voice-service'
-    static_configs:
-      - targets: ['voice-service:9095']
-    metrics_path: '/metrics'
-
-  - job_name: 'presence-service'
-    static_configs:
-      - targets: ['presence-service:9097']
-    metrics_path: '/metrics'
-
-  - job_name: 'gateway-service'
-    static_configs:
-      - targets: ['gateway-service:9098']
+      - targets: ['hermes-chat-service:8094']
     metrics_path: '/metrics'

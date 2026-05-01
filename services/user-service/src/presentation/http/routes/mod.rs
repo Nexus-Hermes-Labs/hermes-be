@@ -15,7 +15,8 @@ use axum::{
 };
 use common::middleware::authorization::require_admin;
 use common::observability::{
-    HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+    metrics_routes, HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer,
+    RequestIdScopeLayer,
 };
 use once_cell::sync::Lazy;
 use std::sync::Arc;
@@ -108,4 +109,5 @@ pub fn create_router(
         .layer(trace_layer)
         .layer(PropagateRequestIdResponseLayer)
         .layer(RequestIdScopeLayer)
+        .nest("/metrics", metrics_routes())
 }

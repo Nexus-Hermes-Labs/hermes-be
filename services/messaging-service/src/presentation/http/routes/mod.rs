@@ -7,7 +7,8 @@ use crate::presentation::http::docs::ApiDoc;
 use crate::state::AppState;
 use axum::Router;
 use common::observability::{
-    HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+    metrics_routes, HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer,
+    RequestIdScopeLayer,
 };
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
@@ -36,4 +37,5 @@ pub fn create_router(
         .layer(trace_layer)
         .layer(PropagateRequestIdResponseLayer)
         .layer(RequestIdScopeLayer)
+        .nest("/metrics", metrics_routes())
 }

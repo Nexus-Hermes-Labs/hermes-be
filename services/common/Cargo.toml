@@ -99,6 +99,14 @@ tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 
 # ============================================================================
+# DISTRIBUTED TRACING (OpenTelemetry → Tempo)
+# ============================================================================
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+
+# ============================================================================
 # TESTING (optional, feature-gated)
 # ============================================================================
 testcontainers = { workspace = true, optional = true }

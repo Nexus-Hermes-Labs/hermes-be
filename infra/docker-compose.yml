@@ -93,6 +93,27 @@ services:
     networks:
       - hermes-network
 
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: hermes-tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    user: "0"  # Tempo writes to /var/tempo; root keeps the volume init simple in dev
+    ports:
+      - "3200:3200"   # Tempo HTTP API (Grafana datasource talks here)
+      - "4317:4317"   # OTLP gRPC receiver (services export spans here)
+      - "4318:4318"   # OTLP HTTP receiver (alternative for non-gRPC clients)
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3200/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - hermes-network
+
   promtail:
     image: grafana/promtail:3.4.1
     container_name: hermes-promtail
@@ -121,6 +142,8 @@ services:
       prometheus:
         condition: service_healthy
       loki:
+        condition: service_healthy
+      tempo:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
@@ -226,6 +249,7 @@ volumes:
   nats_data:
   prometheus_data:
   loki_data:
+  tempo_data:
   grafana_data:
 
 networks:

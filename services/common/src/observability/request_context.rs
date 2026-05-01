@@ -1,4 +1,5 @@
-//! Per-request correlation id propagated across HTTP and gRPC.
+//! Per-request correlation id and W3C trace context propagated across HTTP
+//! and gRPC.
 //!
 //! The flow:
 //! 1. Inbound HTTP/gRPC requests are wrapped by [`RequestIdScopeLayer`], which
@@ -6,11 +7,13 @@
 //!    stores the id on the request as a [`HermesRequestId`] extension, and
 //!    runs the inner service inside a [`REQUEST_ID`] task-local scope.
 //! 2. Application code makes outbound gRPC calls; [`RequestIdInterceptor`]
-//!    reads the task-local and injects the `x-request-id` metadata so the
-//!    same id flows to the next service.
+//!    reads the task-local and injects both `x-request-id` and the W3C
+//!    `traceparent` (from the current OTel context) so the same correlation
+//!    id *and* trace context flow to the next service.
 //!
 //! The HTTP `MakeSpan` reads [`HermesRequestId`] from request extensions,
-//! so structured logs for every hop carry the same `request_id` field.
+//! and extracts the inbound `traceparent` to set as the parent of the local
+//! span — closing the loop on cross-service trace continuity.
 //!
 //! `RequestIdScopeLayer` carries two [`Service`] impls — one for axum's
 //! `http 1.x` `Request` type and one for tonic's `http 0.2` `Request` type —
@@ -20,12 +23,18 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use opentelemetry::{
+    propagation::{Extractor, Injector},
+    trace::{TraceContextExt, TraceId},
+};
 use tokio::task::futures::TaskLocalFuture;
 use tokio::task_local;
-use tonic::metadata::AsciiMetadataValue;
+use tonic::metadata::{AsciiMetadataValue, KeyRef, MetadataKey, MetadataMap};
 use tonic::service::Interceptor;
 use tonic::Status;
 use tower::{Layer, Service};
+use tracing::{field, info_span, Instrument, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use uuid::Uuid;
 
 /// HTTP/gRPC header used to carry the request correlation id between services.
@@ -133,6 +142,12 @@ where
 // ---------------------------------------------------------------------------
 // tonic (http 0.2) impl
 // ---------------------------------------------------------------------------
+//
+// Tonic's `Server::layer()` runs *before* the gRPC method dispatcher, so this
+// is where we extract the inbound `traceparent` and open a `grpc_request`
+// span linked to the parent context. The handler future runs inside that
+// span, so any tracing inside the handler is auto-parented to the same
+// distributed trace.
 
 impl<S, B> Service<tonic::codegen::http::Request<B>> for RequestIdScopeService<S>
 where
@@ -140,7 +155,7 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = TaskLocalFuture<String, S::Future>;
+    type Future = TaskLocalFuture<String, tracing::instrument::Instrumented<S::Future>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
@@ -153,7 +168,32 @@ where
                 .map(|(n, v)| (n.as_str().as_bytes(), v.as_bytes())),
         );
         req.extensions_mut().insert(HermesRequestId(id.clone()));
-        REQUEST_ID.scope(id, self.inner.call(req))
+
+        let span = info_span!(
+            "grpc_request",
+            uri = %req.uri(),
+            request_id = %id,
+            trace_id = field::Empty,
+        );
+
+        // Extract inbound W3C trace context from the gRPC headers and link
+        // this span to it. Falls through cleanly to a noop when no
+        // propagator is installed (log-only mode).
+        let parent_cx = opentelemetry::global::get_text_map_propagator(|propagator| {
+            propagator.extract(&Http02HeaderExtractor(req.headers()))
+        });
+        span.set_parent(parent_cx);
+
+        // Surface the trace_id on the tracing span so JSON log lines emitted
+        // by the handler carry it for Loki↔Tempo correlation.
+        let cx = span.context();
+        let otel_span = cx.span();
+        let span_ctx = otel_span.span_context();
+        if span_ctx.is_valid() && span_ctx.trace_id() != TraceId::INVALID {
+            span.record("trace_id", span_ctx.trace_id().to_string());
+        }
+
+        REQUEST_ID.scope(id, self.inner.call(req).instrument(span))
     }
 }
 
@@ -217,9 +257,18 @@ where
 // gRPC client interceptor
 // ---------------------------------------------------------------------------
 
-/// Tonic client interceptor that copies the active task-local [`REQUEST_ID`]
-/// onto outbound gRPC calls as `x-request-id` metadata. No-op when called
-/// outside a request scope (e.g. from background tasks at startup).
+/// Tonic client interceptor that propagates per-request correlation context
+/// onto outbound gRPC calls. Two pieces of state get injected:
+///
+/// - `x-request-id` from the task-local [`REQUEST_ID`] scope, so logs from
+///   downstream services link to the same id used in this hop.
+/// - W3C `traceparent` (and `tracestate` when present) from the current
+///   OpenTelemetry context, so distributed-trace continuity survives the
+///   gRPC boundary.
+///
+/// Both injections are no-ops when called outside a request scope (e.g.
+/// from background tasks at startup) or when no OTel propagator is installed
+/// (log-only mode without an OTLP endpoint).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct RequestIdInterceptor;
 
@@ -230,6 +279,75 @@ impl Interceptor for RequestIdInterceptor {
                 request.metadata_mut().insert(REQUEST_ID_HEADER, value);
             }
         }
+
+        // Inject the current OTel span context as `traceparent` metadata.
+        // Pulled from `tracing::Span::current()` so the source of truth is
+        // the active tracing span (which is what every other observability
+        // hook reads from — keeps drift impossible).
+        let cx = Span::current().context();
+        opentelemetry::global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&cx, &mut TonicMetadataInjector(request.metadata_mut()));
+        });
+
         Ok(request)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// OpenTelemetry header adapters for tonic metadata
+// ---------------------------------------------------------------------------
+
+/// `Injector` so the global `TextMapPropagator` can write `traceparent` /
+/// `tracestate` into a tonic [`MetadataMap`]. Binary-only metadata keys
+/// (the `-bin` suffix convention) are ignored — the W3C propagator only
+/// produces ASCII headers.
+pub(crate) struct TonicMetadataInjector<'a>(pub(crate) &'a mut MetadataMap);
+
+impl<'a> Injector for TonicMetadataInjector<'a> {
+    fn set(&mut self, key: &str, value: String) {
+        if let Ok(name) = MetadataKey::from_bytes(key.as_bytes()) {
+            if let Ok(val) = AsciiMetadataValue::try_from(value) {
+                self.0.insert(name, val);
+            }
+        }
+    }
+}
+
+/// `Extractor` for inbound tonic metadata — kept for parity with the
+/// injector even if no current call site uses it directly. The gRPC server
+/// path actually extracts via [`Http02HeaderExtractor`] because `Server::layer`
+/// hands us the raw `tonic::codegen::http::Request`, not a `tonic::Request`.
+#[allow(dead_code)]
+pub(crate) struct TonicMetadataExtractor<'a>(pub(crate) &'a MetadataMap);
+
+impl<'a> Extractor for TonicMetadataExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0
+            .keys()
+            .filter_map(|k| match k {
+                KeyRef::Ascii(s) => Some(s.as_str()),
+                KeyRef::Binary(_) => None,
+            })
+            .collect()
+    }
+}
+
+/// Adapter so the global `TextMapPropagator` can read trace context from
+/// the `http 0.2` `HeaderMap` that tonic 0.11 hands the server-side tower
+/// layer. Mirrors `AxumHeaderExtractor` in `http_trace.rs` — we keep two
+/// because axum 0.7 and tonic 0.11 link different `http` major versions.
+pub(crate) struct Http02HeaderExtractor<'a>(pub(crate) &'a tonic::codegen::http::HeaderMap);
+
+impl<'a> Extractor for Http02HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| v.to_str().ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
     }
 }

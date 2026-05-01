@@ -2,6 +2,7 @@ apiVersion: 1
 
 datasources:
   - name: Loki
+    uid: loki
     type: loki
     access: proxy
     url: http://loki:3100
@@ -9,3 +10,11 @@ datasources:
     editable: true
     jsonData:
       maxLines: 1000
+      # Auto-link `trace_id` field in JSON log lines to the Tempo trace view.
+      # Matches the `trace_id` field emitted by HermesMakeSpan.
+      derivedFields:
+        - name: TraceID
+          matcherRegex: '"trace_id":"([a-f0-9]+)"'
+          url: '$${__value.raw}'
+          datasourceUid: tempo
+          urlDisplayLabel: 'View trace'

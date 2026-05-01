@@ -6,7 +6,8 @@ use crate::presentation::http::docs::ApiDoc;
 use crate::state::app_state::AppState;
 use axum::Router;
 use common::observability::{
-    HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+    metrics_routes, HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer,
+    RequestIdScopeLayer,
 };
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
@@ -27,7 +28,9 @@ pub fn create_router(
         .merge(public_routes)
         .with_state(app_state.clone());
 
-    // Complete router
+    // Complete router. `/metrics` is mounted *after* the layer chain so
+    // Prometheus scrapes don't generate request-id spans or get counted in
+    // `http_requests_total` themselves.
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .nest("/health", health::routes().with_state(health_check))
@@ -40,4 +43,5 @@ pub fn create_router(
         .layer(trace_layer)
         .layer(PropagateRequestIdResponseLayer)
         .layer(RequestIdScopeLayer)
+        .nest("/metrics", metrics_routes())
 }

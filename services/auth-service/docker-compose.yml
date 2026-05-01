@@ -16,6 +16,7 @@ services:
       APP_SERVICE__GRPC_PORT: "50051"
       APP_SERVICE__ENVIRONMENT: development
       APP_LOGGING__FORMAT: json
+      APP_LOGGING__OTLP_ENDPOINT: http://hermes-tempo:4317
       APP_DATABASE__HOST: hermes-postgres
       APP_DATABASE__DATABASE: hermes_auth
       APP_REDIS__HOST: hermes-redis

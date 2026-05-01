@@ -146,6 +146,20 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tracing-appender = "0.2"
 
 # ============================================================================
+# DISTRIBUTED TRACING (OpenTelemetry → Tempo)
+# ============================================================================
+# opentelemetry-otlp 0.17 transports OTLP over its own internal tonic 0.12.
+# That is independent of the application's tonic 0.11 — the two coexist as
+# separate crates in the dependency graph.
+opentelemetry = "0.24"
+opentelemetry_sdk = { version = "0.24", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.17", default-features = false, features = [
+    "grpc-tonic",
+    "trace",
+] }
+tracing-opentelemetry = "0.25"
+
+# ============================================================================
 # METRICS (Prometheus)
 # ============================================================================
 metrics = "0.22"
@@ -164,6 +178,15 @@ reqwest = { version = "0.12", features = [
     "json",
     "rustls-tls",
 ], default-features = false }
+
+# ============================================================================
+# SYNC HTTP CLIENT (for config bootstrap before tokio runtime is fully usable)
+# ============================================================================
+# `reqwest::blocking` shells out to its own thread but is officially
+# discouraged inside an async context. `ureq` is a small, dependency-light
+# blocking client that does not touch tokio — safe to call from `init_config`
+# during `#[tokio::main]` startup.
+ureq = { version = "2.10", default-features = false, features = ["json", "tls"] }
 
 # ============================================================================
 # REDIS (Caching & Presence)

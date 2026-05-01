@@ -6,7 +6,7 @@ use crate::presentation::ws::handler::ws_handler;
 use crate::state::AppState;
 use axum::Router;
 use common::observability::{
-    request_trace_layer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
+    metrics_routes, request_trace_layer, PropagateRequestIdResponseLayer, RequestIdScopeLayer,
 };
 use tower_http::cors::CorsLayer;
 
@@ -23,4 +23,5 @@ pub fn create_router(app_state: AppState, cors: CorsLayer) -> Router {
         .layer(trace)
         .layer(PropagateRequestIdResponseLayer)
         .layer(RequestIdScopeLayer)
+        .nest("/metrics", metrics_routes())
 }
