@@ -1,12 +1,18 @@
 use serde::Deserialize;
 use std::fmt;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
 pub struct ServiceConfig {
+    #[serde(default = "default_service_name")]
     pub name: String,
+    #[serde(default = "default_service_version")]
     pub version: String,
+    #[serde(default = "default_service_host")]
     pub host: String,
+    #[serde(default = "default_service_port")]
     pub port: u16,
+    #[serde(default)]
     pub environment: Environment,
     #[serde(default)]
     pub allowed_origins: Vec<String>,
@@ -18,6 +24,22 @@ pub struct ServiceConfig {
     pub graceful_shutdown_timeout_secs: u64,
     #[serde(default)]
     pub grpc_port: Option<u16>,
+}
+
+fn default_service_name() -> String {
+    "unknown-service".to_string()
+}
+
+fn default_service_version() -> String {
+    "0.1.0".to_string()
+}
+
+fn default_service_host() -> String {
+    "0.0.0.0".to_string()
+}
+
+fn default_service_port() -> u16 {
+    8080
 }
 
 fn default_max_request_size() -> usize {

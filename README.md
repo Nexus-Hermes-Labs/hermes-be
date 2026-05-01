@@ -71,6 +71,7 @@ Traefik sits at the edge handling REST routing, TLS termination, rate limiting, 
 |---|---|
 | Language | Rust (stable) |
 | Edge Proxy | Traefik v3 (ForwardAuth, rate limiting, routing) |
+| Configuration | HashiCorp Consul (centralized KV store) |
 | Web Framework | Axum 0.7, Tower middleware |
 | gRPC | Tonic 0.11, Protocol Buffers (Prost 0.12) |
 | Database | PostgreSQL 16 (SQLx 0.8, compile-time checked) |
@@ -81,7 +82,7 @@ Traefik sits at the edge handling REST routing, TLS termination, rate limiting, 
 | API Docs | utoipa 5 (OpenAPI/Swagger) |
 | Observability | Prometheus + Grafana, Loki + Promtail (centralized logging), tracing |
 | Testing | testcontainers, mockall, fake, rstest |
-| Infrastructure | Docker Compose |
+| Infrastructure | Docker Compose, HashiCorp Consul |
 
 ## Quick Start
 

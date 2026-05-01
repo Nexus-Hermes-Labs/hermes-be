@@ -9,6 +9,7 @@ use serde::Deserialize;
 /// - `APP_GRPC_ENDPOINTS__GUILD_SERVICE` (e.g., "http://localhost:50056")
 /// - `APP_GRPC_ENDPOINTS__CHANNEL_SERVICE` (e.g., "http://localhost:50053")
 #[derive(Debug, Clone, Deserialize, Default)]
+#[serde(default)]
 pub struct GrpcEndpointsConfig {
     pub auth_service: Option<String>,
     pub user_service: Option<String>,

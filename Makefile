@@ -69,6 +69,7 @@ install: ## Install development dependencies
 setup: up ## Initial project setup (infra up + migrate + seed)
 	@echo -e "$(BLUE)Setting up project...$(NC)"
 	@cp -n .env.example .env || true
+	@make config-migrate
 	@make db-migrate
 	@make db-seed
 	@echo -e "$(GREEN)Setup complete! Edit .env if needed.$(NC)"
@@ -385,10 +386,19 @@ sqlx-prepare-messaging: ## Generate SQLx offline metadata for messaging-service
 
 ##@ Development — Local (cargo run)
 
-dev: up ## Start infra (migrations run automatically on service startup)
-	@echo -e "$(GREEN)Infrastructure ready!$(NC)"
+dev: up config-migrate ## Start infra and migrate config
+	@echo -e "$(GREEN)Infrastructure ready and configuration migrated!$(NC)"
 	@echo -e "$(YELLOW)Start services: make run-{service}  — migrations apply on first startup$(NC)"
 	@echo -e "$(YELLOW)Seed data:      make db-seed        — run after services are up$(NC)"
+
+config-migrate: ## Migrate configuration to Consul
+	@echo -e "$(BLUE)Migrating configuration to Consul...$(NC)"
+	@if [ -d ".venv" ]; then \
+		.venv/bin/python scripts/config-migration/migrate_to_consul.py; \
+	else \
+		python3 scripts/config-migration/migrate_to_consul.py; \
+	fi
+	@echo -e "$(GREEN)Configuration migration complete$(NC)"
 
 run-auth: ## Run auth-service locally
 	@echo -e "$(BLUE)Starting auth-service...$(NC)"

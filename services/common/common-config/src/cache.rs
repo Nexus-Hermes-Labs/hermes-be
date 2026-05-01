@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 /// Cache configuration
 #[derive(Debug, Clone, Deserialize)]
+#[serde(default)]
 pub struct CacheConfig {
     pub host: String,
     pub port: u16,

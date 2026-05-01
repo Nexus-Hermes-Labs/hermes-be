@@ -327,6 +327,7 @@ Cross-cutting concern, implemented as extensions to existing services:
 | Domain modeling complexity | DDD / hexagonal architecture approach successful |
 | Bidirectional relationship sync | PostgreSQL triggers handle it cleanly |
 | API gateway complexity | Replaced with Traefik — simpler, battle-tested, ForwardAuth handles JWT centrally |
+| Centralized Config | Implemented HashiCorp Consul for unified configuration management across services |
 | gRPC integration complexity | Trait-based wrappers keep Tonic types out of application layer |
 | User-service completion | Fully implemented including gRPC server and all HTTP endpoints |
 | Guild/channel-service | Both fully implemented with bitflag RBAC and permission verification |
