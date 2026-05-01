@@ -19,10 +19,23 @@ pub use service::ServiceConfig;
 pub use smtp::SmtpConfig;
 
 use crate::error::ConfigError;
-use figment::{providers::{Env, Format}, Figment};
+use figment::{
+    providers::{Env, Format, Json},
+    Figment,
+};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::env;
+use std::time::Duration;
+
+/// Default Consul URL when running inside the docker-compose network.
+/// Override per-environment via the `CONSUL_URL` env var.
+const DEFAULT_CONSUL_URL: &str = "http://hermes-consul:8500";
+
+/// Hard timeout for individual Consul KV reads. Bootstrap blocks on these,
+/// so we cap each call so a wedged Consul cannot stall service startup
+/// indefinitely.
+const CONSUL_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Main application configuration
 #[derive(Debug, Clone, Deserialize)]
@@ -45,62 +58,58 @@ pub struct Config {
 }
 
 impl Config {
-    /// Load configuration strictly from environment variables.
+    /// Load configuration with the merge order (last layer wins):
     ///
-    /// Priority order (highest to lowest):
-    /// 1. System Environment Variables (OS level, e.g., Docker ENV)
-    /// 2. Service-specific .env (services/{service_name}/.env)
-    /// 3. Root .env (workspace root, for shared local defaults)
+    /// 1. Consul KV `config/application/data` — shared cross-service baseline.
+    /// 2. Consul KV `config/{service_name}/data` — service-specific baseline.
+    /// 3. `.env` files (workspace root, then per-service) — developer local overrides.
+    /// 4. Environment variables (`APP_*`) — what compose/CI/host actually sets at boot.
+    ///
+    /// **Why env wins over Consul.** Hermes runs in two modes:
+    /// - `make up` (containers): compose sets `APP_DATABASE__HOST=hermes-postgres` etc.
+    /// - `make run-{service}` (host): developer's `.env` sets localhost equivalents.
+    ///
+    /// Consul is the same checked-in baseline for both modes, so the
+    /// mode-specific layer (env vars / dotenvy) has to win. This makes Consul
+    /// the *fallback*: when neither env nor `.env` defines a key, Consul fills
+    /// it. Operators changing values in Consul still need to restart the
+    /// affected service — `Config::load` only runs once, at startup.
+    ///
+    /// When Consul is unreachable, [`fetch_consul_kv`] logs to stderr and
+    /// returns `None`; the env layer alone still yields a complete config.
     pub fn load(service_name: &str) -> Result<Self, ConfigError> {
-        // 1. Load root .env file if present (useful for shared local db/redis)
-        dotenvy::dotenv().ok();
+        // 1. Force set the service name in the environment so .env files don't
+        // need to hardcode it.
+        env::set_var("APP_SERVICE__NAME", service_name);
 
-        // 2. Load service-specific .env (overrides root .env)
+        // 2. Build figment baseline-to-override:
+        //    Consul (application) → Consul (service) → dotenvy → env
+        let mut figment = Figment::new();
+
+        let consul_url =
+            env::var("CONSUL_URL").unwrap_or_else(|_| DEFAULT_CONSUL_URL.to_string());
+
+        if let Some(json) = fetch_consul_kv(&consul_url, "application") {
+            figment = figment.merge(Json::string(&json));
+        }
+        if let Some(json) = fetch_consul_kv(&consul_url, service_name) {
+            figment = figment.merge(Json::string(&json));
+        }
+
+        // 3. dotenvy populates the process env from `.env` files. Has to run
+        // *before* the Env provider reads so its values are visible.
+        dotenvy::dotenv().ok();
         let service_env_path = format!("services/{}/.env", service_name);
         dotenvy::from_filename(&service_env_path).ok();
 
-        // 3. Force set the service name in the environment to avoid hardcoding in .env files
-        env::set_var("APP_SERVICE__NAME", service_name);
+        // 4. Env vars are the authoritative final layer — compose, CI, or
+        // dotenvy-populated process env all funnel through here.
+        figment = figment.merge(Env::prefixed("APP_").split("__"));
 
-        let mut figment = Figment::new();
-
-        // 4. Fetch configuration from Consul (Centralized Config Server)
-        let consul_url = env::var("CONSUL_URL").unwrap_or_else(|_| "http://hermes-consul:8500".to_string());
-        
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
-            .unwrap_or_default();
-
-        // Fetch Shared/Global Configuration
-        let shared_url = format!("{}/v1/kv/config/application/data?raw", consul_url);
-        if let Ok(response) = client.get(&shared_url).send() {
-            if response.status().is_success() {
-                if let Ok(json_text) = response.text() {
-                    figment = figment.merge(figment::providers::Json::string(&json_text));
-                }
-            }
-        }
-
-        // Fetch Service-Specific Configuration
-        let service_url = format!("{}/v1/kv/config/{}/data?raw", consul_url, service_name);
-        if let Ok(response) = client.get(&service_url).send() {
-            if response.status().is_success() {
-                if let Ok(json_text) = response.text() {
-                    figment = figment.merge(figment::providers::Json::string(&json_text));
-                }
-            }
-        }
-
-        // 5. Extract configuration using Figment
-        // It reads variables starting with APP_, splitting by __ for nested structs
-        // Environment variables take precedence over Consul configs
         let config: Config = figment
-            .merge(Env::prefixed("APP_").split("__"))
             .extract()
             .map_err(|e| ConfigError::Extraction(e.to_string()))?;
 
-        // 6. Run nested validations
         config.validate()?;
 
         Ok(config)
@@ -187,6 +196,64 @@ impl Config {
     /// Get service URL for internal communication
     pub fn service_url(&self) -> String {
         format!("http://{}:{}", self.service.host, self.service.port)
+    }
+}
+
+/// Fetch a single Consul KV entry as a raw JSON string.
+///
+/// Returns `None` when Consul is unreachable, when the key is missing, or
+/// when the response body is empty. All failure modes log a warning to
+/// stderr — `tracing` isn't initialised yet during config bootstrap, so we
+/// can't use the structured logger.
+///
+/// Uses `ureq` (synchronous, no internal runtime) rather than
+/// `reqwest::blocking` because `Config::load` is called from inside the
+/// tokio runtime started by `#[tokio::main]`. `reqwest::blocking` warns
+/// about deadlocks in that context; `ureq` does its own threadless blocking
+/// I/O and is safe.
+fn fetch_consul_kv(consul_url: &str, key: &str) -> Option<String> {
+    let url = format!("{}/v1/kv/config/{}/data?raw", consul_url, key);
+
+    let agent = ureq::AgentBuilder::new()
+        .timeout(CONSUL_TIMEOUT)
+        .build();
+
+    match agent.get(&url).call() {
+        Ok(response) if response.status() == 200 => match response.into_string() {
+            Ok(body) if !body.is_empty() => Some(body),
+            Ok(_) => {
+                eprintln!(
+                    "[config] Consul key '{}' returned empty body — falling back to env baseline",
+                    key
+                );
+                None
+            }
+            Err(err) => {
+                eprintln!(
+                    "[config] Consul key '{}' body read failed ({}): falling back to env baseline",
+                    key, err
+                );
+                None
+            }
+        },
+        // 404 is the normal "not yet migrated" case — quiet it.
+        Ok(response) if response.status() == 404 => None,
+        Ok(response) => {
+            eprintln!(
+                "[config] Consul key '{}' returned status {}: falling back to env baseline",
+                key,
+                response.status()
+            );
+            None
+        }
+        Err(ureq::Error::Status(_, _)) => None,
+        Err(ureq::Error::Transport(err)) => {
+            eprintln!(
+                "[config] Consul unreachable at {} ({}): falling back to env baseline",
+                consul_url, err
+            );
+            None
+        }
     }
 }
 
