@@ -19,7 +19,7 @@ pub use service::ServiceConfig;
 pub use smtp::SmtpConfig;
 
 use crate::error::ConfigError;
-use figment::{providers::{Env, Format}, Figment};
+use figment::{providers::Env, Figment};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::env;
@@ -38,7 +38,6 @@ pub struct Config {
     pub nats: MessagingConfig,
     #[serde(default)]
     pub smtp: SmtpConfig,
-    #[serde(default)]
     pub secrets: SecretsConfig,
     #[serde(default)]
     pub grpc_endpoints: GrpcEndpointsConfig,
@@ -62,45 +61,15 @@ impl Config {
         // 3. Force set the service name in the environment to avoid hardcoding in .env files
         env::set_var("APP_SERVICE__NAME", service_name);
 
-        let mut figment = Figment::new();
-
-        // 4. Fetch configuration from Consul (Centralized Config Server)
-        let consul_url = env::var("CONSUL_URL").unwrap_or_else(|_| "http://hermes-consul:8500".to_string());
-        
-        let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_secs(5))
-            .build()
-            .unwrap_or_default();
-
-        // Fetch Shared/Global Configuration
-        let shared_url = format!("{}/v1/kv/config/application/data?raw", consul_url);
-        if let Ok(response) = client.get(&shared_url).send() {
-            if response.status().is_success() {
-                if let Ok(json_text) = response.text() {
-                    figment = figment.merge(figment::providers::Json::string(&json_text));
-                }
-            }
-        }
-
-        // Fetch Service-Specific Configuration
-        let service_url = format!("{}/v1/kv/config/{}/data?raw", consul_url, service_name);
-        if let Ok(response) = client.get(&service_url).send() {
-            if response.status().is_success() {
-                if let Ok(json_text) = response.text() {
-                    figment = figment.merge(figment::providers::Json::string(&json_text));
-                }
-            }
-        }
-
-        // 5. Extract configuration using Figment
+        // 4. Extract configuration using Figment
         // It reads variables starting with APP_, splitting by __ for nested structs
-        // Environment variables take precedence over Consul configs
-        let config: Config = figment
+        // Example: APP_DATABASE__HOST maps to config.database.host
+        let config: Config = Figment::new()
             .merge(Env::prefixed("APP_").split("__"))
             .extract()
             .map_err(|e| ConfigError::Extraction(e.to_string()))?;
 
-        // 6. Run nested validations
+        // 5. Run nested validations
         config.validate()?;
 
         Ok(config)

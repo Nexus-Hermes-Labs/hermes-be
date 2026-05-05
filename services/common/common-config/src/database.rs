@@ -3,7 +3,6 @@ use std::time::Duration;
 
 /// Database configuration
 #[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
 pub struct DatabaseConfig {
     pub host: String,
     pub port: u16,

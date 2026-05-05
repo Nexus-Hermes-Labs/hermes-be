@@ -2,7 +2,6 @@ use serde::Deserialize;
 
 /// NATS configuration
 #[derive(Debug, Clone, Deserialize)]
-#[serde(default)]
 pub struct MessagingConfig {
     pub servers: String, // Separation with comma: "127.0.0.1:4222,127.0.0.1:4223"
     pub username: Option<String>,

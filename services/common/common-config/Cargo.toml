@@ -8,11 +8,9 @@ license.workspace = true
 [dependencies]
 figment = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
 dotenvy = { workspace = true }
 once_cell = { workspace = true }
 thiserror = { workspace = true }
 config = { workspace = true }
 sqlx = { workspace = true }
-ureq = { workspace = true }
 humantime-serde = "1.1"
