@@ -131,17 +131,18 @@ impl AuthService {
             .map_err(|_e| AuthApplicationError::HashingFailed)?;
 
         // ═══════════════════════════════════════════════════
-        // STEP 3: Create User Profile via gRPC (SYNC) to get user_id
+        // STEP 3: Create User Profile via gRPC
         // ═══════════════════════════════════════════════════
         let profile_info = self
             .user_profile_client
             .create_profile(
                 request.username.to_owned(),
                 request.display_name.to_owned(),
-                email.as_str().to_owned(), // Use the validated email here
+                email.as_str().to_owned(),
             )
             .await
             .map_err(|e| AuthApplicationError::UserProfileCreationFailed(format!("{:?}", e)))?;
+
         // ═══════════════════════════════════════════════════
         // STEP 4: Create Auth Credential using obtained user_id
         // ═══════════════════════════════════════════════════
