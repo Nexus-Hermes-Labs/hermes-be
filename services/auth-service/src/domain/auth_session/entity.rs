@@ -3,6 +3,11 @@ use uuid::Uuid;
 
 use super::error::AuthSessionError;
 
+/// Grace window after a rotation during which the previous refresh token
+/// is still accepted as a retry instead of being treated as token theft.
+/// Covers race conditions where the rotated response is lost in transit.
+pub const ROTATION_GRACE_WINDOW_SECONDS: i64 = 30;
+
 /// Auth Session Entity
 ///
 /// Represents an active authentication session with a refresh token.
@@ -12,6 +17,10 @@ pub struct AuthSession {
     id: Uuid,
     credential_id: Uuid,
     refresh_token_hash: String,
+
+    // Rotation chain
+    previous_refresh_token_hash: Option<String>,
+    rotated_at: Option<DateTime<Utc>>,
 
     // Session Info
     ip_address: Option<String>,
@@ -52,6 +61,8 @@ impl AuthSession {
             id: Uuid::new_v4(),
             credential_id,
             refresh_token_hash,
+            previous_refresh_token_hash: None,
+            rotated_at: None,
             ip_address,
             user_agent: user_agent.clone(),
             device_name: Self::extract_device_name(&user_agent),
@@ -69,6 +80,8 @@ impl AuthSession {
         id: Uuid,
         credential_id: Uuid,
         refresh_token_hash: String,
+        previous_refresh_token_hash: Option<String>,
+        rotated_at: Option<DateTime<Utc>>,
         ip_address: Option<String>,
         user_agent: Option<String>,
         device_name: Option<String>,
@@ -82,6 +95,8 @@ impl AuthSession {
             id,
             credential_id,
             refresh_token_hash,
+            previous_refresh_token_hash,
+            rotated_at,
             ip_address,
             user_agent,
             device_name,
@@ -107,6 +122,14 @@ impl AuthSession {
 
     pub fn refresh_token_hash(&self) -> &str {
         &self.refresh_token_hash
+    }
+
+    pub fn previous_refresh_token_hash(&self) -> Option<&str> {
+        self.previous_refresh_token_hash.as_deref()
+    }
+
+    pub fn rotated_at(&self) -> Option<DateTime<Utc>> {
+        self.rotated_at
     }
 
     pub fn ip_address(&self) -> Option<&str> {
@@ -182,6 +205,27 @@ impl AuthSession {
         self.ensure_valid()?;
         self.mark_as_used();
         Ok(())
+    }
+
+    /// Rotate refresh token: stash the current hash as `previous`, install
+    /// the new hash, stamp `rotated_at`, and slide expiry forward.
+    /// Caller is responsible for ensuring the session is valid.
+    pub fn rotate(&mut self, new_refresh_token_hash: String, expiry_days: i64) {
+        let now = Utc::now();
+        let old = std::mem::replace(&mut self.refresh_token_hash, new_refresh_token_hash);
+        self.previous_refresh_token_hash = Some(old);
+        self.rotated_at = Some(now);
+        self.expires_at = now + Duration::days(expiry_days);
+        self.last_used_at = now;
+    }
+
+    /// Whether the rotation just happened recently enough to treat a retry
+    /// with the previous token as an idempotent retry rather than reuse.
+    pub fn is_in_grace_window(&self, now: DateTime<Utc>) -> bool {
+        match self.rotated_at {
+            Some(rotated_at) => (now - rotated_at).num_seconds() <= ROTATION_GRACE_WINDOW_SECONDS,
+            None => false,
+        }
     }
 
     /// Revoke session (logout)

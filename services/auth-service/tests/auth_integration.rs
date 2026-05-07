@@ -387,8 +387,8 @@ async fn test_refresh_token_success() {
     assert_eq!(status, StatusCode::OK, "body: {body}");
     assert!(body["access_token"].is_string());
     assert!(body["refresh_token"].is_string());
-    // Refresh returns the same refresh token (no rotation)
-    assert_eq!(body["refresh_token"].as_str(), Some(refresh_token));
+    // Rotation: refresh now returns a brand-new refresh token.
+    assert_ne!(body["refresh_token"].as_str(), Some(refresh_token));
 }
 
 #[tokio::test]
@@ -404,6 +404,172 @@ async fn test_refresh_token_invalid() {
     .await;
 
     assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+/// Helper: drive a refresh and return (status, body).
+async fn refresh(harness: &TestHarness, refresh_token: &str) -> (StatusCode, serde_json::Value) {
+    make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/refresh",
+        Some(json!({ "refresh_token": refresh_token })),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn test_refresh_rotates_token() {
+    let harness = TestHarness::new().await;
+
+    let (_, reg_body) = register_user(
+        &harness,
+        "rotate@example.com",
+        "rotateuser",
+        "Rotate User",
+        "strongpassword123",
+    )
+    .await;
+    let original = reg_body["refresh_token"].as_str().expect("refresh_token");
+
+    let (status, body) = refresh(&harness, original).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    let new_refresh = body["refresh_token"].as_str().expect("rotated refresh_token");
+    assert_ne!(new_refresh, original, "expected a brand-new refresh token");
+
+    // The new token works for another refresh.
+    let (status, _) = refresh(&harness, new_refresh).await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_refresh_replay_in_grace_window_succeeds() {
+    // Within the 30s grace window an in-flight retry with the previous
+    // token must be accepted (idempotent), not flagged as theft.
+    let harness = TestHarness::new().await;
+
+    let (_, reg_body) = register_user(
+        &harness,
+        "grace@example.com",
+        "graceuser",
+        "Grace User",
+        "strongpassword123",
+    )
+    .await;
+    let original = reg_body["refresh_token"].as_str().expect("refresh_token");
+
+    let (status, _) = refresh(&harness, original).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Replay original immediately — still inside grace.
+    let (status, body) = refresh(&harness, original).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert!(body["refresh_token"].is_string());
+
+    // Session is still active.
+    let (active_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE",
+    )
+    .fetch_one(&harness.pool)
+    .await
+    .expect("count active sessions");
+    assert_eq!(active_count, 1);
+}
+
+#[tokio::test]
+async fn test_refresh_reuse_after_grace_revokes_all_sessions() {
+    let harness = TestHarness::new().await;
+
+    let (_, reg_body) = register_user(
+        &harness,
+        "reuse@example.com",
+        "reuseuser",
+        "Reuse User",
+        "strongpassword123",
+    )
+    .await;
+    let original = reg_body["refresh_token"].as_str().expect("refresh_token");
+
+    // Verify so we can log in to add a second session.
+    verify_email(&harness, "reuse@example.com").await;
+    let (_, login_body) = login_user(&harness, "reuse@example.com", "strongpassword123").await;
+    let _other_refresh = login_body["refresh_token"].as_str().expect("login refresh");
+
+    // Two active sessions exist.
+    let (count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    assert_eq!(count, 2);
+
+    // Rotate `original` once.
+    let (status, _) = refresh(&harness, original).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Push rotated_at past the grace window so the next replay is reuse.
+    sqlx::query(
+        "UPDATE auth_sessions SET rotated_at = NOW() - INTERVAL '60 seconds' \
+         WHERE previous_refresh_token_hash IS NOT NULL",
+    )
+    .execute(&harness.pool)
+    .await
+    .expect("backdate rotated_at");
+
+    // Replay original out of grace → reuse detected.
+    let (status, _) = refresh(&harness, original).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // ALL of this user's sessions should now be revoked.
+    let (active,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    assert_eq!(active, 0, "expected reuse detection to revoke every session");
+}
+
+#[tokio::test]
+async fn test_refresh_slides_expiration() {
+    let harness = TestHarness::new().await;
+
+    let (_, reg_body) = register_user(
+        &harness,
+        "slide@example.com",
+        "slideuser",
+        "Slide User",
+        "strongpassword123",
+    )
+    .await;
+    let original = reg_body["refresh_token"].as_str().expect("refresh_token");
+
+    let (initial_expiry,): (chrono::DateTime<chrono::Utc>,) =
+        sqlx::query_as("SELECT expires_at FROM auth_sessions LIMIT 1")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+
+    // Backdate created_at + expires_at so the slide is observable even
+    // when the rotation happens within the same second as registration.
+    sqlx::query(
+        "UPDATE auth_sessions SET expires_at = expires_at - INTERVAL '1 hour'",
+    )
+    .execute(&harness.pool)
+    .await
+    .expect("backdate expires_at");
+
+    let (status, _) = refresh(&harness, original).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (rotated_expiry,): (chrono::DateTime<chrono::Utc>,) =
+        sqlx::query_as("SELECT expires_at FROM auth_sessions LIMIT 1")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+
+    assert!(
+        rotated_expiry > initial_expiry,
+        "expected sliding expiration: {rotated_expiry} > {initial_expiry}"
+    );
 }
 
 #[tokio::test]

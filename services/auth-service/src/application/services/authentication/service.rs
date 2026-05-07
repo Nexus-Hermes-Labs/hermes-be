@@ -7,6 +7,7 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
+use chrono::Utc;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
@@ -493,14 +494,22 @@ impl AuthService {
     // REFRESH TOKEN
     // ============================================
 
-    /// Refresh access token using refresh token
+    /// Refresh access token using refresh token.
+    ///
+    /// On every successful refresh the refresh token is **rotated**: a fresh
+    /// JWT is issued and the session row's hash is updated. The previous hash
+    /// is kept on the row for a short grace window so retries surviving lost
+    /// responses can be served idempotently.
+    ///
+    /// If a refresh token whose hash matches the *previous* slot is presented
+    /// outside of the grace window, we treat it as token theft and revoke
+    /// every session belonging to the credential.
     pub async fn refresh_token(
         &self,
         request: RefreshTokenRequest,
     ) -> Result<AuthResponse, AuthApplicationError> {
         debug!("Refreshing access token");
 
-        // Verify refresh token
         let claims = self
             .jwt_manager
             .verify_refresh_token(&request.refresh_token)
@@ -509,7 +518,6 @@ impl AuthService {
                 AuthApplicationError::InvalidToken
             })?;
 
-        // Get user_id from claims
         let user_id = claims.user_id().map_err(|e| {
             error!(error = %e, "Invalid user_id in token claims");
             AuthApplicationError::InvalidToken
@@ -524,50 +532,101 @@ impl AuthService {
                 AuthApplicationError::InvalidToken
             })?;
 
-        // Find session by token hash
-        let token_hash = self
+        let incoming_hash = self
             .token_hasher
             .hash(&request.refresh_token)
             .map_err(|_| AuthApplicationError::HashingFailed)?;
-        let mut session = self
+
+        // Try the active hash first.
+        if let Some(mut session) = self
             .session_repo
-            .find_by_refresh_token_hash(token_hash.as_str())
+            .find_by_refresh_token_hash(incoming_hash.as_str())
             .await?
-            .ok_or_else(|| {
-                warn!("Refresh failed: session not found");
-                AuthApplicationError::InvalidToken
-            })?;
+        {
+            if session.credential_id() != credential.id() {
+                warn!("Refresh failed: session does not belong to user");
+                return Err(AuthApplicationError::InvalidToken);
+            }
+            if !session.is_valid() {
+                warn!(session_id = %session.id(), "Refresh failed: session invalid");
+                return Err(AuthApplicationError::InvalidToken);
+            }
 
-        if session.credential_id() != credential.id() {
-            warn!("Refresh failed: session does not belong to user");
+            return self
+                .rotate_and_respond(&mut session, user_id, &claims.email, claims.role)
+                .await;
+        }
+
+        // No active match. Maybe the caller is presenting the previous hash —
+        // either an in-flight retry (grace window) or a leaked stale token.
+        if let Some(mut session) = self
+            .session_repo
+            .find_by_previous_token_hash(incoming_hash.as_str())
+            .await?
+        {
+            if session.credential_id() != credential.id() {
+                warn!("Refresh failed: previous-hash session does not belong to user");
+                return Err(AuthApplicationError::InvalidToken);
+            }
+
+            if session.is_in_grace_window(Utc::now()) && !session.is_revoked() {
+                debug!(
+                    session_id = %session.id(),
+                    "Previous refresh token presented inside grace window; rotating again"
+                );
+                return self
+                    .rotate_and_respond(&mut session, user_id, &claims.email, claims.role)
+                    .await;
+            }
+
+            // Out of grace (or already revoked) → token theft suspected.
+            warn!(
+                user_id = %user_id,
+                session_id = %session.id(),
+                "Refresh token reuse detected; revoking all sessions for credential"
+            );
+            self.session_repo
+                .revoke_all_by_credential_id(credential.id())
+                .await?;
             return Err(AuthApplicationError::InvalidToken);
         }
 
-        if !session.is_valid() {
-            warn!(session_id = %session.id(), "Refresh failed: session invalid");
-            return Err(AuthApplicationError::InvalidToken);
-        }
+        warn!("Refresh failed: token hash not recognized");
+        Err(AuthApplicationError::InvalidToken)
+    }
 
-        // Update last_used_at
-        session.mark_as_used();
-        self.session_repo.update(&session).await?;
-
-        // Generate new access token
+    /// Mint new access + refresh tokens, rotate the session in place,
+    /// persist, and return the response.
+    async fn rotate_and_respond(
+        &self,
+        session: &mut AuthSession,
+        user_id: Uuid,
+        email: &str,
+        role: common::infrastructure::security::jwt_manager::SystemRole,
+    ) -> Result<AuthResponse, AuthApplicationError> {
         let access_token = self
             .jwt_manager
-            .create_access_token(
-                user_id,
-                &claims.email,
-                claims.role,
-                ACCESS_TOKEN_EXPIRY_HOURS,
-            )
+            .create_access_token(user_id, email, role, ACCESS_TOKEN_EXPIRY_HOURS)
             .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
 
-        debug!(user_id = %user_id, "Token refreshed");
+        let new_refresh_token = self
+            .jwt_manager
+            .create_refresh_token(user_id, email, REFRESH_TOKEN_EXPIRY_DAYS)
+            .map_err(|e| AuthApplicationError::TokenGenerationFailed(e.to_string()))?;
+
+        let new_hash = self
+            .token_hasher
+            .hash(&new_refresh_token)
+            .map_err(|_| AuthApplicationError::HashingFailed)?;
+
+        session.rotate(new_hash.as_str().to_owned(), REFRESH_TOKEN_EXPIRY_DAYS);
+        self.session_repo.update(session).await?;
+
+        debug!(session_id = %session.id(), "Refresh token rotated");
 
         Ok(AuthResponse::new(
             access_token,
-            request.refresh_token, // Return same refresh token
+            new_refresh_token,
             ACCESS_TOKEN_EXPIRY_HOURS * 60 * 60,
         ))
     }

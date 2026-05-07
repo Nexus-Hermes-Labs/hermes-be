@@ -91,16 +91,24 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
         let result = sqlx::query(
             r#"
             UPDATE auth_sessions SET
-                is_revoked = $2,
-                revoked_at = $3,
-                last_used_at = $4
+                refresh_token_hash = $2,
+                previous_refresh_token_hash = $3,
+                rotated_at = $4,
+                expires_at = $5,
+                last_used_at = $6,
+                is_revoked = $7,
+                revoked_at = $8
             WHERE id = $1
             "#,
         )
         .bind(update.id)
+        .bind(update.refresh_token_hash)
+        .bind(update.previous_refresh_token_hash)
+        .bind(update.rotated_at)
+        .bind(update.expires_at)
+        .bind(update.last_used_at)
         .bind(update.is_revoked)
         .bind(update.revoked_at)
-        .bind(update.last_used_at)
         .execute(&self.pool)
         .await?;
 
@@ -176,6 +184,28 @@ impl AuthSessionRepository for PostgresAuthSessionRepository {
             WHERE refresh_token_hash = $1
               AND is_revoked = FALSE
               AND expires_at > NOW()
+            "#,
+        )
+        .bind(hash)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.and_then(|r| r.try_into().ok()))
+    }
+
+    async fn find_by_previous_token_hash(
+        &self,
+        hash: &str,
+    ) -> Result<Option<AuthSession>, Self::Error> {
+        debug!("Finding session by previous refresh token hash");
+
+        // No filter on is_revoked / expires_at: out-of-grace reuse should
+        // still be detectable on already-revoked sessions for audit, and the
+        // service layer decides what to do.
+        let row = sqlx::query_as::<_, AuthSessionRow>(
+            r#"
+            SELECT * FROM auth_sessions
+            WHERE previous_refresh_token_hash = $1
             "#,
         )
         .bind(hash)

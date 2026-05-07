@@ -44,6 +44,14 @@ pub trait AuthSessionRepository:
         hash: &str,
     ) -> Result<Option<AuthSession>, Self::Error>;
 
+    /// Find session whose `previous_refresh_token_hash` matches.
+    /// Used by the rotation flow to detect retries (in grace) or
+    /// reuse-after-rotation (out of grace → token theft).
+    async fn find_by_previous_token_hash(
+        &self,
+        hash: &str,
+    ) -> Result<Option<AuthSession>, Self::Error>;
+
     // ============================================
     // USER-SPECIFIC QUERIES
     // ============================================

@@ -10,6 +10,8 @@ pub struct AuthSessionRow {
     pub id: Uuid,
     pub credential_id: Uuid,
     pub refresh_token_hash: String,
+    pub previous_refresh_token_hash: Option<String>,
+    pub rotated_at: Option<DateTime<Utc>>,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
     pub device_name: Option<String>,
@@ -28,6 +30,8 @@ impl TryFrom<AuthSessionRow> for AuthSession {
             row.id,
             row.credential_id,
             row.refresh_token_hash,
+            row.previous_refresh_token_hash,
+            row.rotated_at,
             row.ip_address,
             row.user_agent,
             row.device_name,
@@ -65,21 +69,34 @@ impl From<&AuthSession> for AuthSessionInsert {
     }
 }
 
-/// Helper for UPDATE operations
+/// Helper for UPDATE operations.
+///
+/// All fields a session can mutate after creation are written here so the
+/// same `update` query covers `mark_as_used`, `revoke`, and `rotate`.
 pub struct AuthSessionUpdate {
     pub id: Uuid,
+    pub refresh_token_hash: String,
+    pub previous_refresh_token_hash: Option<String>,
+    pub rotated_at: Option<DateTime<Utc>>,
+    pub expires_at: DateTime<Utc>,
+    pub last_used_at: DateTime<Utc>,
     pub is_revoked: bool,
     pub revoked_at: Option<DateTime<Utc>>,
-    pub last_used_at: DateTime<Utc>,
 }
 
 impl From<&AuthSession> for AuthSessionUpdate {
     fn from(session: &AuthSession) -> Self {
         Self {
             id: session.id(),
+            refresh_token_hash: session.refresh_token_hash().to_string(),
+            previous_refresh_token_hash: session
+                .previous_refresh_token_hash()
+                .map(|s| s.to_string()),
+            rotated_at: session.rotated_at(),
+            expires_at: session.expires_at(),
+            last_used_at: session.last_used_at(),
             is_revoked: session.is_revoked(),
             revoked_at: session.revoked_at(),
-            last_used_at: session.last_used_at(),
         }
     }
 }
@@ -94,6 +111,8 @@ mod tests {
             id: Uuid::new_v4(),
             credential_id: Uuid::new_v4(),
             refresh_token_hash: "hash123".to_string(),
+            previous_refresh_token_hash: None,
+            rotated_at: None,
             ip_address: Some("127.0.0.1".to_string()),
             user_agent: Some("Mozilla/5.0".to_string()),
             device_name: Some("Chrome".to_string()),
