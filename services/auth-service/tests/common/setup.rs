@@ -84,6 +84,7 @@ fn get_or_init_metrics() -> Metrics {
     }
 }
 
+
 // ============================================
 // MOCK EMAIL SERVICE
 // ============================================
@@ -189,20 +190,88 @@ impl UserService for MockUserService {
     }
 }
 
+// ============================================
+// MOCK gRPC USER SERVICE — ALWAYS CONFLICTS
+// ============================================
+// Used to simulate user-service rejecting a duplicate username with
+// `Status::already_exists`. Auth-service should map this to a 409 CONFLICT.
+
+#[derive(Debug)]
+pub struct MockUserServiceAlwaysConflict;
+
+#[tonic::async_trait]
+impl UserService for MockUserServiceAlwaysConflict {
+    async fn create_user_profile(
+        &self,
+        _request: Request<CreateUserProfileRequest>,
+    ) -> Result<Response<UserProfileResponse>, Status> {
+        Err(Status::already_exists("username already taken"))
+    }
+
+    async fn get_user_profile(
+        &self,
+        _request: Request<GetUserProfileRequest>,
+    ) -> Result<Response<UserProfileResponse>, Status> {
+        Err(Status::unimplemented("not needed for auth tests"))
+    }
+
+    async fn update_user_profile(
+        &self,
+        _request: Request<UpdateUserProfileRequest>,
+    ) -> Result<Response<UserProfileResponse>, Status> {
+        Err(Status::unimplemented("not needed for auth tests"))
+    }
+
+    async fn delete_user_profile(
+        &self,
+        _request: Request<DeleteUserProfileRequest>,
+    ) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("not needed for auth tests"))
+    }
+
+    async fn batch_get_user_profiles(
+        &self,
+        _request: Request<BatchGetUserProfilesRequest>,
+    ) -> Result<Response<BatchGetUserProfilesResponse>, Status> {
+        Err(Status::unimplemented("not needed for auth tests"))
+    }
+
+    async fn search_users(
+        &self,
+        _request: Request<SearchUsersRequest>,
+    ) -> Result<Response<SearchUsersResponse>, Status> {
+        Err(Status::unimplemented("not needed for auth tests"))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum UserServiceMode {
+    Default,
+    AlwaysConflict,
+}
+
 /// Start a mock gRPC server on a random port and return the address.
-async fn start_mock_grpc_server() -> String {
+async fn start_mock_grpc_server(mode: UserServiceMode) -> String {
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind mock gRPC listener");
     let addr = listener.local_addr().expect("get local addr");
     let addr_str = format!("http://127.0.0.1:{}", addr.port());
 
+    let incoming = tokio_stream::wrappers::TcpListenerStream::new(listener);
     tokio::spawn(async move {
-        tonic::transport::Server::builder()
-            .add_service(UserServiceServer::new(MockUserService))
-            .serve_with_incoming(tokio_stream::wrappers::TcpListenerStream::new(listener))
-            .await
-            .expect("mock gRPC server failed");
+        match mode {
+            UserServiceMode::Default => tonic::transport::Server::builder()
+                .add_service(UserServiceServer::new(MockUserService))
+                .serve_with_incoming(incoming)
+                .await
+                .expect("mock gRPC server failed"),
+            UserServiceMode::AlwaysConflict => tonic::transport::Server::builder()
+                .add_service(UserServiceServer::new(MockUserServiceAlwaysConflict))
+                .serve_with_incoming(incoming)
+                .await
+                .expect("mock gRPC server failed"),
+        }
     });
 
     // Give the server a moment to start
@@ -228,6 +297,17 @@ pub struct TestHarness {
 
 impl TestHarness {
     pub async fn new() -> Self {
+        Self::build(UserServiceMode::Default).await
+    }
+
+    /// Build a harness whose mock user-service always returns
+    /// `Status::already_exists` from `create_user_profile`. Use this to test
+    /// the duplicate-username path without depending on user-service's DB.
+    pub async fn with_username_conflict() -> Self {
+        Self::build(UserServiceMode::AlwaysConflict).await
+    }
+
+    async fn build(user_service_mode: UserServiceMode) -> Self {
         // 1. Start PostgreSQL
         let pg_container = Postgres::default()
             .start()
@@ -323,7 +403,7 @@ impl TestHarness {
         let event_publisher = Arc::new(event_publisher.unwrap());
 
         // 4. Start mock gRPC server
-        let grpc_addr = start_mock_grpc_server().await;
+        let grpc_addr = start_mock_grpc_server(user_service_mode).await;
         let user_profile_client = Arc::new(
             UserGrpcClient::new(grpc_addr)
                 .await

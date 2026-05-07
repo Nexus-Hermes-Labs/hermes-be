@@ -95,6 +95,71 @@ async fn test_register_success() {
 }
 
 #[tokio::test]
+async fn test_register_email_normalization() {
+    let harness = TestHarness::new().await;
+
+    // 1. First Register
+    let (status, body) = register_user(
+        &harness,
+        "verify@example.com",
+        "verifyuser",
+        "Verify User",
+        "strongpassword123",
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CREATED, "body: {body}");
+
+    // 2. Second Register
+    let (status, body) = register_user(
+        &harness,
+        "VERIFY@example.com",
+        "verifyuser2",
+        "Verify User",
+        "strongpassword123",
+    )
+    .await;
+
+    assert_ne!(status, StatusCode::CREATED);
+
+    // 3. Third Register
+    let (status, body) = register_user(
+        &harness,
+        "VERify@example.com",
+        "verifyuser1",
+        "Verify User",
+        "strongpassword123",
+    )
+    .await;
+
+    assert_ne!(status, StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn test_duplicate_username() {
+    // Username uniqueness is enforced by user-service (it owns the
+    // user_profiles table). Auth-service's job is to translate the gRPC
+    // `AlreadyExists` status into a 409 CONFLICT for the client.
+    //
+    // We use a harness whose mock user-service always returns
+    // `Status::already_exists`, so the request still hits register's
+    // pre-credential-save step and exercises the mapping.
+    let harness = TestHarness::with_username_conflict().await;
+
+    let (status, body) = register_user(
+        &harness,
+        "dup-username@example.com",
+        "takenuser",
+        "Taken User",
+        "strongpassword123",
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "body: {body}");
+    assert_eq!(body["code"], "USERNAME_ALREADY_EXISTS");
+}
+
+#[tokio::test]
 async fn test_email_verification_success() {
     let harness = TestHarness::new().await;
 

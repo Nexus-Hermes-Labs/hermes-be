@@ -140,8 +140,7 @@ impl AuthService {
                 request.display_name.to_owned(),
                 email.as_str().to_owned(),
             )
-            .await
-            .map_err(|e| AuthApplicationError::UserProfileCreationFailed(format!("{:?}", e)))?;
+            .await?;
 
         // ═══════════════════════════════════════════════════
         // STEP 4: Create Auth Credential using obtained user_id
@@ -299,31 +298,6 @@ impl AuthService {
             token_type: "Bearer".to_string(),
             user: user_profile,
         })
-    }
-
-    // ============================================
-    // EMAIL VERIFICATION
-    // ============================================
-
-    /// Verify user's email address
-    pub async fn verify_email(&self, token: &str) -> Result<(), AuthApplicationError> {
-        info!(token = %token, "Email verification attempt");
-
-        let mut credential = self
-            .credential_repo
-            .find_by_verification_token(token)
-            .await?
-            .ok_or(AuthApplicationError::InvalidToken)?;
-
-        credential
-            .verify_email(token)
-            .map_err(|_| AuthApplicationError::InvalidToken)?;
-
-        self.credential_repo.update(&credential).await?;
-
-        info!(user_id = %credential.user_id(), "Email verified successfully");
-
-        Ok(())
     }
 
     // ============================================
@@ -488,6 +462,31 @@ impl AuthService {
             refresh_token,
             ACCESS_TOKEN_EXPIRY_HOURS * 60 * 60,
         ))
+    }
+
+    // ============================================
+    // EMAIL VERIFICATION
+    // ============================================
+
+    /// Verify user's email address
+    pub async fn verify_email(&self, token: &str) -> Result<(), AuthApplicationError> {
+        info!(token = %token, "Email verification attempt");
+
+        let mut credential = self
+            .credential_repo
+            .find_by_verification_token(token)
+            .await?
+            .ok_or(AuthApplicationError::InvalidToken)?;
+
+        credential
+            .verify_email(token)
+            .map_err(|_| AuthApplicationError::InvalidToken)?;
+
+        self.credential_repo.update(&credential).await?;
+
+        info!(user_id = %credential.user_id(), "Email verified successfully");
+
+        Ok(())
     }
 
     // ============================================

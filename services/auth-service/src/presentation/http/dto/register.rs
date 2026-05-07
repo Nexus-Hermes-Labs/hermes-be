@@ -44,7 +44,7 @@ pub struct RegisterRequest {
     pub display_name: String,
 
     /// Password (minimum 8 characters)
-    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    #[validate(length(min = 8, max = 72, message = "Password must be at least 8 characters"))]
     #[schema(min_length = 8, format = Password)]
     pub password: String,
 }
