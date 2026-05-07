@@ -507,6 +507,7 @@ impl AuthService {
     pub async fn refresh_token(
         &self,
         request: RefreshTokenRequest,
+        client_info: ClientInfo,
     ) -> Result<AuthResponse, AuthApplicationError> {
         debug!("Refreshing access token");
 
@@ -553,7 +554,13 @@ impl AuthService {
             }
 
             return self
-                .rotate_and_respond(&mut session, user_id, &claims.email, claims.role)
+                .rotate_and_respond(
+                    &mut session,
+                    user_id,
+                    &claims.email,
+                    claims.role,
+                    &client_info,
+                )
                 .await;
         }
 
@@ -575,7 +582,13 @@ impl AuthService {
                     "Previous refresh token presented inside grace window; rotating again"
                 );
                 return self
-                    .rotate_and_respond(&mut session, user_id, &claims.email, claims.role)
+                    .rotate_and_respond(
+                        &mut session,
+                        user_id,
+                        &claims.email,
+                        claims.role,
+                        &client_info,
+                    )
                     .await;
             }
 
@@ -603,6 +616,7 @@ impl AuthService {
         user_id: Uuid,
         email: &str,
         role: common::infrastructure::security::jwt_manager::SystemRole,
+        client_info: &ClientInfo,
     ) -> Result<AuthResponse, AuthApplicationError> {
         let access_token = self
             .jwt_manager
@@ -619,7 +633,11 @@ impl AuthService {
             .hash(&new_refresh_token)
             .map_err(|_| AuthApplicationError::HashingFailed)?;
 
-        session.rotate(new_hash.as_str().to_owned(), REFRESH_TOKEN_EXPIRY_DAYS);
+        session.rotate(
+            new_hash.as_str().to_owned(),
+            REFRESH_TOKEN_EXPIRY_DAYS,
+            client_info.ip_address.clone(),
+        );
         self.session_repo.update(session).await?;
 
         debug!(session_id = %session.id(), "Refresh token rotated");

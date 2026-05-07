@@ -23,6 +23,7 @@ common-config = { path = "../common/common-config" }
 # WEB FRAMEWORK
 # ============================================================================
 axum = { workspace = true }
+axum-client-ip = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }

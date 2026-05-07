@@ -24,6 +24,7 @@ pub struct AuthSession {
 
     // Session Info
     ip_address: Option<String>,
+    last_used_ip: Option<String>,
     user_agent: Option<String>,
     device_name: Option<String>,
 
@@ -63,7 +64,8 @@ impl AuthSession {
             refresh_token_hash,
             previous_refresh_token_hash: None,
             rotated_at: None,
-            ip_address,
+            ip_address: ip_address.clone(),
+            last_used_ip: ip_address,
             user_agent: user_agent.clone(),
             device_name: Self::extract_device_name(&user_agent),
             expires_at: now + Duration::days(expiry_days),
@@ -83,6 +85,7 @@ impl AuthSession {
         previous_refresh_token_hash: Option<String>,
         rotated_at: Option<DateTime<Utc>>,
         ip_address: Option<String>,
+        last_used_ip: Option<String>,
         user_agent: Option<String>,
         device_name: Option<String>,
         expires_at: DateTime<Utc>,
@@ -98,6 +101,7 @@ impl AuthSession {
             previous_refresh_token_hash,
             rotated_at,
             ip_address,
+            last_used_ip,
             user_agent,
             device_name,
             expires_at,
@@ -134,6 +138,10 @@ impl AuthSession {
 
     pub fn ip_address(&self) -> Option<&str> {
         self.ip_address.as_deref()
+    }
+
+    pub fn last_used_ip(&self) -> Option<&str> {
+        self.last_used_ip.as_deref()
     }
 
     pub fn user_agent(&self) -> Option<&str> {
@@ -208,15 +216,24 @@ impl AuthSession {
     }
 
     /// Rotate refresh token: stash the current hash as `previous`, install
-    /// the new hash, stamp `rotated_at`, and slide expiry forward.
+    /// the new hash, stamp `rotated_at`, slide expiry forward, and update
+    /// the IP that last used the session.
     /// Caller is responsible for ensuring the session is valid.
-    pub fn rotate(&mut self, new_refresh_token_hash: String, expiry_days: i64) {
+    pub fn rotate(
+        &mut self,
+        new_refresh_token_hash: String,
+        expiry_days: i64,
+        client_ip: Option<String>,
+    ) {
         let now = Utc::now();
         let old = std::mem::replace(&mut self.refresh_token_hash, new_refresh_token_hash);
         self.previous_refresh_token_hash = Some(old);
         self.rotated_at = Some(now);
         self.expires_at = now + Duration::days(expiry_days);
         self.last_used_at = now;
+        if client_ip.is_some() {
+            self.last_used_ip = client_ip;
+        }
     }
 
     /// Whether the rotation just happened recently enough to treat a retry

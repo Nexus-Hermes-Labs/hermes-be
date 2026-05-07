@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::helpers::make_json_request;
+use common::helpers::{make_json_request, make_json_request_with_headers};
 use common::setup::TestHarness;
 use serde_json::json;
 
@@ -526,6 +526,41 @@ async fn test_refresh_reuse_after_grace_revokes_all_sessions() {
             .await
             .unwrap();
     assert_eq!(active, 0, "expected reuse detection to revoke every session");
+}
+
+#[tokio::test]
+async fn test_refresh_captures_client_ip_via_xff() {
+    // Behind Traefik the real client IP arrives in X-Forwarded-For.
+    // Verify the rotated session row records the rightmost (trusted) entry
+    // in `last_used_ip`, while `ip_address` keeps the original create-time IP.
+    let harness = TestHarness::new().await;
+
+    let (_, reg_body) = register_user(
+        &harness,
+        "ipaudit@example.com",
+        "ipaudit",
+        "IP Audit",
+        "strongpassword123",
+    )
+    .await;
+    let original = reg_body["refresh_token"].as_str().expect("refresh_token");
+
+    let (status, _) = make_json_request_with_headers(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/refresh",
+        Some(json!({ "refresh_token": original })),
+        &[("x-forwarded-for", "203.0.113.42")],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (last_used_ip,): (Option<String>,) =
+        sqlx::query_as("SELECT host(last_used_ip) FROM auth_sessions LIMIT 1")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    assert_eq!(last_used_ip.as_deref(), Some("203.0.113.42"));
 }
 
 #[tokio::test]

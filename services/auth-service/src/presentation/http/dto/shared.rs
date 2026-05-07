@@ -1,11 +1,11 @@
 use axum::{
     async_trait,
-    extract::{ConnectInfo, FromRequestParts},
+    extract::FromRequestParts,
     http::{request::Parts, StatusCode},
 };
+use axum_client_ip::SecureClientIp;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -176,11 +176,14 @@ where
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let ip_address = parts
-            .extensions
-            .get::<ConnectInfo<SocketAddr>>()
-            .map(|ConnectInfo(addr)| addr.ip().to_string());
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // Resolve client IP via the source configured on the router (typically
+        // RightmostXForwardedFor when running behind Traefik). Missing source
+        // or unparseable header simply yields no IP — never reject the request.
+        let ip_address = SecureClientIp::from_request_parts(parts, state)
+            .await
+            .ok()
+            .map(|SecureClientIp(addr)| addr.to_string());
 
         let user_agent = parts
             .headers

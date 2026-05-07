@@ -63,16 +63,17 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
         sqlx::query(
             r#"
             INSERT INTO auth_sessions (
-                id, credential_id, refresh_token_hash, ip_address, user_agent,
-                device_name, expires_at
+                id, credential_id, refresh_token_hash, ip_address, last_used_ip,
+                user_agent, device_name, expires_at
             )
-            VALUES ($1, $2, $3, $4::inet, $5, $6, $7)
+            VALUES ($1, $2, $3, $4::inet, $5::inet, $6, $7, $8)
             "#,
         )
         .bind(insert.id)
         .bind(insert.credential_id)
         .bind(insert.refresh_token_hash)
         .bind(insert.ip_address)
+        .bind(insert.last_used_ip)
         .bind(insert.user_agent)
         .bind(insert.device_name)
         .bind(insert.expires_at)
@@ -96,8 +97,9 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
                 rotated_at = $4,
                 expires_at = $5,
                 last_used_at = $6,
-                is_revoked = $7,
-                revoked_at = $8
+                last_used_ip = $7::inet,
+                is_revoked = $8,
+                revoked_at = $9
             WHERE id = $1
             "#,
         )
@@ -107,6 +109,7 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
         .bind(update.rotated_at)
         .bind(update.expires_at)
         .bind(update.last_used_at)
+        .bind(update.last_used_ip)
         .bind(update.is_revoked)
         .bind(update.revoked_at)
         .execute(&self.pool)

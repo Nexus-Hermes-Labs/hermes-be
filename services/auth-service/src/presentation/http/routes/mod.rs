@@ -5,6 +5,7 @@ mod internal;
 use crate::presentation::http::docs::ApiDoc;
 use crate::state::app_state::AppState;
 use axum::Router;
+use axum_client_ip::SecureClientIpSource;
 use common::observability::{
     metrics_routes, HealthCheck, HermesTraceLayer, PropagateRequestIdResponseLayer,
     RequestIdScopeLayer,
@@ -43,5 +44,10 @@ pub fn create_router(
         .layer(trace_layer)
         .layer(PropagateRequestIdResponseLayer)
         .layer(RequestIdScopeLayer)
+        // Configure the source of the trusted client IP. Hermes runs behind
+        // Traefik which appends the real client IP to X-Forwarded-For; the
+        // rightmost entry is the one we trust. Tests inject this header to
+        // exercise the IP capture path.
+        .layer(SecureClientIpSource::RightmostXForwardedFor.into_extension())
         .nest("/metrics", metrics_routes())
 }

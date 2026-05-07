@@ -106,16 +106,15 @@ pub async fn login_handler(
 )]
 pub async fn refresh_token_handler(
     State(state): State<AppState>,
+    client_info: ClientInfo,
     Json(request): Json<RefreshTokenRequest>,
 ) -> Result<Response, ApiError> {
-    // Validate request
     request.validate()?;
 
-    // Call auth service
     let response = state
         .auth
         .service
-        .refresh_token(request)
+        .refresh_token(request, client_info)
         .await
         .map_err(ApiError::from)?;
 
