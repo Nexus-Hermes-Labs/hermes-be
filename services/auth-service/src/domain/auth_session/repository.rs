@@ -68,6 +68,17 @@ pub trait AuthSessionRepository:
         credential_id: Uuid,
     ) -> Result<Vec<AuthSession>, Self::Error>;
 
+    /// Find the active (non-revoked, non-expired) session for a
+    /// `(credential_id, device_id)` pair, if any.
+    ///
+    /// Used by the login flow to replace an existing session from the same
+    /// device instead of leaving duplicate active rows behind.
+    async fn find_active_by_credential_and_device(
+        &self,
+        credential_id: Uuid,
+        device_id: &str,
+    ) -> Result<Option<AuthSession>, Self::Error>;
+
     // ============================================
     // BULK OPERATIONS
     // ============================================

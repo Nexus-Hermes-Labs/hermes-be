@@ -153,6 +153,15 @@ pub struct ClientInfo {
     ///
     /// Optional, provided by client in login request.
     pub device_name: Option<String>,
+
+    /// Stable per-device identifier supplied by the client via the
+    /// `X-Device-Id` header.
+    ///
+    /// Used to enforce one active session per device on login: if a session
+    /// already exists for `(credential, device_id)`, it is revoked before a
+    /// new one is created. Sessions without a `device_id` (older clients) are
+    /// allowed to coexist as before.
+    pub device_id: Option<String>,
 }
 
 impl ClientInfo {
@@ -160,11 +169,13 @@ impl ClientInfo {
         ip_address: Option<String>,
         user_agent: Option<String>,
         device_name: Option<String>,
+        device_id: Option<String>,
     ) -> Self {
         Self {
             ip_address,
             user_agent,
             device_name,
+            device_id,
         }
     }
 }
@@ -191,7 +202,15 @@ where
             .and_then(|h_val| h_val.to_str().ok())
             .map(|s| s.to_string());
 
-        Ok(ClientInfo::new(ip_address, user_agent, None))
+        let device_id = parts
+            .headers
+            .get("x-device-id")
+            .and_then(|h_val| h_val.to_str().ok())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+
+        Ok(ClientInfo::new(ip_address, user_agent, None, device_id))
     }
 }
 
@@ -270,10 +289,12 @@ mod tests {
             Some("127.0.0.1".to_string()),
             Some("Mozilla/5.0".to_string()),
             Some("Chrome".to_string()),
+            Some("device-abc".to_string()),
         );
 
         assert_eq!(info.ip_address, Some("127.0.0.1".to_string()));
         assert_eq!(info.user_agent, Some("Mozilla/5.0".to_string()));
         assert_eq!(info.device_name, Some("Chrome".to_string()));
+        assert_eq!(info.device_id, Some("device-abc".to_string()));
     }
 }

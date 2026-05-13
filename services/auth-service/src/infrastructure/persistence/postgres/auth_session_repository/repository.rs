@@ -64,9 +64,9 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
             r#"
             INSERT INTO auth_sessions (
                 id, credential_id, refresh_token_hash, ip_address, last_used_ip,
-                user_agent, device_name, expires_at
+                user_agent, device_name, device_id, expires_at
             )
-            VALUES ($1, $2, $3, $4::inet, $5::inet, $6, $7, $8)
+            VALUES ($1, $2, $3, $4::inet, $5::inet, $6, $7, $8, $9)
             "#,
         )
         .bind(insert.id)
@@ -76,6 +76,7 @@ impl Repository<AuthSession, Uuid> for PostgresAuthSessionRepository {
         .bind(insert.last_used_ip)
         .bind(insert.user_agent)
         .bind(insert.device_name)
+        .bind(insert.device_id)
         .bind(insert.expires_at)
         .execute(&self.pool)
         .await?;
@@ -260,6 +261,35 @@ impl AuthSessionRepository for PostgresAuthSessionRepository {
         Ok(rows.into_iter().filter_map(|r| r.try_into().ok()).collect())
     }
 
+    async fn find_active_by_credential_and_device(
+        &self,
+        credential_id: Uuid,
+        device_id: &str,
+    ) -> Result<Option<AuthSession>, Self::Error> {
+        debug!(
+            credential_id = %credential_id,
+            device_id = %device_id,
+            "Finding active session by credential + device"
+        );
+
+        let row = sqlx::query_as::<_, AuthSessionRow>(
+            r#"
+            SELECT * FROM auth_sessions
+            WHERE credential_id = $1
+              AND device_id = $2
+              AND is_revoked = FALSE
+              AND expires_at > NOW()
+            LIMIT 1
+            "#,
+        )
+        .bind(credential_id)
+        .bind(device_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.and_then(|r| r.try_into().ok()))
+    }
+
     async fn revoke_all_by_credential_id(&self, credential_id: Uuid) -> Result<usize, Self::Error> {
         info!(credential_id = %credential_id, "Revoking all sessions for credential");
 
@@ -331,6 +361,7 @@ mod tests {
             30,
             Some("127.0.0.1".to_string()),
             Some("Mozilla/5.0".to_string()),
+            None,
         );
 
         // Save
@@ -364,7 +395,7 @@ mod tests {
         // Create 3 sessions
         for i in 0..3 {
             let session =
-                AuthSession::create(credential_id, format!("token_{}", i), 30, None, None);
+                AuthSession::create(credential_id, format!("token_{}", i), 30, None, None, None);
             repo.save(&session).await.unwrap();
         }
 

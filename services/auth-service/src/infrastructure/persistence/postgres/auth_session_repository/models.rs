@@ -16,6 +16,7 @@ pub struct AuthSessionRow {
     pub last_used_ip: Option<String>,
     pub user_agent: Option<String>,
     pub device_name: Option<String>,
+    pub device_id: Option<String>,
     pub expires_at: DateTime<Utc>,
     pub last_used_at: DateTime<Utc>,
     pub is_revoked: bool,
@@ -37,6 +38,7 @@ impl TryFrom<AuthSessionRow> for AuthSession {
             row.last_used_ip,
             row.user_agent,
             row.device_name,
+            row.device_id,
             row.expires_at,
             row.last_used_at,
             row.is_revoked,
@@ -55,6 +57,7 @@ pub struct AuthSessionInsert {
     pub last_used_ip: Option<String>,
     pub user_agent: Option<String>,
     pub device_name: Option<String>,
+    pub device_id: Option<String>,
     pub expires_at: DateTime<Utc>,
 }
 
@@ -68,6 +71,7 @@ impl From<&AuthSession> for AuthSessionInsert {
             last_used_ip: session.last_used_ip().map(|s| s.to_string()),
             user_agent: session.user_agent().map(|s| s.to_string()),
             device_name: session.device_name().map(|s| s.to_string()),
+            device_id: session.device_id().map(|s| s.to_string()),
             expires_at: session.expires_at(),
         }
     }
@@ -123,6 +127,7 @@ mod tests {
             last_used_ip: Some("127.0.0.1".to_string()),
             user_agent: Some("Mozilla/5.0".to_string()),
             device_name: Some("Chrome".to_string()),
+            device_id: None,
             expires_at: Utc::now(),
             last_used_at: Utc::now(),
             is_revoked: false,

@@ -150,9 +150,9 @@ impl SessionWriter for PgSessionWriter {
             r"
             INSERT INTO auth_sessions (
                 id, credential_id, refresh_token_hash, ip_address, user_agent,
-                device_name, expires_at
+                device_name, device_id, expires_at
             )
-            VALUES ($1, $2, $3, $4::inet, $5, $6, $7)
+            VALUES ($1, $2, $3, $4::inet, $5, $6, $7, $8)
             ",
         )
         .bind(session.id())
@@ -161,10 +161,34 @@ impl SessionWriter for PgSessionWriter {
         .bind(session.ip_address())
         .bind(session.user_agent())
         .bind(session.device_name())
+        .bind(session.device_id())
         .bind(session.expires_at())
         .execute(&mut **tx)
         .await?;
         Ok(())
+    }
+
+    async fn revoke_active_by_device(
+        &self,
+        credential_id: Uuid,
+        device_id: &str,
+    ) -> Result<u64, RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        let result = sqlx::query(
+            r"
+            UPDATE auth_sessions
+            SET is_revoked = TRUE, revoked_at = NOW()
+            WHERE credential_id = $1
+              AND device_id = $2
+              AND is_revoked = FALSE
+            ",
+        )
+        .bind(credential_id)
+        .bind(device_id)
+        .execute(&mut **tx)
+        .await?;
+        Ok(result.rows_affected())
     }
 }
 

@@ -211,6 +211,7 @@ impl AuthService {
             REFRESH_TOKEN_EXPIRY_DAYS,
             client_info.ip_address,
             client_info.user_agent,
+            client_info.device_id,
         );
 
         let uow = self
@@ -430,12 +431,14 @@ impl AuthService {
             .token_hasher
             .hash(&refresh_token)
             .map_err(|_| AuthApplicationError::TokenGenerationFailed(refresh_token.to_string()))?;
+        let device_id = client_info.device_id.clone();
         let session = AuthSession::create(
             credential.id(),
             token_hash.as_str().to_owned(),
             REFRESH_TOKEN_EXPIRY_DAYS,
             client_info.ip_address,
             client_info.user_agent,
+            device_id.clone(),
         );
 
         let uow = self
@@ -448,6 +451,26 @@ impl AuthService {
             .update(&credential)
             .await
             .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        // Enforce one active session per device: if the same client (identified
+        // by `device_id`) already has an active session, revoke it before
+        // inserting the new one. Without a device_id, prior behavior is kept
+        // (multiple concurrent sessions allowed).
+        if let Some(ref did) = device_id {
+            let revoked = uow
+                .sessions()
+                .revoke_active_by_device(credential.id(), did)
+                .await
+                .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+            if revoked > 0 {
+                info!(
+                    user_id = %credential.id(),
+                    device_id = %did,
+                    revoked_count = revoked,
+                    "Replaced existing session(s) for same device"
+                );
+            }
+        }
 
         uow.sessions()
             .save(&session)

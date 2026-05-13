@@ -66,6 +66,8 @@ const AUTH_REFRESH_ROTATION_SQL: &str =
     include_str!("../../migrations/20260122000008_add_refresh_token_rotation.sql");
 const AUTH_SESSION_LAST_USED_IP_SQL: &str =
     include_str!("../../migrations/20260122000009_add_session_last_used_ip.sql");
+const AUTH_SESSION_DEVICE_ID_SQL: &str =
+    include_str!("../../migrations/20260122000010_add_session_device_id.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -348,6 +350,7 @@ impl TestHarness {
             ("auth system role", AUTH_SYSTEM_ROLE_SQL),
             ("auth refresh rotation", AUTH_REFRESH_ROTATION_SQL),
             ("auth session last_used_ip", AUTH_SESSION_LAST_USED_IP_SQL),
+            ("auth session device_id", AUTH_SESSION_DEVICE_ID_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)

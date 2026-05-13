@@ -27,6 +27,7 @@ pub struct AuthSession {
     last_used_ip: Option<String>,
     user_agent: Option<String>,
     device_name: Option<String>,
+    device_id: Option<String>,
 
     // Expiry
     expires_at: DateTime<Utc>,
@@ -55,6 +56,7 @@ impl AuthSession {
         expiry_days: i64,
         ip_address: Option<String>,
         user_agent: Option<String>,
+        device_id: Option<String>,
     ) -> Self {
         let now = Utc::now();
 
@@ -68,6 +70,7 @@ impl AuthSession {
             last_used_ip: ip_address,
             user_agent: user_agent.clone(),
             device_name: Self::extract_device_name(&user_agent),
+            device_id,
             expires_at: now + Duration::days(expiry_days),
             last_used_at: now,
             is_revoked: false,
@@ -88,6 +91,7 @@ impl AuthSession {
         last_used_ip: Option<String>,
         user_agent: Option<String>,
         device_name: Option<String>,
+        device_id: Option<String>,
         expires_at: DateTime<Utc>,
         last_used_at: DateTime<Utc>,
         is_revoked: bool,
@@ -104,6 +108,7 @@ impl AuthSession {
             last_used_ip,
             user_agent,
             device_name,
+            device_id,
             expires_at,
             last_used_at,
             is_revoked,
@@ -150,6 +155,10 @@ impl AuthSession {
 
     pub fn device_name(&self) -> Option<&str> {
         self.device_name.as_deref()
+    }
+
+    pub fn device_id(&self) -> Option<&str> {
+        self.device_id.as_deref()
     }
 
     pub fn expires_at(&self) -> DateTime<Utc> {
@@ -296,6 +305,7 @@ mod tests {
             30,
             Some("192.168.1.1".to_string()),
             Some("Mozilla/5.0".to_string()),
+            None,
         );
 
         assert_eq!(session.credential_id(), credential_id);
@@ -306,7 +316,7 @@ mod tests {
 
     #[test]
     fn test_revoke_session() {
-        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None);
+        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
 
         session.revoke();
 
@@ -317,7 +327,7 @@ mod tests {
 
     #[test]
     fn test_use_session_updates_last_used() {
-        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None);
+        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
 
         let original_last_used = session.last_used_at();
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -329,7 +339,7 @@ mod tests {
 
     #[test]
     fn test_use_revoked_session_fails() {
-        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None);
+        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
 
         session.revoke();
 
@@ -348,6 +358,7 @@ mod tests {
             30,
             None,
             Some("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36".to_string()),
+            None,
         );
         assert_eq!(chrome_session.device_name(), Some("Chrome Browser"));
 
@@ -360,6 +371,7 @@ mod tests {
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"
                     .to_string(),
             ),
+            None,
         );
         assert_eq!(firefox_session.device_name(), Some("Firefox Browser"));
     }
@@ -367,7 +379,7 @@ mod tests {
     #[test]
     fn test_matches_token() {
         let token_hash = "specific_hash_123".to_string();
-        let session = AuthSession::create(Uuid::new_v4(), token_hash.clone(), 30, None, None);
+        let session = AuthSession::create(Uuid::new_v4(), token_hash.clone(), 30, None, None, None);
 
         assert!(session.matches_token(&token_hash));
         assert!(!session.matches_token("wrong_hash"));

@@ -27,4 +27,16 @@ pub trait CredentialWriter: Send + Sync {
 #[async_trait]
 pub trait SessionWriter: Send + Sync {
     async fn save(&self, session: &AuthSession) -> Result<(), RepositoryError>;
+
+    /// Revoke the active session (if any) belonging to `(credential_id,
+    /// device_id)`. Used by login to enforce one active session per device
+    /// before inserting the new one — both ops run in the same transaction.
+    ///
+    /// Returns the number of rows actually revoked (0 for first-login on the
+    /// device, 1 for repeat logins) so callers can log the distinction.
+    async fn revoke_active_by_device(
+        &self,
+        credential_id: Uuid,
+        device_id: &str,
+    ) -> Result<u64, RepositoryError>;
 }
