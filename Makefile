@@ -57,7 +57,7 @@ help: ## Display this help message
 		/^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) }' $(MAKEFILE_LIST)
 	@echo ""
 	@echo -e "$(YELLOW)Per-service targets (generated)$(NC)"
-	@echo -e "  $(GREEN)up-<svc> down-<svc> restart-<svc> logs-<svc>$(NC)   svc ∈ {$(DOCKER_SERVICES)}"
+	@echo -e "  $(GREEN)up-<svc> down-<svc> restart-<svc> rebuild-<svc> logs-<svc>$(NC)  svc ∈ {$(DOCKER_SERVICES)}"
 	@echo -e "  $(GREEN)db-migrate-<svc> db-seed-<svc> db-shell-<svc>$(NC)  svc ∈ {$(DB_SERVICES)}"
 	@echo -e "  $(GREEN)sqlx-prepare-<svc> test-integration-<svc>$(NC)     svc ∈ {$(DB_SERVICES)}"
 	@echo -e "  $(GREEN)run-<svc>$(NC)                                     svc ∈ {$(RUN_DB_SERVICES) $(RUN_PLAIN_SERVICES)}"
@@ -81,7 +81,7 @@ setup: up ## Initial project setup (infra up + migrate + seed)
 
 ##@ Docker — Infrastructure
 
-.PHONY: up down restart clean
+.PHONY: up down restart clean prune
 up: ## Start infrastructure services (postgres, redis, nats, mailpit, monitoring)
 	@echo -e "$(BLUE)Starting infrastructure...$(NC)"
 	@docker-compose -f $(INFRA_COMPOSE) up -d --wait
@@ -95,20 +95,30 @@ down: ## Stop infrastructure services
 
 restart: down up ## Restart infrastructure
 
-clean: ## Remove all containers, volumes, and networks
+clean: ## Remove all containers, volumes, locally-built images, and networks
 	@echo -e "$(RED)Cleaning up Docker resources...$(NC)"
-	@docker-compose -f $(INFRA_COMPOSE) down -v
+	@docker-compose -f $(INFRA_COMPOSE) down -v --rmi local
 	@for svc in $(DOCKER_SERVICES); do \
-		docker-compose -f services/$$svc-service/docker-compose.yml down -v 2>/dev/null || true; \
+		docker-compose -f services/$$svc-service/docker-compose.yml down -v --rmi local 2>/dev/null || true; \
 	done
 	@docker volume rm $$(docker volume ls -q | grep hermes) 2>/dev/null || true
+	@echo -e "$(BLUE)Pruning dangling images and build cache...$(NC)"
+	@docker image prune -f >/dev/null
+	@docker builder prune -f >/dev/null
 	@echo -e "$(GREEN)Cleanup completed$(NC)"
+
+prune: ## Deep clean: dangling images + builder cache (keeps running containers)
+	@echo -e "$(BLUE)Pruning dangling images...$(NC)"
+	@docker image prune -f
+	@echo -e "$(BLUE)Pruning builder cache...$(NC)"
+	@docker builder prune -f
+	@echo -e "$(GREEN)Prune complete$(NC)"
 
 ##@ Docker — Services
 
-# up-<svc> / down-<svc> / restart-<svc> generated for each docker service
+# up-<svc> / down-<svc> / restart-<svc> / rebuild-<svc> generated for each docker service
 define DOCKER_SERVICE_RULES
-.PHONY: up-$(1) down-$(1) restart-$(1)
+.PHONY: up-$(1) down-$(1) restart-$(1) rebuild-$(1)
 up-$(1): ## Start $(1)-service container
 	@echo -e "$$(BLUE)Starting $(1)-service...$$(NC)"
 	@docker-compose -f $(call COMPOSE_FILE,$(1)) up -d --wait
@@ -118,6 +128,13 @@ down-$(1): ## Stop $(1)-service container
 	@docker-compose -f $(call COMPOSE_FILE,$(1)) down
 
 restart-$(1): down-$(1) up-$(1) ## Restart $(1)-service container
+
+# ETC: make rebuild-auth
+rebuild-$(1): ## Rebuild image and restart $(1)-service container (use after code changes)
+	@echo -e "$$(BLUE)Rebuilding $(1)-service...$$(NC)"
+	@docker-compose -f $(call COMPOSE_FILE,$(1)) up -d --build --wait
+	@docker image prune -f >/dev/null
+	@echo -e "$$(GREEN)$(1)-service rebuilt and ready$$(NC)"
 endef
 $(foreach s,$(DOCKER_SERVICES),$(eval $(call DOCKER_SERVICE_RULES,$(s))))
 
