@@ -1,57 +1,130 @@
-//! NATS wildcard subscriber that fans out messaging events to connected WebSocket
-//! clients.
+//! JetStream listener that fans messaging events out to connected WebSocket
+//! clients. One ephemeral push consumer is attached per upstream stream;
+//! crashes lose events the same way the WebSocket itself does, so durability
+//! is intentionally not maintained here.
 //!
-//! Subjects consumed (published by `messaging-service`):
-//! - `hermes.message.created`  — `{message_id, channel_id?, conversation_id?, user_id, content, created_at}`
-//! - `hermes.message.updated`  — `{message_id, channel_id?, conversation_id?, content, edited_at}`
-//! - `hermes.message.deleted`  — `{message_id, channel_id?, conversation_id?, user_id}`
-//! - `hermes.reaction.added`   — `{message_id, user_id, emoji}` (no context_id; resolved via cache)
-//! - `hermes.reaction.removed` — `{message_id, user_id, emoji}` (no context_id; resolved via cache)
+//! Streams consumed:
+//! - `CHAT_EVENTS` — `chat.message.{created,updated,deleted}`,
+//!   `chat.reaction.{added,removed}`
+//! - `MESSAGING_EVENTS` — `messaging.message.{created,updated,deleted}`,
+//!   `messaging.reaction.{added,removed}`
+//!
+//! Payloads arrive as `EventEnvelope`s produced by the outbox publishers; the
+//! domain payload lives under the envelope's `payload` field.
 
+use std::time::Duration;
+
+use async_nats::jetstream::{self, consumer::DeliverPolicy};
 use futures::StreamExt;
 use tracing::{debug, error, warn};
 use uuid::Uuid;
 
+use common::infrastructure::outbox::{ensure_stream, OutboxStreamConfig};
+
 use crate::presentation::ws::messages::ServerMsg;
 use crate::state::{AppState, ClientRegistry, MsgContextCache, SubscriptionRegistry};
 
-const SUBJECT_WILDCARD: &str = "hermes.>";
+const CONSUMER_INACTIVE_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Long-running task: subscribes to NATS and fans events out to WS clients.
-///
-/// This function never returns under normal operation; it exits only if the
-/// NATS subscription itself is dropped (e.g. server disconnect).
+/// Long-running task: attaches ephemeral consumers to every upstream stream
+/// and dispatches events to connected WebSocket clients. Returns only when
+/// every per-stream listener has exited.
 pub async fn run(state: AppState) {
-    let mut subscriber = match state.nats.subscribe(SUBJECT_WILDCARD).await {
+    let jetstream = jetstream::new(state.nats.clone());
+
+    let chat_config = OutboxStreamConfig::new("CHAT_EVENTS", vec!["chat.>".to_string()]);
+    let messaging_config =
+        OutboxStreamConfig::new("MESSAGING_EVENTS", vec!["messaging.>".to_string()]);
+
+    let chat = listen(jetstream.clone(), chat_config, "chat.>".to_string(), state.clone());
+    let messaging = listen(
+        jetstream,
+        messaging_config,
+        "messaging.>".to_string(),
+        state,
+    );
+
+    tokio::join!(chat, messaging);
+}
+
+async fn listen(
+    jetstream: jetstream::Context,
+    stream_config: OutboxStreamConfig,
+    filter_subject: String,
+    state: AppState,
+) {
+    let stream = match ensure_stream(&jetstream, &stream_config).await {
         Ok(s) => s,
         Err(e) => {
-            error!("Failed to subscribe to NATS subject '{SUBJECT_WILDCARD}': {e}");
+            error!(stream = %stream_config.name, error = %e, "Failed to ensure JetStream stream");
             return;
         }
     };
 
-    debug!("NATS listener active on '{SUBJECT_WILDCARD}'");
+    let consumer = match stream
+        .create_consumer(jetstream::consumer::pull::Config {
+            deliver_policy: DeliverPolicy::New,
+            filter_subject: filter_subject.clone(),
+            inactive_threshold: CONSUMER_INACTIVE_TIMEOUT,
+            ..Default::default()
+        })
+        .await
+    {
+        Ok(c) => c,
+        Err(e) => {
+            error!(stream = %stream_config.name, error = %e, "Failed to create ephemeral consumer");
+            return;
+        }
+    };
 
-    while let Some(msg) = subscriber.next().await {
-        let subject = msg.subject.as_str().to_owned();
-        let payload: serde_json::Value = match serde_json::from_slice(&msg.payload) {
+    let mut messages = match consumer.messages().await {
+        Ok(m) => m,
+        Err(e) => {
+            error!(stream = %stream_config.name, error = %e, "Failed to open consumer message stream");
+            return;
+        }
+    };
+
+    debug!(stream = %stream_config.name, "JetStream listener active");
+
+    while let Some(message) = messages.next().await {
+        let message = match message {
+            Ok(m) => m,
+            Err(e) => {
+                warn!(error = %e, "Failed to receive JetStream message");
+                continue;
+            }
+        };
+        let subject = message.subject.as_str().to_owned();
+
+        let envelope: serde_json::Value = match serde_json::from_slice(&message.payload) {
             Ok(v) => v,
             Err(e) => {
-                warn!("NATS parse error on '{subject}': {e}");
+                warn!(subject = %subject, error = %e, "JetStream payload parse error");
+                let _ = message.ack().await;
                 continue;
             }
         };
 
+        let domain_payload = envelope
+            .get("payload")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+
         process_event(
             &subject,
-            payload,
+            domain_payload,
             &state.client_registry,
             &state.sub_registry,
             &state.msg_ctx_cache,
         );
+
+        if let Err(e) = message.ack().await {
+            warn!(subject = %subject, error = %e, "Failed to ack JetStream message");
+        }
     }
 
-    warn!("NATS subscription '{SUBJECT_WILDCARD}' ended — listener task exiting");
+    warn!(stream = %stream_config.name, "JetStream consumer message stream ended");
 }
 
 // ── Event dispatching ─────────────────────────────────────────────────────────
@@ -63,9 +136,12 @@ fn process_event(
     subs: &SubscriptionRegistry,
     cache: &MsgContextCache,
 ) {
-    match subject {
-        "hermes.message.created" => {
-            // Cache message_id → context_id for later reaction routing.
+    // Subject suffix carries the semantic action regardless of which service
+    // produced the event (`chat.message.created`, `messaging.message.created`).
+    let suffix = subject.split_once('.').map(|(_, rest)| rest).unwrap_or(subject);
+
+    match suffix {
+        "message.created" => {
             if let Some(context_id) = extract_context_id(&payload) {
                 if let Some(message_id) = extract_uuid(&payload, "message_id") {
                     cache.insert(message_id, context_id);
@@ -75,42 +151,40 @@ fn process_event(
             }
         }
 
-        "hermes.message.updated" => {
+        "message.updated" => {
             if let Some(context_id) = extract_context_id(&payload) {
                 let server_msg = ServerMsg::MessageUpdate { data: payload };
                 fan_out(context_id, &server_msg, clients, subs);
             }
         }
 
-        "hermes.message.deleted" => {
+        "message.deleted" => {
             if let Some(context_id) = extract_context_id(&payload) {
                 let server_msg = ServerMsg::MessageDelete { data: payload };
                 fan_out(context_id, &server_msg, clients, subs);
             }
         }
 
-        "hermes.reaction.added" => {
+        "reaction.added" => {
             if let Some(context_id) = resolve_reaction_context(&payload, cache) {
                 let server_msg = ServerMsg::ReactionAdd { data: payload };
                 fan_out(context_id, &server_msg, clients, subs);
             }
         }
 
-        "hermes.reaction.removed" => {
+        "reaction.removed" => {
             if let Some(context_id) = resolve_reaction_context(&payload, cache) {
                 let server_msg = ServerMsg::ReactionRemove { data: payload };
                 fan_out(context_id, &server_msg, clients, subs);
             }
         }
 
-        // Other subjects (conversation events, etc.) are ignored for now.
         _ => {}
     }
 }
 
 // ── Fan-out ───────────────────────────────────────────────────────────────────
 
-/// Serialise `msg` and deliver it to every user subscribed to `context_id`.
 fn fan_out(
     context_id: Uuid,
     msg: &ServerMsg,
@@ -126,17 +200,15 @@ fn fan_out(
     };
 
     let Some(subscribers) = subs.get(&context_id) else {
-        return; // No one is listening to this context.
+        return;
     };
 
     for user_id in subscribers.iter() {
         let Some(sender) = clients.get(&*user_id) else {
-            continue; // Client disconnected between checks; harmless.
+            continue;
         };
 
         if sender.send(json.clone()).is_err() {
-            // The receiver was dropped — the WS connection handler will
-            // clean up the registry entry on its next iteration.
             debug!("WS sender for user {} is closed; skipping", *user_id);
         }
     }
@@ -144,7 +216,6 @@ fn fan_out(
 
 // ── Payload helpers ───────────────────────────────────────────────────────────
 
-/// Extract a UUID field from a JSON object.
 fn extract_uuid(payload: &serde_json::Value, field: &str) -> Option<Uuid> {
     payload
         .get(field)
@@ -152,18 +223,10 @@ fn extract_uuid(payload: &serde_json::Value, field: &str) -> Option<Uuid> {
         .and_then(|s| Uuid::parse_str(s).ok())
 }
 
-/// Extract the `context_id` from a message payload.
-///
-/// Messages target exactly one of `channel_id` or `conversation_id`; the other
-/// will be `null` or absent.
 fn extract_context_id(payload: &serde_json::Value) -> Option<Uuid> {
     extract_uuid(payload, "channel_id").or_else(|| extract_uuid(payload, "conversation_id"))
 }
 
-/// Look up the `context_id` for a reaction event from the in-memory cache.
-///
-/// Reactions carry only `message_id`; the cache was populated when the
-/// corresponding `hermes.message.created` event was processed.
 fn resolve_reaction_context(payload: &serde_json::Value, cache: &MsgContextCache) -> Option<Uuid> {
     let message_id = extract_uuid(payload, "message_id")?;
     cache.get(&message_id).map(|v| *v)
