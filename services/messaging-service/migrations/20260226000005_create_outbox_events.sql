@@ -2,8 +2,22 @@ CREATE TABLE outbox_events
 (
     id              UUID         PRIMARY KEY,
     aggregate_id    UUID         NOT NULL,
-    aggregate_type  TEXT         NOT NULL,
-    event_type      TEXT         NOT NULL,
+    aggregate_type  TEXT         NOT NULL
+        CHECK (aggregate_type IN (
+            'messaging_conversation',
+            'messaging_message',
+            'messaging_reaction'
+        )),
+    event_type      TEXT         NOT NULL
+        CHECK (event_type IN (
+            'messaging.conversation.created',
+            'messaging.conversation.member.joined',
+            'messaging.message.created',
+            'messaging.message.updated',
+            'messaging.message.deleted',
+            'messaging.reaction.added',
+            'messaging.reaction.removed'
+        )),
     payload         JSONB        NOT NULL,
     source_service  TEXT         NOT NULL,
     status          TEXT         NOT NULL DEFAULT 'pending'

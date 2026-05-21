@@ -2,11 +2,10 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use common::domain::event::IntoEventEnvelope;
-use common::infrastructure::outbox::NewOutboxEvent;
+use common::infrastructure::outbox::{AggregateType, NewOutboxEvent, OutboxEventType};
 
 use crate::application::events::{
     MessagingMessageCreatedEvent, MessagingMessageDeletedEvent, MessagingMessageUpdatedEvent,
-    AGGREGATE_TYPE_MESSAGE,
 };
 use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::message::{Message, MessageContent, MessageRepository, MessageTarget};
@@ -42,15 +41,15 @@ impl MessageService {
         &self,
         aggregate_id: Uuid,
         event: impl IntoEventEnvelope,
+        event_type: OutboxEventType,
     ) -> Result<NewOutboxEvent, MessageServiceError> {
-        let event_type = event.event_type().to_string();
         let envelope = event.into_envelope(&self.service_name);
         let payload = serde_json::to_value(&envelope)
             .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
         Ok(NewOutboxEvent {
             id: envelope.event_id,
             aggregate_id,
-            aggregate_type: AGGREGATE_TYPE_MESSAGE.to_string(),
+            aggregate_type: AggregateType::MessagingMessage,
             event_type,
             payload,
         })
@@ -92,13 +91,20 @@ impl MessageService {
 
     // ── Commands ──────────────────────────────────────────────────────────
 
-    async fn send_message(&self, target: MessageTarget, user_id: Uuid, content: String, reply_to_id: Option<Uuid>) -> Result<Message, MessageServiceError> {
+    async fn send_message(
+        &self,
+        target: MessageTarget,
+        user_id: Uuid,
+        content: String,
+        reply_to_id: Option<Uuid>,
+    ) -> Result<Message, MessageServiceError> {
         let content_vo = MessageContent::new(content)?;
         let message = Message::new(target, user_id, content_vo, reply_to_id);
 
         let outbox = self.outbox_event(
             message.id(),
             MessagingMessageCreatedEvent::from_message(&message),
+            OutboxEventType::MessagingMessageCreated,
         )?;
         let message_for_tx = message.clone();
         let outbox_for_tx = outbox.clone();
@@ -124,8 +130,13 @@ impl MessageService {
         content: String,
         reply_to_id: Option<Uuid>,
     ) -> Result<Message, MessageServiceError> {
-        self.send_message(MessageTarget::Channel(channel_id), user_id, content, reply_to_id)
-            .await
+        self.send_message(
+            MessageTarget::Channel(channel_id),
+            user_id,
+            content,
+            reply_to_id,
+        )
+        .await
     }
 
     pub async fn send_conversation_message(
@@ -157,6 +168,7 @@ impl MessageService {
         let outbox = self.outbox_event(
             message.id(),
             MessagingMessageUpdatedEvent::from_message(&message),
+            OutboxEventType::MessagingMessageUpdated,
         )?;
         let message_for_tx = message.clone();
         let outbox_for_tx = outbox.clone();
@@ -186,6 +198,7 @@ impl MessageService {
         let outbox = self.outbox_event(
             message.id(),
             MessagingMessageDeletedEvent::from_message(&message),
+            OutboxEventType::MessagingMessageDeleted,
         )?;
         let message_for_tx = message.clone();
         let outbox_for_tx = outbox.clone();

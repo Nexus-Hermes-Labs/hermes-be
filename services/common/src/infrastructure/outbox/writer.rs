@@ -10,6 +10,7 @@ use sqlx::{Postgres, Transaction};
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
+use super::types::{AggregateType, OutboxEventType};
 use crate::infrastructure::persistence::error::RepositoryError;
 
 /// Shared handle to a SQLx transaction, used by every per-aggregate writer that
@@ -29,23 +30,23 @@ pub fn tx_consumed_err() -> RepositoryError {
 pub struct NewOutboxEvent {
     pub id: Uuid,
     pub aggregate_id: Uuid,
-    pub aggregate_type: String,
-    pub event_type: String,
+    pub aggregate_type: AggregateType,
+    pub event_type: OutboxEventType,
     pub payload: Value,
 }
 
 impl NewOutboxEvent {
     pub fn new(
         aggregate_id: Uuid,
-        aggregate_type: impl Into<String>,
-        event_type: impl Into<String>,
+        aggregate_type: AggregateType,
+        event_type: OutboxEventType,
         payload: Value,
     ) -> Self {
         Self {
             id: Uuid::new_v4(),
             aggregate_id,
-            aggregate_type: aggregate_type.into(),
-            event_type: event_type.into(),
+            aggregate_type,
+            event_type,
             payload,
         }
     }
@@ -90,8 +91,8 @@ impl OutboxWriter for PgOutboxWriter {
         )
         .bind(event.id)
         .bind(event.aggregate_id)
-        .bind(&event.aggregate_type)
-        .bind(&event.event_type)
+        .bind(event.aggregate_type.as_str())
+        .bind(event.event_type.as_str())
         .bind(&event.payload)
         .bind(&self.source_service)
         .execute(&mut **tx)

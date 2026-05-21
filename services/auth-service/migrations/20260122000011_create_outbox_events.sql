@@ -2,8 +2,10 @@ CREATE TABLE outbox_events
 (
     id UUID PRIMARY KEY,
     aggregate_id UUID NOT NULL,
-    aggregate_type TEXT NOT NULL,
-    event_type TEXT NOT NULL,
+    aggregate_type TEXT NOT NULL
+        CHECK (aggregate_type IN ('user')),
+    event_type TEXT NOT NULL
+        CHECK (event_type IN ('user.created')),
     payload JSONB NOT NULL,
     source_service TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending'

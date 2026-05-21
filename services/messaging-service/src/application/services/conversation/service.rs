@@ -2,11 +2,10 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use common::domain::event::IntoEventEnvelope;
-use common::infrastructure::outbox::NewOutboxEvent;
+use common::infrastructure::outbox::{AggregateType, NewOutboxEvent, OutboxEventType};
 
 use crate::application::events::{
     MessagingConversationCreatedEvent, MessagingConversationMemberJoinedEvent,
-    AGGREGATE_TYPE_CONVERSATION,
 };
 use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::conversation::{
@@ -46,15 +45,15 @@ impl ConversationService {
         &self,
         aggregate_id: Uuid,
         event: impl IntoEventEnvelope,
+        event_type: OutboxEventType,
     ) -> Result<NewOutboxEvent, ConversationServiceError> {
-        let event_type = event.event_type().to_string();
         let envelope = event.into_envelope(&self.service_name);
         let payload = serde_json::to_value(&envelope)
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
         Ok(NewOutboxEvent {
             id: envelope.event_id,
             aggregate_id,
-            aggregate_type: AGGREGATE_TYPE_CONVERSATION.to_string(),
+            aggregate_type: AggregateType::MessagingConversation,
             event_type,
             payload,
         })
@@ -108,6 +107,7 @@ impl ConversationService {
         let outbox = self.outbox_event(
             conversation.id(),
             MessagingConversationCreatedEvent::new(&conversation, &member_ids),
+            OutboxEventType::MessagingConversationCreated,
         )?;
         let conv_for_tx = conversation.clone();
         let members_for_tx = members.clone();
@@ -144,7 +144,8 @@ impl ConversationService {
 
         let member_ids = vec![user_id_a, user_id_b];
         validate_members(ConversationType::Dm, &member_ids)?;
-        self.create_conversation(Conversation::new_dm(), member_ids).await
+        self.create_conversation(Conversation::new_dm(), member_ids)
+            .await
     }
 
     pub async fn create_group_dm(
@@ -152,7 +153,8 @@ impl ConversationService {
         member_ids: Vec<Uuid>,
     ) -> Result<Conversation, ConversationServiceError> {
         validate_members(ConversationType::GroupDm, &member_ids)?;
-        self.create_conversation(Conversation::new_group_dm(), member_ids).await
+        self.create_conversation(Conversation::new_group_dm(), member_ids)
+            .await
     }
 
     pub async fn add_member(
@@ -184,6 +186,7 @@ impl ConversationService {
                 conversation_id,
                 user_id,
             },
+            OutboxEventType::MessagingConversationMemberJoined,
         )?;
         let outbox_for_tx = outbox.clone();
         let member_for_tx = member.clone();

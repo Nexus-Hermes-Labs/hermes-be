@@ -2,11 +2,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use common::domain::event::IntoEventEnvelope;
-use common::infrastructure::outbox::NewOutboxEvent;
+use common::infrastructure::outbox::{AggregateType, NewOutboxEvent, OutboxEventType};
 
-use crate::application::events::{
-    ChatReactionAddedEvent, ChatReactionRemovedEvent, AGGREGATE_TYPE_REACTION,
-};
+use crate::application::events::{ChatReactionAddedEvent, ChatReactionRemovedEvent};
 use crate::application::ports::ChatUnitOfWorkFactory;
 use crate::domain::message::MessageRepository;
 use crate::domain::reaction::{Reaction, ReactionRepository};
@@ -46,15 +44,15 @@ impl ReactionService {
         &self,
         aggregate_id: Uuid,
         event: impl IntoEventEnvelope,
+        event_type: OutboxEventType,
     ) -> Result<NewOutboxEvent, ReactionServiceError> {
-        let event_type = event.event_type().to_string();
         let envelope = event.into_envelope(&self.service_name);
         let payload = serde_json::to_value(&envelope)
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
         Ok(NewOutboxEvent {
             id: envelope.event_id,
             aggregate_id,
-            aggregate_type: AGGREGATE_TYPE_REACTION.to_string(),
+            aggregate_type: AggregateType::ChatReaction,
             event_type,
             payload,
         })
@@ -88,6 +86,7 @@ impl ReactionService {
         let outbox = self.outbox_event(
             reaction.message_id(),
             ChatReactionAddedEvent::from_reaction(&reaction),
+            OutboxEventType::ChatReactionAdded,
         )?;
         let reaction_for_tx = reaction.clone();
         let outbox_for_tx = outbox.clone();
@@ -129,6 +128,7 @@ impl ReactionService {
                 user_id,
                 emoji: emoji_str.to_string(),
             },
+            OutboxEventType::ChatReactionRemoved,
         )?;
         let outbox_for_tx = outbox.clone();
         let emoji_for_tx = emoji_str.to_string();

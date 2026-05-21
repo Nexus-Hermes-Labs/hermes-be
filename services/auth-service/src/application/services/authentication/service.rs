@@ -6,13 +6,13 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
-use common::infrastructure::outbox::NewOutboxEvent;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
 };
 use chrono::Utc;
 use common::domain::event::IntoEventEnvelope;
+use common::infrastructure::outbox::{AggregateType, NewOutboxEvent, OutboxEventType};
 use common::infrastructure::security::jwt_manager::JwtManager;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -225,8 +225,8 @@ impl AuthService {
         let outbox_event = NewOutboxEvent {
             id: envelope.event_id,
             aggregate_id: envelope.aggregate_id,
-            aggregate_type: "user".to_string(),
-            event_type: "user.created".to_string(),
+            aggregate_type: AggregateType::User,
+            event_type: OutboxEventType::UserCreated,
             payload: serde_json::to_value(&envelope)
                 .map_err(|e| AuthApplicationError::Internal(e.to_string()))?,
         };

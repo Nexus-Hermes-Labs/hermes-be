@@ -2,11 +2,9 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use common::domain::event::IntoEventEnvelope;
-use common::infrastructure::outbox::NewOutboxEvent;
+use common::infrastructure::outbox::{AggregateType, NewOutboxEvent, OutboxEventType};
 
-use crate::application::events::{
-    MessagingReactionAddedEvent, MessagingReactionRemovedEvent, AGGREGATE_TYPE_REACTION,
-};
+use crate::application::events::{MessagingReactionAddedEvent, MessagingReactionRemovedEvent};
 use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::reaction::{Reaction, ReactionRepository};
 use crate::domain::Emoji;
@@ -42,15 +40,15 @@ impl ReactionService {
         &self,
         aggregate_id: Uuid,
         event: impl IntoEventEnvelope,
+        event_type: OutboxEventType,
     ) -> Result<NewOutboxEvent, ReactionServiceError> {
-        let event_type = event.event_type().to_string();
         let envelope = event.into_envelope(&self.service_name);
         let payload = serde_json::to_value(&envelope)
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
         Ok(NewOutboxEvent {
             id: envelope.event_id,
             aggregate_id,
-            aggregate_type: AGGREGATE_TYPE_REACTION.to_string(),
+            aggregate_type: AggregateType::MessagingReaction,
             event_type,
             payload,
         })
@@ -104,6 +102,7 @@ impl ReactionService {
         let outbox = self.outbox_event(
             reaction.message_id(),
             MessagingReactionAddedEvent::from_reaction(&reaction),
+            OutboxEventType::MessagingReactionAdded,
         )?;
         let reaction_for_tx = reaction.clone();
         let outbox_for_tx = outbox.clone();
@@ -144,6 +143,7 @@ impl ReactionService {
                 user_id,
                 emoji: emoji.as_str().to_string(),
             },
+            OutboxEventType::MessagingReactionRemoved,
         )?;
         let outbox_for_tx = outbox.clone();
         let emoji_for_tx = emoji.as_str().to_string();

@@ -7,9 +7,6 @@ use common::domain::event::IntoEventEnvelope;
 use crate::domain::message::Message;
 use crate::domain::reaction::Reaction;
 
-pub const AGGREGATE_TYPE_MESSAGE: &str = "chat_message";
-pub const AGGREGATE_TYPE_REACTION: &str = "chat_reaction";
-
 pub const EVENT_TYPE_MESSAGE_CREATED: &str = "chat.message.created";
 pub const EVENT_TYPE_MESSAGE_UPDATED: &str = "chat.message.updated";
 pub const EVENT_TYPE_MESSAGE_DELETED: &str = "chat.message.deleted";

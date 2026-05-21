@@ -79,8 +79,16 @@ const OUTBOX_SQL: &str = "
 CREATE TABLE outbox_events (
     id              UUID         PRIMARY KEY,
     aggregate_id    UUID         NOT NULL,
-    aggregate_type  TEXT         NOT NULL,
-    event_type      TEXT         NOT NULL,
+    aggregate_type  TEXT         NOT NULL
+        CHECK (aggregate_type IN ('chat_message', 'chat_reaction')),
+    event_type      TEXT         NOT NULL
+        CHECK (event_type IN (
+            'chat.message.created',
+            'chat.message.updated',
+            'chat.message.deleted',
+            'chat.reaction.added',
+            'chat.reaction.removed'
+        )),
     payload         JSONB        NOT NULL,
     source_service  TEXT         NOT NULL,
     status          TEXT         NOT NULL DEFAULT 'pending'

@@ -8,10 +8,6 @@ use crate::domain::conversation::Conversation;
 use crate::domain::message::Message;
 use crate::domain::reaction::Reaction;
 
-pub const AGGREGATE_TYPE_MESSAGE: &str = "messaging_message";
-pub const AGGREGATE_TYPE_REACTION: &str = "messaging_reaction";
-pub const AGGREGATE_TYPE_CONVERSATION: &str = "messaging_conversation";
-
 pub const EVENT_TYPE_MESSAGE_CREATED: &str = "messaging.message.created";
 pub const EVENT_TYPE_MESSAGE_UPDATED: &str = "messaging.message.updated";
 pub const EVENT_TYPE_MESSAGE_DELETED: &str = "messaging.message.deleted";
