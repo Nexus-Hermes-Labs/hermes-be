@@ -40,3 +40,4 @@ pub trait SessionWriter: Send + Sync {
         device_id: &str,
     ) -> Result<u64, RepositoryError>;
 }
+

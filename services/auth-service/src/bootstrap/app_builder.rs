@@ -1,10 +1,7 @@
 // src/bootstrap/app_builder.rs
 use crate::application::services::authentication::service::AuthService;
-use crate::application::services::authentication::user_profile_client::UserProfileClient;
 use crate::bootstrap::error::BootstrapError;
 use crate::domain::auth_credential::EmailService;
-use crate::infrastructure::grpc::UserGrpcClient;
-// Changed from LazyUserProfileGrpcClient and LazyUserProfileClientAdapter
 use crate::infrastructure::persistence::postgres::{
     PgAuthUnitOfWorkFactory, PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
 };
@@ -16,7 +13,6 @@ use crate::presentation::http::server::Server;
 use crate::state::app_state::AppState;
 use crate::state::auth_state::AuthState;
 use crate::state::shared_state::SharedState;
-use common::infrastructure::messaging::{EventPublisher, NatsEventPublisher};
 use common::infrastructure::security::jwt_manager::JwtManager;
 use common::observability::{HealthCheck, Metrics};
 use common_config::config;
@@ -120,34 +116,12 @@ impl AppBuilder {
         info!("✅ Domain layer ready");
 
         // ========================================
-        // gRPC CLIENTS (infrastructure adapters)
-        // ========================================
-        let user_profile_client =
-            Arc::new(
-                UserGrpcClient::new(config().grpc_endpoints.user_service.clone().ok_or_else(
-                    || {
-                        BootstrapError::Configuration(
-                            "User service endpoint not configured".to_string(),
-                        )
-                    },
-                )?)
-                .await
-                .map_err(|e| {
-                    BootstrapError::Infrastructure(format!("Failed to create gRPC client: {}", e))
-                })?,
-            );
-
-        info!("✅ gRPC clients ready");
-
-        // ========================================
         // APPLICATION LAYER
         // ========================================
         let application = self.build_application(
             repositories,
             domain_services,
             infrastructure.jwt_manager.clone(),
-            infrastructure.event_publisher.clone(),
-            user_profile_client,
             infrastructure.email_service.clone(),
         )?;
 
@@ -186,7 +160,7 @@ impl AppBuilder {
 
     async fn build_infrastructure(
         &self,
-        service_name: &'static str,
+        _service_name: &'static str,
         pool: PgPool,
         redis: redis::aio::ConnectionManager,
         metrics: Metrics,
@@ -207,25 +181,12 @@ impl AppBuilder {
             })?,
         );
 
-        // Event Publisher
-        let event_publisher = Arc::new(
-            NatsEventPublisher::new(service_name, &config().nats.get_url())
-                .await
-                .map_err(|e| {
-                    BootstrapError::Infrastructure(format!(
-                        "Failed to create NATS publisher: {}",
-                        e
-                    ))
-                })?,
-        );
-
         Ok(Infrastructure {
             pool,
             redis,
             metrics,
             health_check,
             jwt_manager,
-            event_publisher,
             email_service,
         })
     }
@@ -234,7 +195,10 @@ impl AppBuilder {
         Ok(Repositories {
             credential: Arc::new(PostgresAuthCredentialRepository::new(infra.pool.clone())),
             session: Arc::new(PostgresAuthSessionRepository::new(infra.pool.clone())),
-            uow_factory: Arc::new(PgAuthUnitOfWorkFactory::new(infra.pool.clone())),
+            uow_factory: Arc::new(PgAuthUnitOfWorkFactory::new(
+                infra.pool.clone(),
+                "auth-service",
+            )),
         })
     }
 
@@ -251,8 +215,6 @@ impl AppBuilder {
         repos: Repositories,
         services: DomainServices,
         jwt_manager: Arc<JwtManager>,
-        event_publisher: Arc<dyn EventPublisher>,
-        user_profile_client: Arc<dyn UserProfileClient>,
         email_service: Arc<dyn EmailService>,
     ) -> Result<Application, BootstrapError> {
         let auth_service = Arc::new(AuthService::new(
@@ -262,9 +224,7 @@ impl AppBuilder {
             repos.uow_factory.clone(),
             services.password,
             services.token_hasher,
-            event_publisher,
             jwt_manager,
-            user_profile_client,
             email_service,
         ));
 
@@ -312,7 +272,6 @@ struct Infrastructure {
     metrics: Metrics,
     health_check: Arc<HealthCheck>,
     jwt_manager: Arc<JwtManager>,
-    event_publisher: Arc<dyn EventPublisher>,
     email_service: Arc<dyn EmailService>,
 }
 

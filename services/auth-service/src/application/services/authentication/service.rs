@@ -1,5 +1,4 @@
 use super::error::AuthApplicationError;
-use super::user_profile_client::UserProfileClient;
 use crate::application::events::UserCreatedEvent;
 use crate::application::ports::unit_of_work::AuthUnitOfWorkFactory;
 use crate::domain::auth_credential::EmailService;
@@ -7,13 +6,13 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
-use chrono::Utc;
+use common::infrastructure::outbox::NewOutboxEvent;
 use crate::presentation::http::dto::{
     AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
     RegisterResponse, UserProfile,
 };
+use chrono::Utc;
 use common::domain::event::IntoEventEnvelope;
-use common::infrastructure::messaging::{EventPublisher, EventPublisherExt};
 use common::infrastructure::security::jwt_manager::JwtManager;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -28,6 +27,31 @@ use uuid::Uuid;
 const ACCESS_TOKEN_EXPIRY_HOURS: i64 = 6;
 const REFRESH_TOKEN_EXPIRY_DAYS: i64 = 30;
 const VERIFICATION_TOKEN_EXPIRY_HOURS: i64 = 24;
+
+fn map_registration_repository_error(
+    error: common::infrastructure::persistence::error::RepositoryError,
+    email: &str,
+) -> AuthApplicationError {
+    if is_unique_violation(&error) {
+        return AuthApplicationError::EmailAlreadyExists(email.to_string());
+    }
+    AuthApplicationError::RepositoryError(error.to_string())
+}
+
+fn is_unique_violation(
+    error: &common::infrastructure::persistence::error::RepositoryError,
+) -> bool {
+    match error {
+        common::infrastructure::persistence::error::RepositoryError::Database(
+            sqlx::Error::Database(db_error),
+        ) => {
+            db_error.code().as_deref() == Some("23505")
+                && db_error.constraint() == Some("auth_credentials_email_key")
+        }
+        common::infrastructure::persistence::error::RepositoryError::DuplicateEntry(_) => true,
+        _ => false,
+    }
+}
 
 // ============================================
 // AUTHENTICATION SERVICE
@@ -45,9 +69,7 @@ pub struct AuthService {
     uow_factory: Arc<dyn AuthUnitOfWorkFactory>,
     password_service: Arc<dyn PasswordService>,
     token_hasher: Arc<dyn TokenHasher>,
-    event_publisher: Arc<dyn EventPublisher>,
     jwt_manager: Arc<JwtManager>,
-    user_profile_client: Arc<dyn UserProfileClient>,
     email_service: Arc<dyn EmailService>,
 }
 
@@ -62,9 +84,7 @@ impl AuthService {
         uow_factory: Arc<dyn AuthUnitOfWorkFactory>,
         password_service: Arc<dyn PasswordService>,
         token_hasher: Arc<dyn TokenHasher>,
-        event_publisher: Arc<dyn EventPublisher>,
         jwt_manager: Arc<JwtManager>,
-        user_profile_client: Arc<dyn UserProfileClient>,
         email_service: Arc<dyn EmailService>,
     ) -> Self {
         Self {
@@ -74,9 +94,7 @@ impl AuthService {
             uow_factory,
             password_service,
             token_hasher,
-            event_publisher,
             jwt_manager,
-            user_profile_client,
             email_service,
         }
     }
@@ -99,12 +117,12 @@ impl AuthService {
     /// 1. Validate email not already registered
     /// 2. Hash password
     /// 3. Create auth credential
-    /// 4. Call user-service via gRPC to create profile (SYNC)
-    /// 5. Generate verification token and send email
+    /// 4. Write user.created outbox event for user-service
+    /// 5. Generate verification token
     /// 6. Generate JWT tokens
     /// 7. Create session
-    /// 8. Publish user.created event (ASYNC, non-blocking)
-    /// 9. Return tokens + user profile
+    /// 8. Commit transaction, then send email
+    /// 9. Return tokens + eventual user profile
     pub async fn register(
         &self,
         request: RegisterRequest,
@@ -115,13 +133,10 @@ impl AuthService {
         // ═══════════════════════════════════════════════════
         // STEP 1: Validate Email
         // ═══════════════════════════════════════════════════
+        // Uniqueness is enforced by the auth_credentials_email_key constraint;
+        // a duplicate INSERT inside the UoW is mapped to EmailAlreadyExists.
         let email = Email::new(&request.email)
             .map_err(|_| AuthApplicationError::InvalidEmail(request.email.clone()))?;
-
-        if self.credential_repo.exists_by_email(&email).await? {
-            warn!(email = %request.email, "Registration failed: email already exists");
-            return Err(AuthApplicationError::EmailAlreadyExists(request.email));
-        }
 
         // ═══════════════════════════════════════════════════
         // STEP 2: Hash Password
@@ -131,22 +146,8 @@ impl AuthService {
             .hash_password(&request.password)
             .map_err(|_e| AuthApplicationError::HashingFailed)?;
 
-        // ═══════════════════════════════════════════════════
-        // STEP 3: Create User Profile via gRPC
-        // ═══════════════════════════════════════════════════
-        let profile_info = self
-            .user_profile_client
-            .create_profile(
-                request.username.to_owned(),
-                request.display_name.to_owned(),
-                email.as_str().to_owned(),
-            )
-            .await?;
-
-        // ═══════════════════════════════════════════════════
-        // STEP 4: Create Auth Credential using obtained user_id
-        // ═══════════════════════════════════════════════════
-        let credential = AuthCredential::new(profile_info.user_id, email.clone(), password_hash);
+        let user_id = Uuid::new_v4();
+        let credential = AuthCredential::new(user_id, email.clone(), password_hash);
 
         info!(
             credential_id = %credential.id(),
@@ -156,19 +157,19 @@ impl AuthService {
         );
 
         let user_profile = UserProfile {
-            user_id: profile_info.user_id,
+            user_id,
             email: credential.email().as_str().to_string(),
-            username: profile_info.username,
-            display_name: profile_info.display_name,
-            avatar: profile_info.avatar_url,
-            bio: profile_info.bio,
-            created_at: profile_info.created_at,
+            username: request.username.clone(),
+            display_name: request.display_name.clone(),
+            avatar: None,
+            bio: None,
+            created_at: Utc::now(),
         };
 
         info!(
-            user_id = %credential.id(),
+            user_id = %credential.user_id(),
             username = %user_profile.username,
-            "User profile created via user-service"
+            "User profile creation queued via outbox"
         );
 
         // ═══════════════════════════════════════════════════
@@ -214,34 +215,45 @@ impl AuthService {
             client_info.device_id,
         );
 
-        let uow = self
-            .uow_factory
-            .begin()
+        let event = UserCreatedEvent::new(
+            credential.user_id(),
+            credential.email().as_str().to_string(),
+            request.username.clone(),
+            request.display_name.clone(),
+        );
+        let envelope = event.into_envelope(&self.service_name);
+        let outbox_event = NewOutboxEvent {
+            id: envelope.event_id,
+            aggregate_id: envelope.aggregate_id,
+            aggregate_type: "user".to_string(),
+            event_type: "user.created".to_string(),
+            payload: serde_json::to_value(&envelope)
+                .map_err(|e| AuthApplicationError::Internal(e.to_string()))?,
+        };
+
+        let credential_for_tx = credential.clone();
+        let session_for_tx = session.clone();
+        let outbox_event_for_tx = outbox_event.clone();
+        let verification_token_for_tx = verification_token.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.credentials().save(&credential_for_tx).await?;
+                    uow.credentials()
+                        .set_verification_token(
+                            credential_for_tx.id(),
+                            &verification_token_for_tx,
+                            VERIFICATION_TOKEN_EXPIRY_HOURS,
+                        )
+                        .await?;
+                    uow.sessions().save(&session_for_tx).await?;
+                    uow.outbox().save(&outbox_event_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
-            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
-
-        uow.credentials().save(&credential).await.map_err(|e| {
-            error!(error = %e, "STEP 7 FAILED: credential save");
-            AuthApplicationError::RepositoryError(e.to_string())
-        })?;
-
-        uow.credentials()
-            .set_verification_token(
-                credential.id(),
-                &verification_token,
-                VERIFICATION_TOKEN_EXPIRY_HOURS,
-            )
-            .await
-            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
-
-        uow.sessions().save(&session).await.map_err(|e| {
-            error!(error = %e, "STEP 7 FAILED: session save");
-            AuthApplicationError::RepositoryError(e.to_string())
-        })?;
-
-        uow.commit()
-            .await
-            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+            .map_err(|e| map_registration_repository_error(e, &request.email))?;
 
         info!(
             user_id = %credential.id(),
@@ -256,32 +268,6 @@ impl AuthService {
             .await
         {
             error!(error = %e, user_id = %credential.id(), "Failed to send verification email (non-critical)");
-        }
-
-        // ═══════════════════════════════════════════════════
-        // STEP 8: Publish Event (ASYNC, Non-blocking)
-        // ═══════════════════════════════════════════════════
-        let event = UserCreatedEvent::new(
-            credential.user_id(),
-            credential.email().as_str().to_string(),
-            request.username.clone(),
-            request.display_name.clone(),
-        );
-
-        // Fire and forget - don't fail registration if event fails
-        if let Err(e) = self
-            .event_publisher
-            .publish(
-                "user_profile.created",
-                &IntoEventEnvelope::into_envelope(event, &self.service_name),
-            )
-            .await
-        {
-            error!(
-                error = %e,
-                user_id = %credential.id(),
-                "Failed to publish user_profile.created event (non-critical)"
-            );
         }
 
         // ═══════════════════════════════════════════════════
@@ -441,43 +427,39 @@ impl AuthService {
             device_id.clone(),
         );
 
-        let uow = self
-            .uow_factory
-            .begin()
-            .await
-            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
-
-        uow.credentials()
-            .update(&credential)
-            .await
-            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
-
         // Enforce one active session per device: if the same client (identified
         // by `device_id`) already has an active session, revoke it before
         // inserting the new one. Without a device_id, prior behavior is kept
         // (multiple concurrent sessions allowed).
-        if let Some(ref did) = device_id {
-            let revoked = uow
-                .sessions()
-                .revoke_active_by_device(credential.id(), did)
-                .await
-                .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
-            if revoked > 0 {
-                info!(
-                    user_id = %credential.id(),
-                    device_id = %did,
-                    revoked_count = revoked,
-                    "Replaced existing session(s) for same device"
-                );
-            }
-        }
+        let credential_for_tx = credential.clone();
+        let session_for_tx = session.clone();
+        let device_id_for_tx = device_id.clone();
+        let credential_id = credential.id();
 
-        uow.sessions()
-            .save(&session)
-            .await
-            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.credentials().update(&credential_for_tx).await?;
 
-        uow.commit()
+                    if let Some(did) = device_id_for_tx.as_deref() {
+                        let revoked = uow
+                            .sessions()
+                            .revoke_active_by_device(credential_id, did)
+                            .await?;
+                        if revoked > 0 {
+                            info!(
+                                user_id = %credential_id,
+                                device_id = %did,
+                                revoked_count = revoked,
+                                "Replaced existing session(s) for same device"
+                            );
+                        }
+                    }
+
+                    uow.sessions().save(&session_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
 

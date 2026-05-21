@@ -2,29 +2,18 @@
 // access to the SQLx transaction for the full duration of each query.
 #![allow(clippy::significant_drop_tightening)]
 
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use sqlx::{PgPool, Postgres, Transaction};
-use tokio::sync::Mutex;
+use sqlx::PgPool;
 use uuid::Uuid;
 
+use common::infrastructure::outbox::{new_shared_tx, tx_consumed_err, OutboxWriter, PgOutboxWriter, SharedTx};
 use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::unit_of_work::UnitOfWork;
 
 use crate::application::ports::unit_of_work::{AuthUnitOfWork, AuthUnitOfWorkFactory};
 use crate::domain::auth_credential::AuthCredential;
 use crate::domain::auth_session::AuthSession;
 use crate::domain::unit_of_work::{CredentialWriter, SessionWriter};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared transaction handle
-// ─────────────────────────────────────────────────────────────────────────────
-
-type SharedTx = Arc<Mutex<Option<Transaction<'static, Postgres>>>>;
-
-fn tx_consumed_err() -> RepositoryError {
-    RepositoryError::Mapping("transaction already consumed".into())
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PgCredentialWriter
@@ -198,20 +187,22 @@ impl SessionWriter for PgSessionWriter {
 
 /// `SQLx`-backed [`AuthUnitOfWork`].
 ///
-/// Both sub-writers share the same transaction via [`SharedTx`].
+/// All sub-writers share the same transaction via a [`SharedTx`].
 /// Dropping without committing rolls the transaction back automatically.
 pub struct PgAuthUnitOfWork {
     tx: SharedTx,
     credentials: PgCredentialWriter,
     sessions: PgSessionWriter,
+    outbox: PgOutboxWriter,
 }
 
 impl PgAuthUnitOfWork {
-    fn new(tx: Transaction<'static, Postgres>) -> Self {
-        let shared = Arc::new(Mutex::new(Some(tx)));
+    fn new(tx: sqlx::Transaction<'static, sqlx::Postgres>, source_service: &str) -> Self {
+        let shared = new_shared_tx(tx);
         Self {
             credentials: PgCredentialWriter { tx: shared.clone() },
             sessions: PgSessionWriter { tx: shared.clone() },
+            outbox: PgOutboxWriter::new(shared.clone(), source_service),
             tx: shared,
         }
     }
@@ -220,6 +211,25 @@ impl PgAuthUnitOfWork {
 impl std::fmt::Debug for PgAuthUnitOfWork {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("PgAuthUnitOfWork").finish_non_exhaustive()
+    }
+}
+
+#[async_trait]
+impl UnitOfWork for PgAuthUnitOfWork {
+    async fn commit(self: Box<Self>) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        if let Some(tx) = lock.take() {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+
+    async fn rollback(self: Box<Self>) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        if let Some(tx) = lock.take() {
+            tx.rollback().await?;
+        }
+        Ok(())
     }
 }
 
@@ -233,12 +243,8 @@ impl AuthUnitOfWork for PgAuthUnitOfWork {
         &self.sessions
     }
 
-    async fn commit(self: Box<Self>) -> Result<(), RepositoryError> {
-        let mut lock = self.tx.lock().await;
-        if let Some(tx) = lock.take() {
-            tx.commit().await?;
-        }
-        Ok(())
+    fn outbox(&self) -> &dyn OutboxWriter {
+        &self.outbox
     }
 }
 
@@ -250,12 +256,15 @@ impl AuthUnitOfWork for PgAuthUnitOfWork {
 #[derive(Debug)]
 pub struct PgAuthUnitOfWorkFactory {
     pool: PgPool,
+    source_service: String,
 }
 
 impl PgAuthUnitOfWorkFactory {
-    #[must_use]
-    pub const fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, source_service: impl Into<String>) -> Self {
+        Self {
+            pool,
+            source_service: source_service.into(),
+        }
     }
 }
 
@@ -263,6 +272,6 @@ impl PgAuthUnitOfWorkFactory {
 impl AuthUnitOfWorkFactory for PgAuthUnitOfWorkFactory {
     async fn begin(&self) -> Result<Box<dyn AuthUnitOfWork>, RepositoryError> {
         let tx = self.pool.begin().await?;
-        Ok(Box::new(PgAuthUnitOfWork::new(tx)))
+        Ok(Box::new(PgAuthUnitOfWork::new(tx, &self.source_service)))
     }
 }

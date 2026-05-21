@@ -3,6 +3,7 @@ pub mod error;
 
 use crate::bootstrap::error::BootstrapError;
 use crate::infrastructure::email::LettreEmailService;
+use common::infrastructure::outbox::{OutboxPublisherTask, OutboxRepository, OutboxStreamConfig};
 use common::observability;
 use common_config::config;
 use std::sync::Arc;
@@ -75,7 +76,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
 
     let (server, grpc_router, credential_repo) = AppBuilder::new()
         .with_service_name(service_name)
-        .with_database(db_pool)
+        .with_database(db_pool.clone())
         .with_redis(redis_manager)
         .with_metrics(metrics)
         .build(email_service)
@@ -98,6 +99,24 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
         shutdown_rx.clone(),
     ));
     info!("✅ Email verification cleanup task spawned");
+
+    let outbox_repository = Arc::new(OutboxRepository::new(db_pool, "auth-service"));
+    let stream_config = OutboxStreamConfig::new("USER_EVENTS", vec!["user.*".to_string()]);
+    let outbox_task = OutboxPublisherTask::new(
+        "auth-outbox-publisher",
+        outbox_repository,
+        &config().nats.get_url(),
+        &stream_config,
+    )
+    .await
+    .map_err(|e| {
+        BootstrapError::Infrastructure(format!("Failed to start outbox publisher: {}", e))
+    })?;
+    tokio::spawn(common::infrastructure::background::run_periodic_task(
+        outbox_task,
+        shutdown_rx.clone(),
+    ));
+    info!("✅ Outbox publisher task spawned");
 
     // ========================================
     // 7. RUN SERVERS (HTTP + gRPC concurrently)
