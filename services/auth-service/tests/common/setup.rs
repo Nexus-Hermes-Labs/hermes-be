@@ -251,6 +251,7 @@ impl UserService for MockUserServiceAlwaysConflict {
 }
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 pub enum UserServiceMode {
     Default,
     AlwaysConflict,
@@ -309,6 +310,7 @@ impl TestHarness {
     /// Build a harness whose mock user-service always returns
     /// `Status::already_exists` from `create_user_profile`. Use this to test
     /// the duplicate-username path without depending on user-service's DB.
+    #[allow(dead_code)]
     pub async fn with_username_conflict() -> Self {
         Self::build(UserServiceMode::AlwaysConflict).await
     }
@@ -409,11 +411,11 @@ impl TestHarness {
                 Err(e) => panic!("connect to nats after retries: {e}"),
             }
         }
-        let event_publisher = Arc::new(event_publisher.unwrap());
+        let _event_publisher = Arc::new(event_publisher.unwrap());
 
         // 4. Start mock gRPC server
         let grpc_addr = start_mock_grpc_server(user_service_mode).await;
-        let user_profile_client = Arc::new(
+        let _user_profile_client = Arc::new(
             UserGrpcClient::new(grpc_addr)
                 .await
                 .expect("create grpc client"),
@@ -426,7 +428,7 @@ impl TestHarness {
         );
         let credential_repo = Arc::new(PostgresAuthCredentialRepository::new(pool.clone()));
         let session_repo = Arc::new(PostgresAuthSessionRepository::new(pool.clone()));
-        let uow_factory = Arc::new(PgAuthUnitOfWorkFactory::new(pool.clone()));
+        let uow_factory = Arc::new(PgAuthUnitOfWorkFactory::new(pool.clone(), "auth-service"));
         let password_service = Arc::new(Argon2PasswordService::new());
         let token_hasher = Arc::new(Sha256TokenHasher::new());
         let email_service = Arc::new(MockEmailService);
@@ -438,9 +440,7 @@ impl TestHarness {
             uow_factory,
             password_service,
             token_hasher,
-            event_publisher,
             jwt_manager.clone(),
-            user_profile_client,
             email_service.clone(),
         ));
 
