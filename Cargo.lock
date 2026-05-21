@@ -5364,6 +5364,7 @@ dependencies = [
  "common",
  "common-config",
  "fake",
+ "futures",
  "http-body-util",
  "jsonwebtoken",
  "lazy_static",

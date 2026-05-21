@@ -88,6 +88,7 @@ redis = { workspace = true }
 # ASYNC
 # ============================================================================
 async-trait = { workspace = true }
+futures = { workspace = true }
 
 # ============================================================================
 # NATS (for publishing user_profile.created events)

@@ -2,6 +2,8 @@ mod app_builder;
 pub mod error;
 
 use crate::bootstrap::error::BootstrapError;
+use crate::infrastructure::messaging::UserCreatedHandler;
+use common::infrastructure::outbox::{JetStreamConsumerRunner, OutboxStreamConfig};
 use common::observability;
 use common_config::config;
 use tracing::info;
@@ -59,7 +61,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
 
     let (server, grpc_router) = AppBuilder::new()
         .with_service_name(service_name)
-        .with_database(db_pool)
+        .with_database(db_pool.clone())
         .with_redis(redis_manager)
         .with_metrics(metrics)
         .build()
@@ -74,6 +76,23 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
 
     // ========================================
     // 6. RUN SERVERS (HTTP + gRPC concurrently)
+    // ========================================
+    let stream_config = OutboxStreamConfig::new("USER_EVENTS", vec!["user.*".to_string()]);
+    let user_created_consumer = JetStreamConsumerRunner::new(
+        db_pool,
+        &config().nats.get_url(),
+        &stream_config,
+        UserCreatedHandler,
+    )
+    .await
+    .map_err(|e| {
+        BootstrapError::Infrastructure(format!("Failed to start user.created consumer: {}", e))
+    })?;
+    tokio::spawn(user_created_consumer.run(shutdown_rx.clone()));
+    info!("✅ user.created consumer spawned");
+
+    // ========================================
+    // 7. RUN SERVERS (HTTP + gRPC concurrently)
     // ========================================
     info!(
         "🌐 Starting HTTP server on {}:{}",
