@@ -1,14 +1,22 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use common::domain::event::IntoEventEnvelope;
+use common::infrastructure::outbox::NewOutboxEvent;
+
+use crate::application::events::{
+    MessagingMessageCreatedEvent, MessagingMessageDeletedEvent, MessagingMessageUpdatedEvent,
+    AGGREGATE_TYPE_MESSAGE,
+};
+use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::message::{Message, MessageContent, MessageRepository, MessageTarget};
-use crate::infrastructure::NatsPublisher;
 
 use super::error::MessageServiceError;
 
 pub struct MessageService {
+    service_name: String,
     message_repo: Arc<dyn MessageRepository>,
-    nats: Arc<NatsPublisher>,
+    uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for MessageService {
@@ -18,8 +26,34 @@ impl std::fmt::Debug for MessageService {
 }
 
 impl MessageService {
-    pub fn new(message_repo: Arc<dyn MessageRepository>, nats: Arc<NatsPublisher>) -> Self {
-        Self { message_repo, nats }
+    pub fn new(
+        service_name: impl Into<String>,
+        message_repo: Arc<dyn MessageRepository>,
+        uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
+    ) -> Self {
+        Self {
+            service_name: service_name.into(),
+            message_repo,
+            uow_factory,
+        }
+    }
+
+    fn outbox_event(
+        &self,
+        aggregate_id: Uuid,
+        event: impl IntoEventEnvelope,
+    ) -> Result<NewOutboxEvent, MessageServiceError> {
+        let event_type = event.event_type().to_string();
+        let envelope = event.into_envelope(&self.service_name);
+        let payload = serde_json::to_value(&envelope)
+            .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
+        Ok(NewOutboxEvent {
+            id: envelope.event_id,
+            aggregate_id,
+            aggregate_type: AGGREGATE_TYPE_MESSAGE.to_string(),
+            event_type,
+            payload,
+        })
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -58,6 +92,31 @@ impl MessageService {
 
     // ── Commands ──────────────────────────────────────────────────────────
 
+    async fn send_message(&self, target: MessageTarget, user_id: Uuid, content: String, reply_to_id: Option<Uuid>) -> Result<Message, MessageServiceError> {
+        let content_vo = MessageContent::new(content)?;
+        let message = Message::new(target, user_id, content_vo, reply_to_id);
+
+        let outbox = self.outbox_event(
+            message.id(),
+            MessagingMessageCreatedEvent::from_message(&message),
+        )?;
+        let message_for_tx = message.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.messages().save(&message_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
+            .await
+            .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
+
+        Ok(message)
+    }
+
     pub async fn send_channel_message(
         &self,
         channel_id: Uuid,
@@ -65,19 +124,8 @@ impl MessageService {
         content: String,
         reply_to_id: Option<Uuid>,
     ) -> Result<Message, MessageServiceError> {
-        let content_vo = MessageContent::new(content)?;
-        let message = Message::new(
-            MessageTarget::Channel(channel_id),
-            user_id,
-            content_vo,
-            reply_to_id,
-        );
-        self.message_repo
-            .save(&message)
+        self.send_message(MessageTarget::Channel(channel_id), user_id, content, reply_to_id)
             .await
-            .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-        self.nats.publish_message_created(&message).await;
-        Ok(message)
     }
 
     pub async fn send_conversation_message(
@@ -87,19 +135,13 @@ impl MessageService {
         content: String,
         reply_to_id: Option<Uuid>,
     ) -> Result<Message, MessageServiceError> {
-        let content_vo = MessageContent::new(content)?;
-        let message = Message::new(
+        self.send_message(
             MessageTarget::Conversation(conversation_id),
             user_id,
-            content_vo,
+            content,
             reply_to_id,
-        );
-        self.message_repo
-            .save(&message)
-            .await
-            .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-        self.nats.publish_message_created(&message).await;
-        Ok(message)
+        )
+        .await
     }
 
     pub async fn edit_message(
@@ -111,11 +153,25 @@ impl MessageService {
         let mut message = self.get_message(message_id).await?;
         let content_vo = MessageContent::new(new_content)?;
         message.edit(requester_id, content_vo)?;
-        self.message_repo
-            .update(&message)
+
+        let outbox = self.outbox_event(
+            message.id(),
+            MessagingMessageUpdatedEvent::from_message(&message),
+        )?;
+        let message_for_tx = message.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.messages().update(&message_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-        self.nats.publish_message_updated(&message).await;
+
         Ok(message)
     }
 
@@ -126,11 +182,25 @@ impl MessageService {
     ) -> Result<(), MessageServiceError> {
         let mut message = self.get_message(message_id).await?;
         message.soft_delete(requester_id)?;
-        self.message_repo
-            .update(&message)
+
+        let outbox = self.outbox_event(
+            message.id(),
+            MessagingMessageDeletedEvent::from_message(&message),
+        )?;
+        let message_for_tx = message.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.messages().update(&message_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-        self.nats.publish_message_deleted(&message).await;
+
         Ok(())
     }
 

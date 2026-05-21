@@ -1,15 +1,22 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use common::domain::event::IntoEventEnvelope;
+use common::infrastructure::outbox::NewOutboxEvent;
+
+use crate::application::events::{
+    MessagingReactionAddedEvent, MessagingReactionRemovedEvent, AGGREGATE_TYPE_REACTION,
+};
+use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::reaction::{Reaction, ReactionRepository};
 use crate::domain::Emoji;
-use crate::infrastructure::NatsPublisher;
 
 use super::error::ReactionServiceError;
 
 pub struct ReactionService {
+    service_name: String,
     reaction_repo: Arc<dyn ReactionRepository>,
-    nats: Arc<NatsPublisher>,
+    uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for ReactionService {
@@ -19,11 +26,34 @@ impl std::fmt::Debug for ReactionService {
 }
 
 impl ReactionService {
-    pub fn new(reaction_repo: Arc<dyn ReactionRepository>, nats: Arc<NatsPublisher>) -> Self {
+    pub fn new(
+        service_name: impl Into<String>,
+        reaction_repo: Arc<dyn ReactionRepository>,
+        uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
+    ) -> Self {
         Self {
+            service_name: service_name.into(),
             reaction_repo,
-            nats,
+            uow_factory,
         }
+    }
+
+    fn outbox_event(
+        &self,
+        aggregate_id: Uuid,
+        event: impl IntoEventEnvelope,
+    ) -> Result<NewOutboxEvent, ReactionServiceError> {
+        let event_type = event.event_type().to_string();
+        let envelope = event.into_envelope(&self.service_name);
+        let payload = serde_json::to_value(&envelope)
+            .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
+        Ok(NewOutboxEvent {
+            id: envelope.event_id,
+            aggregate_id,
+            aggregate_type: AGGREGATE_TYPE_REACTION.to_string(),
+            event_type,
+            payload,
+        })
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -71,11 +101,24 @@ impl ReactionService {
         }
 
         let reaction = Reaction::new(message_id, user_id, emoji);
-        self.reaction_repo
-            .save(&reaction)
+        let outbox = self.outbox_event(
+            reaction.message_id(),
+            MessagingReactionAddedEvent::from_reaction(&reaction),
+        )?;
+        let reaction_for_tx = reaction.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.reactions().save(&reaction_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
-        self.nats.publish_reaction_added(&reaction).await;
+
         Ok(reaction)
     }
 
@@ -94,13 +137,30 @@ impl ReactionService {
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?
             .ok_or(ReactionServiceError::NotFound)?;
 
-        self.reaction_repo
-            .delete_by_message_user_emoji(message_id, user_id, emoji.as_str())
+        let outbox = self.outbox_event(
+            message_id,
+            MessagingReactionRemovedEvent {
+                message_id,
+                user_id,
+                emoji: emoji.as_str().to_string(),
+            },
+        )?;
+        let outbox_for_tx = outbox.clone();
+        let emoji_for_tx = emoji.as_str().to_string();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.reactions()
+                        .delete_by_message_user_emoji(message_id, user_id, &emoji_for_tx)
+                        .await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
-        self.nats
-            .publish_reaction_removed(message_id, user_id, emoji.as_str())
-            .await;
+
         Ok(())
     }
 }

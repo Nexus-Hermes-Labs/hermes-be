@@ -3,7 +3,10 @@ pub mod error;
 
 pub use app_builder::AppBuilder;
 
+use std::sync::Arc;
+
 use crate::bootstrap::error::BootstrapError;
+use common::infrastructure::outbox::{OutboxPublisherTask, OutboxRepository, OutboxStreamConfig};
 use common::observability;
 use common_config::config;
 use tracing::info;
@@ -65,7 +68,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     info!("🔧 Building application...");
     let (server, grpc_router) = AppBuilder::new()
         .with_service_name(service_name)
-        .with_database(db_pool)
+        .with_database(db_pool.clone())
         .with_redis(redis_manager)
         .with_metrics(metrics)
         .with_nats(nats_client)
@@ -77,6 +80,28 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     // 6. SHUTDOWN SIGNAL
     // ========================================
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+    // ========================================
+    // 6.1 OUTBOX PUBLISHER
+    // ========================================
+    let outbox_repository = Arc::new(OutboxRepository::new(db_pool, "messaging-service"));
+    let stream_config =
+        OutboxStreamConfig::new("MESSAGING_EVENTS", vec!["messaging.>".to_string()]);
+    let outbox_task = OutboxPublisherTask::new(
+        "messaging-outbox-publisher",
+        outbox_repository,
+        &nats_url,
+        &stream_config,
+    )
+    .await
+    .map_err(|e| {
+        BootstrapError::Infrastructure(format!("Failed to start outbox publisher: {e}"))
+    })?;
+    tokio::spawn(common::infrastructure::background::run_periodic_task(
+        outbox_task,
+        shutdown_rx.clone(),
+    ));
+    info!("✅ Outbox publisher task spawned");
 
     // ========================================
     // 7. RUN HTTP + gRPC CONCURRENTLY

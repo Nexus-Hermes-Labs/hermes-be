@@ -5,7 +5,7 @@ use messaging_service::infrastructure::persistence::{
     PgMessagingUnitOfWorkFactory, PostgresConversationRepository, PostgresMessageRepository,
     PostgresReactionRepository,
 };
-use messaging_service::infrastructure::NatsPublisher;
+use messaging_service::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use messaging_service::state::messaging_state::MessagingState;
 use messaging_service::state::shared_state::SharedState;
 use messaging_service::state::AppState;
@@ -26,6 +26,7 @@ const CONVERSATIONS_SQL: &str =
 const MESSAGES_SQL: &str = include_str!("../../migrations/20260226000002_create_messages.sql");
 const REACTIONS_SQL: &str = include_str!("../../migrations/20260226000003_create_reactions.sql");
 const INDEXES_SQL: &str = include_str!("../../migrations/20260226000004_create_indexes.sql");
+const OUTBOX_SQL: &str = include_str!("../../migrations/20260226000005_create_outbox_events.sql");
 
 // ============================================
 // METRICS SINGLETON (init only once per process)
@@ -79,6 +80,7 @@ impl TestHarness {
             ("messages", MESSAGES_SQL),
             ("reactions", REACTIONS_SQL),
             ("indexes", INDEXES_SQL),
+            ("outbox", OUTBOX_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)
@@ -139,20 +141,28 @@ impl TestHarness {
         let nats_client = nats_client.expect("nats client");
 
         // ── 4. Build services ────────────────────────────────────────────────
-        let nats_publisher = Arc::new(NatsPublisher::new(nats_client.clone()));
 
         let message_repo = Arc::new(PostgresMessageRepository::new(pool.clone()));
         let reaction_repo = Arc::new(PostgresReactionRepository::new(pool.clone()));
         let conversation_repo = Arc::new(PostgresConversationRepository::new(pool.clone()));
-        let uow_factory = Arc::new(PgMessagingUnitOfWorkFactory::new(pool.clone()));
+        let uow_factory: Arc<dyn MessagingUnitOfWorkFactory> = Arc::new(
+            PgMessagingUnitOfWorkFactory::new(pool.clone(), "messaging-service-test"),
+        );
 
-        let message_service = Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
-        let reaction_service =
-            Arc::new(ReactionService::new(reaction_repo, nats_publisher.clone()));
+        let message_service = Arc::new(MessageService::new(
+            "messaging-service-test",
+            message_repo as Arc<dyn messaging_service::domain::message::MessageRepository>,
+            uow_factory.clone(),
+        ));
+        let reaction_service = Arc::new(ReactionService::new(
+            "messaging-service-test",
+            reaction_repo as Arc<dyn messaging_service::domain::reaction::ReactionRepository>,
+            uow_factory.clone(),
+        ));
         let conversation_service = Arc::new(ConversationService::new(
-            conversation_repo,
+            "messaging-service-test",
+            conversation_repo as Arc<dyn messaging_service::domain::conversation::ConversationRepository>,
             uow_factory,
-            nats_publisher,
         ));
 
         // ── 5. Assemble state ────────────────────────────────────────────────

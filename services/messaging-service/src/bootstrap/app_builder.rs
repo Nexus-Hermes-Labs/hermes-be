@@ -4,6 +4,7 @@ use common::observability::{HealthCheck, Metrics};
 use sqlx::PgPool;
 use tracing::info;
 
+use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::application::{ConversationService, MessageService, ReactionService};
 use crate::bootstrap::error::BootstrapError;
 use crate::domain::conversation::ConversationRepository;
@@ -13,7 +14,6 @@ use crate::infrastructure::persistence::{
     PgMessagingUnitOfWorkFactory, PostgresConversationRepository, PostgresMessageRepository,
     PostgresReactionRepository,
 };
-use crate::infrastructure::NatsPublisher;
 use crate::presentation::grpc::proto::messaging::v1::messaging_service_server::MessagingServiceServer;
 use crate::presentation::grpc::server::MessagingServiceGrpc;
 use crate::presentation::http::server::Server;
@@ -82,7 +82,7 @@ impl AppBuilder {
     pub fn build(
         self,
     ) -> Result<(Server, MessagingServiceServer<MessagingServiceGrpc>), BootstrapError> {
-        let _service_name = self.service_name.ok_or_else(|| {
+        let service_name = self.service_name.ok_or_else(|| {
             BootstrapError::Initialization("Service name must be provided".to_string())
         })?;
         let db_pool = self.db_pool.ok_or_else(|| {
@@ -102,7 +102,6 @@ impl AppBuilder {
         // INFRASTRUCTURE LAYER
         // ========================================
         let health_check = Arc::new(HealthCheck::new(db_pool.clone(), redis.clone()));
-        let nats_publisher = Arc::new(NatsPublisher::new(nats_client.clone()));
 
         info!("✅ Infrastructure layer ready");
 
@@ -115,20 +114,29 @@ impl AppBuilder {
             Arc::new(PostgresReactionRepository::new(db_pool.clone()));
         let conversation_repo: Arc<dyn ConversationRepository> =
             Arc::new(PostgresConversationRepository::new(db_pool.clone()));
-        let uow_factory = Arc::new(PgMessagingUnitOfWorkFactory::new(db_pool.clone()));
+        let uow_factory: Arc<dyn MessagingUnitOfWorkFactory> = Arc::new(
+            PgMessagingUnitOfWorkFactory::new(db_pool.clone(), service_name),
+        );
 
         info!("✅ Persistence layer ready");
 
         // ========================================
         // APPLICATION LAYER
         // ========================================
-        let message_service = Arc::new(MessageService::new(message_repo, nats_publisher.clone()));
-        let reaction_service =
-            Arc::new(ReactionService::new(reaction_repo, nats_publisher.clone()));
+        let message_service = Arc::new(MessageService::new(
+            service_name,
+            message_repo,
+            uow_factory.clone(),
+        ));
+        let reaction_service = Arc::new(ReactionService::new(
+            service_name,
+            reaction_repo,
+            uow_factory.clone(),
+        ));
         let conversation_service = Arc::new(ConversationService::new(
+            service_name,
             conversation_repo,
             uow_factory,
-            nats_publisher,
         ));
 
         info!("✅ Application layer ready");

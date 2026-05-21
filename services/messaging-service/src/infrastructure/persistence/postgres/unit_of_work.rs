@@ -1,32 +1,22 @@
-// The MutexGuard is intentionally held across `.await` — we need exclusive
-// access to the SQLx transaction for the full duration of each query.
 #![allow(clippy::significant_drop_tightening)]
 
-use std::sync::Arc;
-
 use async_trait::async_trait;
-use sqlx::{PgPool, Postgres, Transaction};
-use tokio::sync::Mutex;
+use sqlx::PgPool;
+use uuid::Uuid;
 
+use common::infrastructure::outbox::{
+    new_shared_tx, tx_consumed_err, OutboxWriter, PgOutboxWriter, SharedTx,
+};
 use common::infrastructure::persistence::error::RepositoryError;
+use common::infrastructure::persistence::unit_of_work::UnitOfWork;
 
 use crate::application::ports::unit_of_work::{MessagingUnitOfWork, MessagingUnitOfWorkFactory};
 use crate::domain::conversation::{Conversation, ConversationMember};
-use crate::domain::unit_of_work::{ConversationMemberWriter, ConversationWriter};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared transaction handle
-// ─────────────────────────────────────────────────────────────────────────────
-
-type SharedTx = Arc<Mutex<Option<Transaction<'static, Postgres>>>>;
-
-fn tx_consumed_err() -> RepositoryError {
-    RepositoryError::Mapping("transaction already consumed".into())
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PgConversationWriter
-// ─────────────────────────────────────────────────────────────────────────────
+use crate::domain::message::Message;
+use crate::domain::reaction::Reaction;
+use crate::domain::unit_of_work::{
+    ConversationMemberWriter, ConversationWriter, MessageWriter, ReactionWriter,
+};
 
 struct PgConversationWriter {
     tx: SharedTx,
@@ -48,10 +38,6 @@ impl ConversationWriter for PgConversationWriter {
         Ok(())
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PgConversationMemberWriter
-// ─────────────────────────────────────────────────────────────────────────────
 
 struct PgConversationMemberWriter {
     tx: SharedTx,
@@ -77,26 +63,125 @@ impl ConversationMemberWriter for PgConversationMemberWriter {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PgMessagingUnitOfWork
-// ─────────────────────────────────────────────────────────────────────────────
+struct PgMessageWriter {
+    tx: SharedTx,
+}
 
-/// `SQLx`-backed [`MessagingUnitOfWork`].
-///
-/// Both sub-writers share the same transaction via [`SharedTx`].
-/// Dropping without committing rolls the transaction back automatically.
+#[async_trait]
+impl MessageWriter for PgMessageWriter {
+    async fn save(&self, m: &Message) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        sqlx::query(
+            r"
+            INSERT INTO messages
+                (id, channel_id, conversation_id, user_id, content, type,
+                 reply_to_id, is_deleted, edited_at, created_at, updated_at)
+            VALUES
+                ($1, $2, $3, $4, $5, $6::message_type,
+                 $7, $8, $9, $10, $11)
+            ",
+        )
+        .bind(m.id())
+        .bind(m.channel_id())
+        .bind(m.conversation_id())
+        .bind(m.user_id())
+        .bind(m.content().as_str())
+        .bind(m.message_type().as_str())
+        .bind(m.reply_to_id())
+        .bind(m.is_deleted())
+        .bind(m.edited_at())
+        .bind(m.created_at())
+        .bind(m.updated_at())
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    async fn update(&self, m: &Message) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        sqlx::query(
+            r"
+            UPDATE messages
+            SET content    = $2,
+                is_deleted = $3,
+                edited_at  = $4,
+                updated_at = $5
+            WHERE id = $1
+            ",
+        )
+        .bind(m.id())
+        .bind(m.content().as_str())
+        .bind(m.is_deleted())
+        .bind(m.edited_at())
+        .bind(m.updated_at())
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+}
+
+struct PgReactionWriter {
+    tx: SharedTx,
+}
+
+#[async_trait]
+impl ReactionWriter for PgReactionWriter {
+    async fn save(&self, r: &Reaction) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        sqlx::query(
+            "INSERT INTO reactions (id, message_id, user_id, emoji, created_at) VALUES ($1, $2, $3, $4, $5)",
+        )
+        .bind(r.id())
+        .bind(r.message_id())
+        .bind(r.user_id())
+        .bind(r.emoji().as_str())
+        .bind(r.created_at())
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    async fn delete_by_message_user_emoji(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<u64, RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        let result = sqlx::query(
+            "DELETE FROM reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3",
+        )
+        .bind(message_id)
+        .bind(user_id)
+        .bind(emoji)
+        .execute(&mut **tx)
+        .await?;
+        Ok(result.rows_affected())
+    }
+}
+
 pub struct PgMessagingUnitOfWork {
     tx: SharedTx,
     conversations: PgConversationWriter,
     members: PgConversationMemberWriter,
+    messages: PgMessageWriter,
+    reactions: PgReactionWriter,
+    outbox: PgOutboxWriter,
 }
 
 impl PgMessagingUnitOfWork {
-    fn new(tx: Transaction<'static, Postgres>) -> Self {
-        let shared = Arc::new(Mutex::new(Some(tx)));
+    fn new(tx: sqlx::Transaction<'static, sqlx::Postgres>, source_service: &str) -> Self {
+        let shared = new_shared_tx(tx);
         Self {
             conversations: PgConversationWriter { tx: shared.clone() },
             members: PgConversationMemberWriter { tx: shared.clone() },
+            messages: PgMessageWriter { tx: shared.clone() },
+            reactions: PgReactionWriter { tx: shared.clone() },
+            outbox: PgOutboxWriter::new(shared.clone(), source_service),
             tx: shared,
         }
     }
@@ -104,8 +189,26 @@ impl PgMessagingUnitOfWork {
 
 impl std::fmt::Debug for PgMessagingUnitOfWork {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PgMessagingUnitOfWork")
-            .finish_non_exhaustive()
+        f.debug_struct("PgMessagingUnitOfWork").finish_non_exhaustive()
+    }
+}
+
+#[async_trait]
+impl UnitOfWork for PgMessagingUnitOfWork {
+    async fn commit(self: Box<Self>) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        if let Some(tx) = lock.take() {
+            tx.commit().await?;
+        }
+        Ok(())
+    }
+
+    async fn rollback(self: Box<Self>) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        if let Some(tx) = lock.take() {
+            tx.rollback().await?;
+        }
+        Ok(())
     }
 }
 
@@ -114,34 +217,32 @@ impl MessagingUnitOfWork for PgMessagingUnitOfWork {
     fn conversations(&self) -> &dyn ConversationWriter {
         &self.conversations
     }
-
     fn members(&self) -> &dyn ConversationMemberWriter {
         &self.members
     }
-
-    async fn commit(self: Box<Self>) -> Result<(), RepositoryError> {
-        let mut lock = self.tx.lock().await;
-        if let Some(tx) = lock.take() {
-            tx.commit().await?;
-        }
-        Ok(())
+    fn messages(&self) -> &dyn MessageWriter {
+        &self.messages
+    }
+    fn reactions(&self) -> &dyn ReactionWriter {
+        &self.reactions
+    }
+    fn outbox(&self) -> &dyn OutboxWriter {
+        &self.outbox
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PgMessagingUnitOfWorkFactory
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Creates [`PgMessagingUnitOfWork`] by opening a new `SQLx` transaction.
 #[derive(Debug)]
 pub struct PgMessagingUnitOfWorkFactory {
     pool: PgPool,
+    source_service: String,
 }
 
 impl PgMessagingUnitOfWorkFactory {
-    #[must_use]
-    pub const fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, source_service: impl Into<String>) -> Self {
+        Self {
+            pool,
+            source_service: source_service.into(),
+        }
     }
 }
 
@@ -149,6 +250,9 @@ impl PgMessagingUnitOfWorkFactory {
 impl MessagingUnitOfWorkFactory for PgMessagingUnitOfWorkFactory {
     async fn begin(&self) -> Result<Box<dyn MessagingUnitOfWork>, RepositoryError> {
         let tx = self.pool.begin().await?;
-        Ok(Box::new(PgMessagingUnitOfWork::new(tx)))
+        Ok(Box::new(PgMessagingUnitOfWork::new(
+            tx,
+            &self.source_service,
+        )))
     }
 }

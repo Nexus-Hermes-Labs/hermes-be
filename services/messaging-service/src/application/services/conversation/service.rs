@@ -1,19 +1,25 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use common::domain::event::IntoEventEnvelope;
+use common::infrastructure::outbox::NewOutboxEvent;
+
+use crate::application::events::{
+    MessagingConversationCreatedEvent, MessagingConversationMemberJoinedEvent,
+    AGGREGATE_TYPE_CONVERSATION,
+};
 use crate::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use crate::domain::conversation::{
     validate_members, Conversation, ConversationMember, ConversationRepository,
 };
 use crate::domain::ConversationType;
-use crate::infrastructure::NatsPublisher;
 
 use super::error::ConversationServiceError;
 
 pub struct ConversationService {
+    service_name: String,
     conversation_repo: Arc<dyn ConversationRepository>,
     uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
-    nats: Arc<NatsPublisher>,
 }
 
 impl std::fmt::Debug for ConversationService {
@@ -25,15 +31,33 @@ impl std::fmt::Debug for ConversationService {
 
 impl ConversationService {
     pub fn new(
+        service_name: impl Into<String>,
         conversation_repo: Arc<dyn ConversationRepository>,
         uow_factory: Arc<dyn MessagingUnitOfWorkFactory>,
-        nats: Arc<NatsPublisher>,
     ) -> Self {
         Self {
+            service_name: service_name.into(),
             conversation_repo,
             uow_factory,
-            nats,
         }
+    }
+
+    fn outbox_event(
+        &self,
+        aggregate_id: Uuid,
+        event: impl IntoEventEnvelope,
+    ) -> Result<NewOutboxEvent, ConversationServiceError> {
+        let event_type = event.event_type().to_string();
+        let envelope = event.into_envelope(&self.service_name);
+        let payload = serde_json::to_value(&envelope)
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+        Ok(NewOutboxEvent {
+            id: envelope.event_id,
+            aggregate_id,
+            aggregate_type: AGGREGATE_TYPE_CONVERSATION.to_string(),
+            event_type,
+            payload,
+        })
     }
 
     // ── Queries ───────────────────────────────────────────────────────────
@@ -71,13 +95,44 @@ impl ConversationService {
 
     // ── Commands ──────────────────────────────────────────────────────────
 
-    /// Open or return the existing DM between two users (idempotent).
+    async fn create_conversation(
+        &self,
+        conversation: Conversation,
+        member_ids: Vec<Uuid>,
+    ) -> Result<Conversation, ConversationServiceError> {
+        let members: Vec<ConversationMember> = member_ids
+            .iter()
+            .map(|&uid| ConversationMember::new(conversation.id(), uid))
+            .collect();
+
+        let outbox = self.outbox_event(
+            conversation.id(),
+            MessagingConversationCreatedEvent::new(&conversation, &member_ids),
+        )?;
+        let conv_for_tx = conversation.clone();
+        let members_for_tx = members.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.conversations().save(&conv_for_tx).await?;
+                    uow.members().save_batch(&members_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
+            .await
+            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
+
+        Ok(conversation)
+    }
+
     pub async fn open_dm(
         &self,
         user_id_a: Uuid,
         user_id_b: Uuid,
     ) -> Result<Conversation, ConversationServiceError> {
-        // Return existing DM if one exists
         if let Some(existing) = self
             .conversation_repo
             .find_dm_between(user_id_a, user_id_b)
@@ -87,81 +142,19 @@ impl ConversationService {
             return Ok(existing);
         }
 
-        let member_ids = [user_id_a, user_id_b];
+        let member_ids = vec![user_id_a, user_id_b];
         validate_members(ConversationType::Dm, &member_ids)?;
-
-        let conversation = Conversation::new_dm();
-        let members: Vec<ConversationMember> = member_ids
-            .iter()
-            .map(|&uid| ConversationMember::new(conversation.id(), uid))
-            .collect();
-
-        let uow = self
-            .uow_factory
-            .begin()
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        uow.conversations()
-            .save(&conversation)
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        uow.members()
-            .save_batch(&members)
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        uow.commit()
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        self.nats
-            .publish_conversation_created(&conversation, &member_ids)
-            .await;
-        Ok(conversation)
+        self.create_conversation(Conversation::new_dm(), member_ids).await
     }
 
-    /// Create a new group DM.
     pub async fn create_group_dm(
         &self,
         member_ids: Vec<Uuid>,
     ) -> Result<Conversation, ConversationServiceError> {
         validate_members(ConversationType::GroupDm, &member_ids)?;
-
-        let conversation = Conversation::new_group_dm();
-        let members: Vec<ConversationMember> = member_ids
-            .iter()
-            .map(|&uid| ConversationMember::new(conversation.id(), uid))
-            .collect();
-
-        let uow = self
-            .uow_factory
-            .begin()
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        uow.conversations()
-            .save(&conversation)
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        uow.members()
-            .save_batch(&members)
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        uow.commit()
-            .await
-            .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
-
-        self.nats
-            .publish_conversation_created(&conversation, &member_ids)
-            .await;
-        Ok(conversation)
+        self.create_conversation(Conversation::new_group_dm(), member_ids).await
     }
 
-    /// Add a user to a group DM.
     pub async fn add_member(
         &self,
         conversation_id: Uuid,
@@ -185,18 +178,30 @@ impl ConversationService {
         }
 
         let member = ConversationMember::new(conversation_id, user_id);
-        self.conversation_repo
-            .save_members(&[member])
+        let outbox = self.outbox_event(
+            conversation_id,
+            MessagingConversationMemberJoinedEvent {
+                conversation_id,
+                user_id,
+            },
+        )?;
+        let outbox_for_tx = outbox.clone();
+        let member_for_tx = member.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.members().save_batch(&[member_for_tx]).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| ConversationServiceError::RepositoryError(e.to_string()))?;
 
-        self.nats
-            .publish_conversation_member_joined(conversation_id, user_id)
-            .await;
         Ok(())
     }
 
-    /// Remove a user from a group DM (leave).
     pub async fn remove_member(
         &self,
         conversation_id: Uuid,
