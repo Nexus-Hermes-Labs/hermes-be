@@ -1,16 +1,24 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use common::domain::event::IntoEventEnvelope;
+use common::infrastructure::outbox::NewOutboxEvent;
+
+use crate::application::events::{
+    ChatMessageCreatedEvent, ChatMessageDeletedEvent, ChatMessageUpdatedEvent,
+    AGGREGATE_TYPE_MESSAGE,
+};
+use crate::application::ports::ChatUnitOfWorkFactory;
 use crate::domain::message::{Message, MessageRepository};
 use crate::domain::MessageContent;
-use crate::infrastructure::events::NatsPublisher;
 
 use super::error::MessageServiceError;
 
 /// Channel message application service.
 pub struct MessageService {
+    service_name: String,
     message_repo: Arc<dyn MessageRepository>,
-    nats: Arc<NatsPublisher>,
+    uow_factory: Arc<dyn ChatUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for MessageService {
@@ -20,8 +28,34 @@ impl std::fmt::Debug for MessageService {
 }
 
 impl MessageService {
-    pub fn new(message_repo: Arc<dyn MessageRepository>, nats: Arc<NatsPublisher>) -> Self {
-        Self { message_repo, nats }
+    pub fn new(
+        service_name: impl Into<String>,
+        message_repo: Arc<dyn MessageRepository>,
+        uow_factory: Arc<dyn ChatUnitOfWorkFactory>,
+    ) -> Self {
+        Self {
+            service_name: service_name.into(),
+            message_repo,
+            uow_factory,
+        }
+    }
+
+    fn outbox_event(
+        &self,
+        aggregate_id: Uuid,
+        event: impl IntoEventEnvelope,
+    ) -> Result<NewOutboxEvent, MessageServiceError> {
+        let event_type = event.event_type().to_string();
+        let envelope = event.into_envelope(&self.service_name);
+        let payload = serde_json::to_value(&envelope)
+            .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
+        Ok(NewOutboxEvent {
+            id: envelope.event_id,
+            aggregate_id,
+            aggregate_type: AGGREGATE_TYPE_MESSAGE.to_string(),
+            event_type,
+            payload,
+        })
     }
 
     // ── Send ──────────────────────────────────────────────────────────────
@@ -36,12 +70,23 @@ impl MessageService {
         let content = MessageContent::new(content).map_err(MessageServiceError::DomainError)?;
         let message = Message::new(channel_id, user_id, content, reply_to_id);
 
-        self.message_repo
-            .save(&message)
+        let outbox = self.outbox_event(
+            message.id(),
+            ChatMessageCreatedEvent::from_message(&message),
+        )?;
+        let message_for_tx = message.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.messages().save(&message_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-
-        self.nats.publish_message_created(&message).await;
 
         Ok(message)
     }
@@ -104,12 +149,23 @@ impl MessageService {
             .edit(requester_id, content)
             .map_err(MessageServiceError::DomainError)?;
 
-        self.message_repo
-            .update(&message)
+        let outbox = self.outbox_event(
+            message.id(),
+            ChatMessageUpdatedEvent::from_message(&message),
+        )?;
+        let message_for_tx = message.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.messages().update(&message_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-
-        self.nats.publish_message_updated(&message).await;
 
         Ok(message)
     }
@@ -132,12 +188,23 @@ impl MessageService {
             .soft_delete(requester_id)
             .map_err(MessageServiceError::DomainError)?;
 
-        self.message_repo
-            .update(&message)
+        let outbox = self.outbox_event(
+            message.id(),
+            ChatMessageDeletedEvent::from_message(&message),
+        )?;
+        let message_for_tx = message.clone();
+        let outbox_for_tx = outbox.clone();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.messages().update(&message_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| MessageServiceError::RepositoryError(e.to_string()))?;
-
-        self.nats.publish_message_deleted(&message).await;
 
         Ok(())
     }

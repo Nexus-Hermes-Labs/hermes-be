@@ -1,5 +1,6 @@
 pub mod message;
 pub mod reaction;
+pub mod unit_of_work;
 
 pub use message::entity::Message;
 pub use message::error::MessageError;

@@ -1,18 +1,24 @@
 use std::sync::Arc;
 use uuid::Uuid;
 
+use common::domain::event::IntoEventEnvelope;
+use common::infrastructure::outbox::NewOutboxEvent;
+
+use crate::application::events::{
+    ChatReactionAddedEvent, ChatReactionRemovedEvent, AGGREGATE_TYPE_REACTION,
+};
+use crate::application::ports::ChatUnitOfWorkFactory;
 use crate::domain::message::MessageRepository;
 use crate::domain::reaction::{Reaction, ReactionRepository};
 use crate::domain::Emoji;
-use crate::infrastructure::events::NatsPublisher;
 
 use super::error::ReactionServiceError;
 
-/// Reaction application service.
 pub struct ReactionService {
+    service_name: String,
     reaction_repo: Arc<dyn ReactionRepository>,
     message_repo: Arc<dyn MessageRepository>,
-    nats: Arc<NatsPublisher>,
+    uow_factory: Arc<dyn ChatUnitOfWorkFactory>,
 }
 
 impl std::fmt::Debug for ReactionService {
@@ -23,18 +29,36 @@ impl std::fmt::Debug for ReactionService {
 
 impl ReactionService {
     pub fn new(
+        service_name: impl Into<String>,
         reaction_repo: Arc<dyn ReactionRepository>,
         message_repo: Arc<dyn MessageRepository>,
-        nats: Arc<NatsPublisher>,
+        uow_factory: Arc<dyn ChatUnitOfWorkFactory>,
     ) -> Self {
         Self {
+            service_name: service_name.into(),
             reaction_repo,
             message_repo,
-            nats,
+            uow_factory,
         }
     }
 
-    // ── Add reaction ──────────────────────────────────────────────────────
+    fn outbox_event(
+        &self,
+        aggregate_id: Uuid,
+        event: impl IntoEventEnvelope,
+    ) -> Result<NewOutboxEvent, ReactionServiceError> {
+        let event_type = event.event_type().to_string();
+        let envelope = event.into_envelope(&self.service_name);
+        let payload = serde_json::to_value(&envelope)
+            .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
+        Ok(NewOutboxEvent {
+            id: envelope.event_id,
+            aggregate_id,
+            aggregate_type: AGGREGATE_TYPE_REACTION.to_string(),
+            event_type,
+            payload,
+        })
+    }
 
     pub async fn add_reaction(
         &self,
@@ -42,7 +66,6 @@ impl ReactionService {
         user_id: Uuid,
         emoji_str: String,
     ) -> Result<Reaction, ReactionServiceError> {
-        // Verify the message exists
         self.message_repo
             .find_by_id(message_id)
             .await
@@ -51,7 +74,6 @@ impl ReactionService {
 
         let emoji = Emoji::new(emoji_str).map_err(ReactionServiceError::DomainError)?;
 
-        // Deduplication check
         let existing = self
             .reaction_repo
             .find_by_message_user_emoji(message_id, user_id, emoji.as_str())
@@ -63,18 +85,26 @@ impl ReactionService {
         }
 
         let reaction = Reaction::new(message_id, user_id, emoji);
+        let outbox = self.outbox_event(
+            reaction.message_id(),
+            ChatReactionAddedEvent::from_reaction(&reaction),
+        )?;
+        let reaction_for_tx = reaction.clone();
+        let outbox_for_tx = outbox.clone();
 
-        self.reaction_repo
-            .save(&reaction)
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.reactions().save(&reaction_for_tx).await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
 
-        self.nats.publish_reaction_added(&reaction).await;
-
         Ok(reaction)
     }
-
-    // ── Remove reaction ───────────────────────────────────────────────────
 
     pub async fn remove_reaction(
         &self,
@@ -92,19 +122,32 @@ impl ReactionService {
             return Err(ReactionServiceError::ReactionNotFound);
         }
 
-        self.reaction_repo
-            .delete_by_message_user_emoji(message_id, user_id, emoji_str)
+        let outbox = self.outbox_event(
+            message_id,
+            ChatReactionRemovedEvent {
+                message_id,
+                user_id,
+                emoji: emoji_str.to_string(),
+            },
+        )?;
+        let outbox_for_tx = outbox.clone();
+        let emoji_for_tx = emoji_str.to_string();
+
+        self.uow_factory
+            .transaction(Box::new(move |uow| {
+                Box::pin(async move {
+                    uow.reactions()
+                        .delete_by_message_user_emoji(message_id, user_id, &emoji_for_tx)
+                        .await?;
+                    uow.outbox().save(&outbox_for_tx).await?;
+                    Ok(())
+                })
+            }))
             .await
             .map_err(|e| ReactionServiceError::RepositoryError(e.to_string()))?;
 
-        self.nats
-            .publish_reaction_removed(message_id, user_id, emoji_str)
-            .await;
-
         Ok(())
     }
-
-    // ── Get reactions ─────────────────────────────────────────────────────
 
     pub async fn get_reactions(
         &self,

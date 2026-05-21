@@ -1,8 +1,9 @@
+use crate::application::ports::ChatUnitOfWorkFactory;
 use crate::application::{MessageService, ReactionService};
 use crate::bootstrap::error::BootstrapError;
 use crate::domain::message::MessageRepository;
 use crate::domain::reaction::ReactionRepository;
-use crate::infrastructure::events::NatsPublisher;
+use crate::infrastructure::persistence::postgres::PgChatUnitOfWorkFactory;
 use crate::infrastructure::persistence::{PostgresMessageRepository, PostgresReactionRepository};
 use crate::presentation::grpc::proto::chat::v1::chat_service_server::ChatServiceServer;
 use crate::presentation::grpc::server::ChatServiceGrpc;
@@ -75,7 +76,7 @@ impl AppBuilder {
 
     /// Build the complete application with all dependencies.
     pub fn build(self) -> Result<(Server, ChatServiceServer<ChatServiceGrpc>), BootstrapError> {
-        let _service_name = self.service_name.ok_or_else(|| {
+        let service_name = self.service_name.ok_or_else(|| {
             BootstrapError::Initialization("Service name must be provided".to_string())
         })?;
         let db_pool = self.db_pool.ok_or_else(|| {
@@ -87,13 +88,12 @@ impl AppBuilder {
         let metrics = self.metrics.ok_or_else(|| {
             BootstrapError::Initialization("Metrics must be provided".to_string())
         })?;
-        let nats_client = self.nats.ok_or_else(|| {
+        let _nats_client = self.nats.ok_or_else(|| {
             BootstrapError::Initialization("NATS client must be provided".to_string())
         })?;
 
         // ── Infrastructure ────────────────────────────────────────────────
         let health_check = Arc::new(HealthCheck::new(db_pool.clone(), redis.clone()));
-        let nats_publisher = Arc::new(NatsPublisher::new(nats_client));
 
         info!("✅ Infrastructure layer ready");
 
@@ -102,18 +102,22 @@ impl AppBuilder {
             Arc::new(PostgresMessageRepository::new(db_pool.clone()));
         let reaction_repo: Arc<dyn ReactionRepository> =
             Arc::new(PostgresReactionRepository::new(db_pool.clone()));
+        let uow_factory: Arc<dyn ChatUnitOfWorkFactory> =
+            Arc::new(PgChatUnitOfWorkFactory::new(db_pool.clone(), service_name));
 
         info!("✅ Persistence layer ready");
 
         // ── Application ───────────────────────────────────────────────────
         let message_service = Arc::new(MessageService::new(
+            service_name,
             message_repo.clone(),
-            nats_publisher.clone(),
+            uow_factory.clone(),
         ));
         let reaction_service = Arc::new(ReactionService::new(
+            service_name,
             reaction_repo,
             message_repo,
-            nats_publisher,
+            uow_factory,
         ));
 
         info!("✅ Application layer ready");

@@ -1,6 +1,7 @@
 use axum::Router;
 use chat_service::application::{MessageService, ReactionService};
-use chat_service::infrastructure::events::NatsPublisher;
+use chat_service::application::ports::ChatUnitOfWorkFactory;
+use chat_service::infrastructure::persistence::postgres::PgChatUnitOfWorkFactory;
 use chat_service::infrastructure::persistence::{
     PostgresMessageRepository, PostgresReactionRepository,
 };
@@ -74,6 +75,28 @@ CREATE INDEX idx_messages_conversation ON messages (conversation_id) WHERE conve
 CREATE INDEX idx_reactions_message_id  ON reactions (message_id);
 ";
 
+const OUTBOX_SQL: &str = "
+CREATE TABLE outbox_events (
+    id              UUID         PRIMARY KEY,
+    aggregate_id    UUID         NOT NULL,
+    aggregate_type  TEXT         NOT NULL,
+    event_type      TEXT         NOT NULL,
+    payload         JSONB        NOT NULL,
+    source_service  TEXT         NOT NULL,
+    status          TEXT         NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'published', 'failed')),
+    retry_count     INTEGER      NOT NULL DEFAULT 0
+        CHECK (retry_count >= 0),
+    last_error      TEXT,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    next_retry_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    published_at    TIMESTAMPTZ
+);
+CREATE INDEX idx_outbox_events_publishable
+    ON outbox_events (source_service, next_retry_at)
+    WHERE status IN ('pending', 'failed');
+";
+
 // ============================================
 // METRICS SINGLETON (init only once per process)
 // ============================================
@@ -122,6 +145,7 @@ impl TestHarness {
             ("messages", MESSAGES_SQL),
             ("reactions", REACTIONS_SQL),
             ("indexes", INDEXES_SQL),
+            ("outbox", OUTBOX_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)
@@ -182,19 +206,23 @@ impl TestHarness {
         let nats_client = nats_client.expect("nats client");
 
         // ── 4. Build services ────────────────────────────────────────────────
-        let nats_publisher = Arc::new(NatsPublisher::new(nats_client));
+        let _nats_client = nats_client;
 
         let message_repo = Arc::new(PostgresMessageRepository::new(pool.clone()));
         let reaction_repo = Arc::new(PostgresReactionRepository::new(pool.clone()));
+        let uow_factory: Arc<dyn ChatUnitOfWorkFactory> =
+            Arc::new(PgChatUnitOfWorkFactory::new(pool.clone(), "chat-service-test"));
 
         let message_service = Arc::new(MessageService::new(
-            message_repo.clone(),
-            nats_publisher.clone(),
+            "chat-service-test",
+            message_repo.clone() as Arc<dyn chat_service::domain::MessageRepository>,
+            uow_factory.clone(),
         ));
         let reaction_service = Arc::new(ReactionService::new(
-            reaction_repo,
-            message_repo,
-            nats_publisher,
+            "chat-service-test",
+            reaction_repo as Arc<dyn chat_service::domain::ReactionRepository>,
+            message_repo as Arc<dyn chat_service::domain::MessageRepository>,
+            uow_factory,
         ));
 
         // ── 5. Assemble state ────────────────────────────────────────────────
