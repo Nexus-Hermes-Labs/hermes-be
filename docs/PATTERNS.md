@@ -25,6 +25,7 @@ This document describes the canonical code patterns used inside every service. I
 - [16. Graceful Shutdown Pattern](#16-graceful-shutdown-pattern)
 - [17. OnceCell Configuration Singleton](#17-oncecell-configuration-singleton)
 - [18. Workspace-Level Lint Policy](#18-workspace-level-lint-policy)
+- [19. Transactional Outbox + Idempotent Consumer](#19-transactional-outbox--idempotent-consumer)
 
 ---
 
@@ -108,25 +109,67 @@ Traits are defined in `domain/`, implemented in `infrastructure/persistence/post
 
 Multi-step writes that must succeed or fail atomically are coordinated by a `UnitOfWork`. This solves the problem of sharing a `sqlx::Transaction` across multiple repository calls in async code.
 
-```rust
-// Shared transaction handle passed to sub-writers
-type SharedTx = Arc<Mutex<Option<Transaction<'static, Postgres>>>>;
+The shared building blocks live in `common::infrastructure::persistence::unit_of_work`:
 
-// guild-service: infrastructure/persistence/postgres/unit_of_work.rs
-pub struct PgGuildUnitOfWork {
-    tx: SharedTx,
-    pub guild_writer: PgGuildWriter,        // holds clone of SharedTx
-    pub member_writer: PgGuildMemberWriter,
-    pub invite_writer: PgGuildInviteWriter,
+- `UnitOfWork` — base trait every per-service UoW extends, defining the consume-self `commit`/`rollback` contract.
+- `UowFuture<'a>` / `UowCallback<'a, U>` — type aliases for the closure-based transaction API.
+- `run_in_transaction(uow, op)` — runs the closure, commits on `Ok`, rolls back on `Err`. Per-service factory traits delegate their default `transaction()` impl to this helper.
+
+```rust
+// common::infrastructure::persistence::unit_of_work
+#[async_trait]
+pub trait UnitOfWork: Send + Sync {
+    async fn commit(self: Box<Self>) -> Result<(), RepositoryError>;
+    async fn rollback(self: Box<Self>) -> Result<(), RepositoryError>;
 }
 
-impl PgGuildUnitOfWork {
-    pub async fn commit(self) -> Result<(), DbError> { ... } // consumes self
-    // Drop = automatic rollback if commit() was never called
+pub async fn run_in_transaction<U: UnitOfWork + ?Sized>(
+    uow: Box<U>,
+    operation: UowCallback<'_, U>,
+) -> Result<(), RepositoryError> { ... }
+```
+
+Each service's UoW trait extends `UnitOfWork` and adds writer accessors. The factory exposes only `begin()`; `transaction()` has a default impl forwarding to `run_in_transaction`:
+
+```rust
+// auth-service: application/ports/unit_of_work.rs
+#[async_trait]
+pub trait AuthUnitOfWork: UnitOfWork {
+    fn credentials(&self) -> &dyn CredentialWriter;
+    fn sessions(&self) -> &dyn SessionWriter;
+    fn outbox(&self) -> &dyn OutboxWriter;
+}
+
+#[async_trait]
+pub trait AuthUnitOfWorkFactory: Send + Sync {
+    async fn begin(&self) -> Result<Box<dyn AuthUnitOfWork>, RepositoryError>;
+
+    async fn transaction(
+        &self,
+        operation: UowCallback<'_, dyn AuthUnitOfWork>,
+    ) -> Result<(), RepositoryError> {
+        let uow = self.begin().await?;
+        run_in_transaction(uow, operation).await
+    }
 }
 ```
 
-`UnitOfWork` traits are defined in `application/ports/`. Application services receive the factory via constructor injection.
+Application services always call `transaction()` — manual `begin()` / `commit()` is a code smell because it forces the caller to remember rollback on every error path:
+
+```rust
+self.uow_factory
+    .transaction(Box::new(move |uow| {
+        Box::pin(async move {
+            uow.credentials().update(&credential).await?;
+            uow.sessions().save(&session).await?;
+            uow.outbox().save(&event).await?;
+            Ok(())
+        })
+    }))
+    .await?;
+```
+
+The Postgres impl uses a shared `SharedTx = Arc<Mutex<Option<Transaction<'static, Postgres>>>>` (from `common::infrastructure::outbox`) so every sub-writer can borrow the same transaction concurrently. Dropping the UoW without calling `commit` rolls the transaction back automatically — `run_in_transaction` relies on that safety net.
 
 ---
 
@@ -520,3 +563,129 @@ cargo          = "warn"
 ```
 
 All error propagation uses `?` with `From` conversions (`thiserror`). Panics are compile-time forbidden. Allowed exceptions: `module_name_repetitions`, `too_many_lines`, `missing_errors_doc`, `type_complexity`, `needless_pass_by_value`, `struct_excessive_bools`.
+
+---
+
+## 19. Transactional Outbox + Idempotent Consumer
+
+Any service that publishes domain events to NATS JetStream writes them through the **Transactional Outbox** pattern instead of publishing inline. This guarantees the DB write and the event are committed atomically, and that any service downstream sees each event at-least-once with stable IDs.
+
+The reusable building blocks live in `common::infrastructure::outbox`:
+
+- `OutboxWriter` / `PgOutboxWriter` — transactional writer for `outbox_events`. Composed into every per-service `UnitOfWork` so application services enqueue events in the same SQLx transaction as their aggregate writes.
+- `OutboxRepository` — fetches publishable rows scoped to a `source_service`, applies exponential backoff on failure (`POWER(2, retry_count) s`, capped at 1h).
+- `OutboxPublisherTask` — periodic `BackgroundTask` that drains the outbox to JetStream, stamping each event with `Nats-Msg-Id = event_id` so JetStream rejects duplicate publishes within the stream's `duplicate_window`.
+- `OutboxStreamConfig` + `ensure_stream` — shared stream config (retention, max-age, duplicate window) used by both publisher and consumer so the two sides cannot drift.
+- `JetStreamEventHandler` / `JetStreamConsumerRunner` — trait-based idempotent consumer. The runner unwraps the `EventEnvelope`, inserts `event_id` into `processed_events` inside a transaction, calls the handler with the same transaction, and ack's on success. Duplicates are detected by the `processed_events` `event_id` primary key and skipped.
+- `ephemeral_fanout_consumer` — helper for realtime fan-out (e.g. `realtime-service`) where missed events are acceptable. Creates an ephemeral pull consumer with `deliver_policy: New` and `inactive_threshold: 60s`.
+
+### Publisher side (writer + worker)
+
+```rust
+// application service: enqueue event in the same transaction as the aggregate write
+let outbox = NewOutboxEvent {
+    id: envelope.event_id,
+    aggregate_id: message.id(),
+    aggregate_type: "chat_message".into(),
+    event_type: "chat.message.created".into(),
+    payload: serde_json::to_value(&envelope)?,
+};
+
+uow_factory.transaction(Box::new(move |uow| {
+    Box::pin(async move {
+        uow.messages().save(&message).await?;
+        uow.outbox().save(&outbox).await?;
+        Ok(())
+    })
+})).await?;
+
+// External side-effects (email, gRPC notifications) run AFTER commit.
+```
+
+```rust
+// bootstrap: spawn the publisher worker
+let repository = Arc::new(OutboxRepository::new(db_pool, "chat-service"));
+let stream = OutboxStreamConfig::new("CHAT_EVENTS", vec!["chat.>".into()]);
+let task = OutboxPublisherTask::new("chat-outbox-publisher", repository, &nats_url, &stream).await?;
+tokio::spawn(common::infrastructure::background::run_periodic_task(task, shutdown_rx));
+```
+
+### Consumer side (idempotent handler)
+
+```rust
+pub struct UserCreatedHandler;
+
+#[async_trait]
+impl JetStreamEventHandler for UserCreatedHandler {
+    type Event = UserCreatedPayload;
+    fn subject(&self) -> &str { "user.created" }
+    fn durable_name(&self) -> &str { "user-service-user-created" }
+
+    async fn handle(
+        &self,
+        tx: &mut Transaction<'_, Postgres>,
+        envelope: EventEnvelope<Self::Event>,
+    ) -> Result<(), anyhow::Error> {
+        sqlx::query("INSERT INTO user_profiles ...")
+            .bind(envelope.payload.user_id)
+            .execute(&mut **tx)
+            .await?;
+        Ok(())
+    }
+}
+
+// bootstrap:
+let runner = JetStreamConsumerRunner::new(db_pool, &nats_url, &stream_config, UserCreatedHandler).await?;
+tokio::spawn(runner.run(shutdown_rx));
+```
+
+### Required schema
+
+Every service that publishes events needs the `outbox_events` table (with `source_service` column to scope per-publisher fetches in shared databases); every service that consumes events needs `processed_events`:
+
+```sql
+CREATE TABLE outbox_events (
+    id              UUID         PRIMARY KEY,
+    aggregate_id    UUID         NOT NULL,
+    aggregate_type  TEXT         NOT NULL,
+    event_type      TEXT         NOT NULL,
+    payload         JSONB        NOT NULL,
+    source_service  TEXT         NOT NULL,
+    status          TEXT         NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'published', 'failed')),
+    retry_count     INTEGER      NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+    last_error      TEXT,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    next_retry_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    published_at    TIMESTAMPTZ
+);
+CREATE INDEX idx_outbox_events_publishable
+    ON outbox_events (source_service, next_retry_at)
+    WHERE status IN ('pending', 'failed');
+
+CREATE TABLE processed_events (
+    event_id     UUID         PRIMARY KEY,
+    event_type   TEXT         NOT NULL,
+    processed_at TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+```
+
+### Subject and stream conventions
+
+- One stream per domain: `USER_EVENTS` (`user.>`), `CHAT_EVENTS` (`chat.>`), `MESSAGING_EVENTS` (`messaging.>`).
+- Event types double as JetStream subjects: `user.created`, `chat.message.created`, `messaging.reaction.added`. The publisher uses `event.event_type` directly — no mapping layer.
+- Stream config (`retention: Limits`, `storage: File`, 7-day `max_age`, 2-hour `duplicate_window`) is shared via `OutboxStreamConfig` so publisher and consumer never disagree.
+
+### When to use which consumer
+
+- **Durable** state changes (e.g. user-service materialising user profiles from `user.created`): `JetStreamEventHandler` + `JetStreamConsumerRunner`. Requires `processed_events` and a stable `durable_name`. At-least-once delivery with idempotency at the DB layer.
+- **Ephemeral fan-out** (e.g. realtime-service pushing events to WebSocket clients): `ephemeral_fanout_consumer`. No durability, no idempotency — clients reconnect and lose missed events the same way they would with core pub/sub.
+
+### Why not inline NATS publish?
+
+A direct `nats.publish` after `repo.save` has three failure modes:
+1. DB commits, NATS publish fails — downstream consumers never see the event.
+2. NATS publish succeeds, DB transaction rolls back — phantom event referencing a row that doesn't exist.
+3. Process crashes between commit and publish — same as (1).
+
+The outbox eliminates all three because the DB write and the event are in the same transaction, and a separate worker is responsible for the unreliable network step.
