@@ -1,0 +1,6 @@
+[service]
+port = 8084
+grpc_port = 50054
+
+[database]
+database = "hermes_messaging"

@@ -136,7 +136,7 @@ rand = "0.8"
 # CONFIGURATION & ENVIRONMENT
 # ============================================================================
 config = "0.14"
-figment = { version = "0.10", features = ["env"] }
+figment = { version = "0.10", features = ["env", "toml"] }
 dotenvy = "0.15"
 
 # ============================================================================
@@ -264,4 +264,3 @@ opt-level = 1
 # - Redis for caching and presence tracking
 # - PostgreSQL for persistent storage
 # - GRPC for communication services each other
-

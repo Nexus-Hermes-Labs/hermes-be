@@ -1,0 +1,6 @@
+[service]
+port = 8086
+grpc_port = 50056
+
+[database]
+database = "hermes_guild"

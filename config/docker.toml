@@ -1,0 +1,21 @@
+[database]
+host = "hermes-postgres"
+
+[redis]
+host = "hermes-redis"
+
+[nats]
+servers = "hermes-nats:4222"
+
+[smtp]
+host = "hermes-mailpit"
+
+[logging]
+format = "json"
+otlp_endpoint = "http://hermes-tempo:4317"
+
+[grpc_endpoints]
+auth_service = "http://hermes-auth-service:50051"
+user_service = "http://hermes-user-service:50052"
+guild_service = "http://hermes-guild-service:50056"
+channel_service = "http://hermes-channel-service:50053"

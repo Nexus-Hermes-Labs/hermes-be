@@ -1,0 +1,6 @@
+[service]
+port = 8083
+grpc_port = 50053
+
+[database]
+database = "hermes_channel"

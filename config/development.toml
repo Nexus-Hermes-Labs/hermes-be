@@ -1,0 +1,2 @@
+# Local cargo-run defaults live in base.toml. Keep this file for local-only
+# overrides that should not leak into Docker or production.

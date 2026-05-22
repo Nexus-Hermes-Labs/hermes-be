@@ -19,7 +19,10 @@ pub use service::ServiceConfig;
 pub use smtp::SmtpConfig;
 
 use crate::error::ConfigError;
-use figment::{providers::Env, Figment};
+use figment::{
+    providers::{Env, Format, Toml},
+    Figment,
+};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::env;
@@ -44,32 +47,42 @@ pub struct Config {
 }
 
 impl Config {
-    /// Load configuration strictly from environment variables.
+    /// Load configuration from TOML files, then apply environment overrides.
     ///
     /// Priority order (highest to lowest):
-    /// 1. System Environment Variables (OS level, e.g., Docker ENV)
-    /// 2. Service-specific .env (services/{service_name}/.env)
-    /// 3. Root .env (workspace root, for shared local defaults)
+    /// 1. Environment variables (`APP_...`; OS env and dotenv-loaded values)
+    /// 2. Service-specific TOML (`config/services/{service_name}.toml`)
+    /// 3. Environment TOML (`config/{APP_CONFIG_ENV}.toml`, default: development)
+    /// 4. Base TOML (`config/base.toml`)
+    ///
+    /// `.env` files are still loaded before extraction so local secrets, SQLx
+    /// URLs, and one-off overrides keep working.
     pub fn load(service_name: &str) -> Result<Self, ConfigError> {
-        // 1. Load root .env file if present (useful for shared local db/redis)
+        // Load root .env file if present (useful for SQLx URLs and local secrets).
         dotenvy::dotenv().ok();
 
-        // 2. Load service-specific .env (overrides root .env)
+        // Load service-specific .env (overrides root .env when variables are not
+        // already provided by the OS/container environment).
         let service_env_path = format!("services/{}/.env", service_name);
         dotenvy::from_filename(&service_env_path).ok();
 
-        // 3. Force set the service name in the environment to avoid hardcoding in .env files
+        // Force set the service name in the environment to avoid drift between
+        // binaries and config files.
         env::set_var("APP_SERVICE__NAME", service_name);
 
-        // 4. Extract configuration using Figment
-        // It reads variables starting with APP_, splitting by __ for nested structs
-        // Example: APP_DATABASE__HOST maps to config.database.host
+        let config_env = env::var("APP_CONFIG_ENV").unwrap_or_else(|_| "development".to_string());
+
+        // Extract configuration using Figment. Environment variables starting
+        // with APP_ split by __ into nested structs, e.g.
+        // APP_DATABASE__HOST -> config.database.host.
         let config: Config = Figment::new()
+            .merge(Toml::file("config/base.toml"))
+            .merge(Toml::file(format!("config/{}.toml", config_env)))
+            .merge(Toml::file(format!("config/services/{}.toml", service_name)))
             .merge(Env::prefixed("APP_").split("__"))
             .extract()
             .map_err(|e| ConfigError::Extraction(e.to_string()))?;
 
-        // 5. Run nested validations
         config.validate()?;
 
         Ok(config)

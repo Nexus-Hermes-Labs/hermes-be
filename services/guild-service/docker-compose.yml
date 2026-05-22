@@ -9,21 +9,7 @@ services:
     restart: unless-stopped
     env_file: ../../.env
     environment:
-      APP_SERVICE__NAME: guild-service
-      APP_SERVICE__VERSION: "1.0.0"
-      APP_SERVICE__HOST: "0.0.0.0"
-      APP_SERVICE__PORT: "8086"
-      APP_SERVICE__GRPC_PORT: "50056"
-      APP_SERVICE__ENVIRONMENT: development
-      APP_LOGGING__FORMAT: json
-      APP_LOGGING__OTLP_ENDPOINT: http://hermes-tempo:4317
-      APP_DATABASE__HOST: hermes-postgres
-      APP_DATABASE__DATABASE: hermes_guild
-      APP_REDIS__HOST: hermes-redis
-      APP_NATS__SERVERS: hermes-nats:4222
-      APP_SMTP__HOST: hermes-mailpit
-      APP_GRPC_ENDPOINTS__USER_SERVICE: http://hermes-user-service:50052
-      APP_GRPC_ENDPOINTS__CHANNEL_SERVICE: http://hermes-channel-service:50053
+      APP_CONFIG_ENV: docker
     ports:
       - "8086:8086"
       - "50056:50056"

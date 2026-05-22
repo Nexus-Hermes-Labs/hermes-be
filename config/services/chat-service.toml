@@ -1,0 +1,3 @@
+[service]
+port = 8094
+grpc_port = 50064
