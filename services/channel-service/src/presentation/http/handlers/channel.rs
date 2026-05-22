@@ -77,7 +77,7 @@ pub async fn list_guild_channels(
         .list_guild_channels(guild_id)
         .await?;
 
-    let total = channels.len() as i64;
+    let total = i64::try_from(channels.len()).unwrap_or(i64::MAX);
     Ok(Json(ChannelListResponse {
         channels: channels.into_iter().map(ChannelResponse::from).collect(),
         total,

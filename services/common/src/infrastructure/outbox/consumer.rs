@@ -130,10 +130,7 @@ impl<H: JetStreamEventHandler> JetStreamConsumerRunner<H> {
         }
     }
 
-    async fn process(
-        &self,
-        message: &async_nats::jetstream::Message,
-    ) -> Result<(), anyhow::Error> {
+    async fn process(&self, message: &async_nats::jetstream::Message) -> Result<(), anyhow::Error> {
         let envelope: EventEnvelope<H::Event> = serde_json::from_slice(&message.payload)?;
         let event_id = envelope.event_id;
         let event_type = envelope.event_type.clone();

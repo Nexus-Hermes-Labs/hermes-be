@@ -1,6 +1,6 @@
 use axum::Router;
-use chat_service::application::{MessageService, ReactionService};
 use chat_service::application::ports::ChatUnitOfWorkFactory;
+use chat_service::application::{MessageService, ReactionService};
 use chat_service::infrastructure::persistence::postgres::PgChatUnitOfWorkFactory;
 use chat_service::infrastructure::persistence::{
     PostgresMessageRepository, PostgresReactionRepository,
@@ -20,6 +20,7 @@ use tower_http::cors::CorsLayer;
 // ============================================
 
 const ENUMS_SQL: &str = "
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TYPE message_type      AS ENUM ('text', 'system');
 CREATE TYPE conversation_type AS ENUM ('dm', 'group_dm');
 ";
@@ -218,8 +219,10 @@ impl TestHarness {
 
         let message_repo = Arc::new(PostgresMessageRepository::new(pool.clone()));
         let reaction_repo = Arc::new(PostgresReactionRepository::new(pool.clone()));
-        let uow_factory: Arc<dyn ChatUnitOfWorkFactory> =
-            Arc::new(PgChatUnitOfWorkFactory::new(pool.clone(), "chat-service-test"));
+        let uow_factory: Arc<dyn ChatUnitOfWorkFactory> = Arc::new(PgChatUnitOfWorkFactory::new(
+            pool.clone(),
+            "chat-service-test",
+        ));
 
         let message_service = Arc::new(MessageService::new(
             "chat-service-test",

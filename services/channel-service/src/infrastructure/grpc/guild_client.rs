@@ -52,7 +52,6 @@ impl GuildGrpcClient {
         let channel = self.endpoint.connect_lazy();
         GuildServiceClient::with_interceptor(channel, RequestIdInterceptor)
     }
-
 }
 
 #[async_trait]

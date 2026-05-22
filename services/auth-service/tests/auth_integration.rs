@@ -433,7 +433,9 @@ async fn test_refresh_rotates_token() {
 
     let (status, body) = refresh(&harness, original).await;
     assert_eq!(status, StatusCode::OK, "body: {body}");
-    let new_refresh = body["refresh_token"].as_str().expect("rotated refresh_token");
+    let new_refresh = body["refresh_token"]
+        .as_str()
+        .expect("rotated refresh_token");
     assert_ne!(new_refresh, original, "expected a brand-new refresh token");
 
     // The new token works for another refresh.
@@ -466,12 +468,11 @@ async fn test_refresh_replay_in_grace_window_succeeds() {
     assert!(body["refresh_token"].is_string());
 
     // Session is still active.
-    let (active_count,): (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE",
-    )
-    .fetch_one(&harness.pool)
-    .await
-    .expect("count active sessions");
+    let (active_count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("count active sessions");
     assert_eq!(active_count, 1);
 }
 
@@ -525,7 +526,10 @@ async fn test_refresh_reuse_after_grace_revokes_all_sessions() {
             .fetch_one(&harness.pool)
             .await
             .unwrap();
-    assert_eq!(active, 0, "expected reuse detection to revoke every session");
+    assert_eq!(
+        active, 0,
+        "expected reuse detection to revoke every session"
+    );
 }
 
 #[tokio::test]
@@ -585,12 +589,10 @@ async fn test_refresh_slides_expiration() {
 
     // Backdate created_at + expires_at so the slide is observable even
     // when the rotation happens within the same second as registration.
-    sqlx::query(
-        "UPDATE auth_sessions SET expires_at = expires_at - INTERVAL '1 hour'",
-    )
-    .execute(&harness.pool)
-    .await
-    .expect("backdate expires_at");
+    sqlx::query("UPDATE auth_sessions SET expires_at = expires_at - INTERVAL '1 hour'")
+        .execute(&harness.pool)
+        .await
+        .expect("backdate expires_at");
 
     let (status, _) = refresh(&harness, original).await;
     assert_eq!(status, StatusCode::OK);

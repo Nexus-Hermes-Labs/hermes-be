@@ -316,7 +316,8 @@ mod tests {
 
     #[test]
     fn test_revoke_session() {
-        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
+        let mut session =
+            AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
 
         session.revoke();
 
@@ -327,7 +328,8 @@ mod tests {
 
     #[test]
     fn test_use_session_updates_last_used() {
-        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
+        let mut session =
+            AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
 
         let original_last_used = session.last_used_at();
         std::thread::sleep(std::time::Duration::from_millis(10));
@@ -339,7 +341,8 @@ mod tests {
 
     #[test]
     fn test_use_revoked_session_fails() {
-        let mut session = AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
+        let mut session =
+            AuthSession::create(Uuid::new_v4(), "hash".to_string(), 30, None, None, None);
 
         session.revoke();
 

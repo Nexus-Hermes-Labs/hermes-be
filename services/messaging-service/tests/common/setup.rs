@@ -1,11 +1,11 @@
 use axum::Router;
 use common::observability::{request_trace_layer, HealthCheck, Metrics};
+use messaging_service::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use messaging_service::application::{ConversationService, MessageService, ReactionService};
 use messaging_service::infrastructure::persistence::{
     PgMessagingUnitOfWorkFactory, PostgresConversationRepository, PostgresMessageRepository,
     PostgresReactionRepository,
 };
-use messaging_service::application::ports::unit_of_work::MessagingUnitOfWorkFactory;
 use messaging_service::state::messaging_state::MessagingState;
 use messaging_service::state::shared_state::SharedState;
 use messaging_service::state::AppState;
@@ -161,7 +161,8 @@ impl TestHarness {
         ));
         let conversation_service = Arc::new(ConversationService::new(
             "messaging-service-test",
-            conversation_repo as Arc<dyn messaging_service::domain::conversation::ConversationRepository>,
+            conversation_repo
+                as Arc<dyn messaging_service::domain::conversation::ConversationRepository>,
             uow_factory,
         ));
 

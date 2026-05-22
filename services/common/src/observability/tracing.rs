@@ -101,7 +101,8 @@ pub fn init_tracing(config: &LoggingConfig, service_name: &str, environment: &st
     Ok(())
 }
 
-fn json_console_layer<S>() -> fmt::Layer<S, fmt::format::JsonFields, fmt::format::Format<fmt::format::Json>>
+fn json_console_layer<S>(
+) -> fmt::Layer<S, fmt::format::JsonFields, fmt::format::Format<fmt::format::Json>>
 where
     S: tracing::Subscriber + for<'a> tracing_subscriber::registry::LookupSpan<'a>,
 {

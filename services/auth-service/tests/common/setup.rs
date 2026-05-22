@@ -68,6 +68,10 @@ const AUTH_SESSION_LAST_USED_IP_SQL: &str =
     include_str!("../../migrations/20260122000009_add_session_last_used_ip.sql");
 const AUTH_SESSION_DEVICE_ID_SQL: &str =
     include_str!("../../migrations/20260122000010_add_session_device_id.sql");
+const AUTH_OUTBOX_EVENTS_SQL: &str =
+    include_str!("../../migrations/20260122000011_create_outbox_events.sql");
+const AUTH_OUTBOX_NEXT_RETRY_SQL: &str =
+    include_str!("../../migrations/20260122000012_add_outbox_next_retry_at.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -89,7 +93,6 @@ fn get_or_init_metrics() -> Metrics {
         METRICS.clone().expect("metrics initialized")
     }
 }
-
 
 // ============================================
 // MOCK EMAIL SERVICE
@@ -353,6 +356,8 @@ impl TestHarness {
             ("auth refresh rotation", AUTH_REFRESH_ROTATION_SQL),
             ("auth session last_used_ip", AUTH_SESSION_LAST_USED_IP_SQL),
             ("auth session device_id", AUTH_SESSION_DEVICE_ID_SQL),
+            ("auth outbox events", AUTH_OUTBOX_EVENTS_SQL),
+            ("auth outbox next_retry_at", AUTH_OUTBOX_NEXT_RETRY_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)

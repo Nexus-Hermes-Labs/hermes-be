@@ -8,7 +8,7 @@ use crate::application::events::{
     ChatMessageCreatedEvent, ChatMessageDeletedEvent, ChatMessageUpdatedEvent,
 };
 use crate::application::ports::ChatUnitOfWorkFactory;
-use crate::domain::message::{Message, MessageRepository};
+use crate::domain::message::{Message, MessageError, MessageRepository};
 use crate::domain::MessageContent;
 
 use super::error::MessageServiceError;
@@ -36,6 +36,13 @@ impl MessageService {
             service_name: service_name.into(),
             message_repo,
             uow_factory,
+        }
+    }
+
+    fn map_message_error(error: MessageError) -> MessageServiceError {
+        match error {
+            MessageError::NotAuthor => MessageServiceError::Forbidden(error.to_string()),
+            other => MessageServiceError::DomainError(other),
         }
     }
 
@@ -147,7 +154,7 @@ impl MessageService {
         let content = MessageContent::new(new_content).map_err(MessageServiceError::DomainError)?;
         message
             .edit(requester_id, content)
-            .map_err(MessageServiceError::DomainError)?;
+            .map_err(Self::map_message_error)?;
 
         let outbox = self.outbox_event(
             message.id(),
@@ -187,7 +194,7 @@ impl MessageService {
 
         message
             .soft_delete(requester_id)
-            .map_err(MessageServiceError::DomainError)?;
+            .map_err(Self::map_message_error)?;
 
         let outbox = self.outbox_event(
             message.id(),

@@ -27,6 +27,7 @@ pub struct MessagingMessageCreatedEvent {
 }
 
 impl MessagingMessageCreatedEvent {
+    #[must_use]
     pub fn from_message(m: &Message) -> Self {
         Self {
             message_id: m.id(),
@@ -58,6 +59,7 @@ pub struct MessagingMessageUpdatedEvent {
 }
 
 impl MessagingMessageUpdatedEvent {
+    #[must_use]
     pub fn from_message(m: &Message) -> Self {
         Self {
             message_id: m.id(),
@@ -79,6 +81,7 @@ impl IntoEventEnvelope for MessagingMessageUpdatedEvent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(clippy::struct_field_names)]
 pub struct MessagingMessageDeletedEvent {
     pub message_id: Uuid,
     pub channel_id: Option<Uuid>,
@@ -87,6 +90,8 @@ pub struct MessagingMessageDeletedEvent {
 }
 
 impl MessagingMessageDeletedEvent {
+    #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn from_message(m: &Message) -> Self {
         Self {
             message_id: m.id(),
@@ -114,6 +119,7 @@ pub struct MessagingReactionAddedEvent {
 }
 
 impl MessagingReactionAddedEvent {
+    #[must_use]
     pub fn from_reaction(r: &Reaction) -> Self {
         Self {
             message_id: r.message_id(),
@@ -157,6 +163,7 @@ pub struct MessagingConversationCreatedEvent {
 }
 
 impl MessagingConversationCreatedEvent {
+    #[must_use]
     pub fn new(conv: &Conversation, member_ids: &[Uuid]) -> Self {
         Self {
             conversation_id: conv.id(),

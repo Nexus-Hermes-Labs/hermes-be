@@ -6,7 +6,9 @@ use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use common::infrastructure::outbox::{new_shared_tx, tx_consumed_err, OutboxWriter, PgOutboxWriter, SharedTx};
+use common::infrastructure::outbox::{
+    new_shared_tx, tx_consumed_err, OutboxWriter, PgOutboxWriter, SharedTx,
+};
 use common::infrastructure::persistence::error::RepositoryError;
 use common::infrastructure::persistence::unit_of_work::UnitOfWork;
 

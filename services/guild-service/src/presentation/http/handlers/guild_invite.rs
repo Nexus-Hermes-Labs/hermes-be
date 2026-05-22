@@ -6,9 +6,9 @@ use axum::{
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::presentation::dto::guild::response::GuildResponse;
 use crate::presentation::dto::guild_invite::request::CreateInviteRequest;
 use crate::presentation::dto::guild_invite::response::InviteResponse;
+use crate::presentation::dto::guild_member::response::GuildMemberResponse;
 use crate::state::AppState;
 use common::middleware::authentication::RequestUser;
 
@@ -80,7 +80,7 @@ pub async fn get_invite(
     path = "/api/v1/invites/{code}/use",
     params(("code" = String, Path, description = "Invite code")),
     responses(
-        (status = 200, description = "Joined guild", body = GuildResponse),
+        (status = 200, description = "Joined guild", body = GuildMemberResponse),
         (status = 400, description = "Invite invalid or exhausted"),
         (status = 401, description = "Unauthorized"),
         (status = 404, description = "Invite not found"),
@@ -92,17 +92,12 @@ pub async fn use_invite(
     State(state): State<AppState>,
     RequestUser { id: user_id, .. }: RequestUser,
     Path(code): Path<String>,
-) -> Result<Json<GuildResponse>, ApiError> {
+) -> Result<Json<GuildMemberResponse>, ApiError> {
     if code.is_empty() || code.len() > 100 || code.contains('\0') {
         return Err(ApiError::bad_request("Invalid invite code format"));
     }
     let member = state.guild.invite_service.use_invite(code, user_id).await?;
-    let guild = state
-        .guild
-        .guild_service
-        .get_guild(member.guild_id())
-        .await?;
-    Ok(Json(GuildResponse::from(guild)))
+    Ok(Json(GuildMemberResponse::from(member)))
 }
 
 /// DELETE /`api/v1/guilds/:guild_id/invites/:code`

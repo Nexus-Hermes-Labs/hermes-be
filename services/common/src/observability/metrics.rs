@@ -52,7 +52,6 @@ impl Metrics {
 
 /// Stateless `/metrics` router. Service routers nest this at `/metrics`
 /// after [`Metrics::init`] has run during bootstrap.
-#[must_use]
 pub fn metrics_routes() -> Router {
     Router::new().route("/", get(render_metrics))
 }

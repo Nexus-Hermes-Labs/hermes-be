@@ -36,7 +36,12 @@ pub async fn run(state: AppState) {
     let messaging_config =
         OutboxStreamConfig::new("MESSAGING_EVENTS", vec!["messaging.>".to_string()]);
 
-    let chat = listen(jetstream.clone(), chat_config, "chat.>".to_string(), state.clone());
+    let chat = listen(
+        jetstream.clone(),
+        chat_config,
+        "chat.>".to_string(),
+        state.clone(),
+    );
     let messaging = listen(
         jetstream,
         messaging_config,
@@ -138,7 +143,10 @@ fn process_event(
 ) {
     // Subject suffix carries the semantic action regardless of which service
     // produced the event (`chat.message.created`, `messaging.message.created`).
-    let suffix = subject.split_once('.').map(|(_, rest)| rest).unwrap_or(subject);
+    let suffix = subject
+        .split_once('.')
+        .map(|(_, rest)| rest)
+        .unwrap_or(subject);
 
     match suffix {
         "message.created" => {

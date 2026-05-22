@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use async_nats::jetstream::{
     self,
-    stream::{Config, RetentionPolicy, Stream, StorageType},
+    stream::{Config, RetentionPolicy, StorageType, Stream},
 };
 
 /// Configuration shared between the outbox publisher and any consumer that

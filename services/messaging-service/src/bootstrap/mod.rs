@@ -38,7 +38,7 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
     sqlx::migrate!("./migrations")
         .run(&db_pool)
         .await
-        .map_err(|e| BootstrapError::Initialization(format!("Migration failed: {}", e)))?;
+        .map_err(|e| BootstrapError::Initialization(format!("Migration failed: {e}")))?;
     info!("✅ Migrations applied");
 
     // ========================================

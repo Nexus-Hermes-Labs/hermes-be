@@ -8,14 +8,12 @@ use crate::infrastructure::persistence::error::RepositoryError;
 /// Future type returned by a transaction callback. The borrow of the
 /// [`UnitOfWork`] must outlive the inner future, hence the HRTB on
 /// [`UowCallback`].
-pub type UowFuture<'a> =
-    Pin<Box<dyn Future<Output = Result<(), RepositoryError>> + Send + 'a>>;
+pub type UowFuture<'a> = Pin<Box<dyn Future<Output = Result<(), RepositoryError>> + Send + 'a>>;
 
 /// Boxed closure executed inside [`run_in_transaction`]. Each service exposes a
 /// type alias that fixes the trait-object argument (e.g.
 /// `UowCallback<'a, dyn AuthUnitOfWork>`).
-pub type UowCallback<'a, U> =
-    Box<dyn for<'uow> FnOnce(&'uow U) -> UowFuture<'uow> + Send + 'a>;
+pub type UowCallback<'a, U> = Box<dyn for<'uow> FnOnce(&'uow U) -> UowFuture<'uow> + Send + 'a>;
 
 /// Shared commit/rollback contract for every per-service unit of work.
 ///
