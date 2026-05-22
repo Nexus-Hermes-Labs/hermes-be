@@ -64,13 +64,17 @@ help: ## Display this help message
 
 ##@ Setup
 
-.PHONY: install setup
+.PHONY: install setup config-check
 install: ## Install development dependencies
 	@echo -e "$(BLUE)Installing dependencies...$(NC)"
 	@cargo install sqlx-cli --no-default-features --features postgres
 	@cargo install cargo-watch
 	@cargo install cargo-audit
 	@echo -e "$(GREEN)Done$(NC)"
+
+config-check: ## Verify TOML service ports match Compose and Traefik routing
+	@bash scripts/check-config-sync.sh
+	@echo -e "$(GREEN)Config is in sync$(NC)"
 
 setup: up ## Initial project setup (infra up + migrate + seed)
 	@echo -e "$(BLUE)Setting up project...$(NC)"
@@ -406,7 +410,7 @@ test-api-shell: ## Open interactive Schemathesis shell
 ##@ CI/CD
 
 .PHONY: ci pre-commit
-ci: format-check lint test ## Run CI checks locally
+ci: config-check format-check check lint test ## Run CI checks locally
 	@echo -e "$(GREEN)All CI checks passed$(NC)"
 
 pre-commit: format lint test ## Run before committing
