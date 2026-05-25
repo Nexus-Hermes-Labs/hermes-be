@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(make *)",
+      "Bash(docker *)",
+      "Bash(docker compose *)",
+      "Bash(git *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(ls *)",
+      "Bash(wc *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(sort *)",
+      "Bash(diff *)",
+      "Bash(du *)",
+      "Bash(jq *)",
+      "Bash(sed *)",
+      "Bash(psql *)",
+      "Bash(curl *)",
+      "Bash(echo *)",
+      "Bash(timeout *)",
+      "Bash(xargs *)",
+      "Bash(python3 *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "filepath=\"$CLAUDE_TOOL_ARG_file_path\"; if [ -n \"$filepath\" ] && echo \"$filepath\" | grep -q '\\.rs$'; then cargo fmt -- \"$filepath\" 2>/dev/null; fi",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}
