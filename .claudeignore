@@ -1,0 +1,22 @@
+# Lock file — 6000+ lines, no useful context
+Cargo.lock
+
+# Build artifacts
+target/
+
+# Postman collection — large JSON, use Swagger/utoipa instead
+postman/
+
+# Grafana dashboard JSON — machine-generated, edit via Grafana UI
+infra/grafana/provisioning/dashboards/*.json
+
+# Python venv (config migration scripts)
+.venv/
+
+# Reports and coverage
+reports/
+coverage/
+
+# IDE files
+.idea/
+.vscode/

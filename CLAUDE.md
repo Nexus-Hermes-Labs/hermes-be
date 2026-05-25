@@ -23,6 +23,16 @@ For backend-specific context:
 - **Transactional Outbox** for event publishing (not inline NATS publish)
 - **`RequestUser`** extractor reads identity from Traefik-injected headers
 
+## Files You Should Never Read
+
+- `Cargo.lock` — 6000+ lines of dependency versions, zero useful context
+- `target/` — build artifacts
+- `postman/` — large Postman JSON; use Swagger UI instead (`localhost:808x/swagger-ui`)
+- `infra/grafana/provisioning/dashboards/*.json` — machine-generated
+- `.venv/`, `reports/`, `coverage/` — transient
+
+When exploring services, start from `src/domain/` (business rules) or `src/presentation/http/routes/` (endpoint wiring). The vault already summarizes each service's purpose, endpoints, and domain model — read `../hermes-vault/02-services/{name}.md` before diving into source.
+
 ## Lint Policy
 
 ```

@@ -10,6 +10,15 @@ Backend-specific vault files:
 - `../hermes-vault/03-domain/event-contracts.md` — NATS event subjects and payloads
 - `../hermes-vault/03-domain/outbox-pattern.md` — transactional outbox
 
+## Never Read These Files
+
+- `Cargo.lock` — 6000+ lines, no context
+- `target/`, `.venv/`, `reports/`, `coverage/` — build/transient artifacts
+- `postman/` — use Swagger UI at `localhost:808x/swagger-ui`
+- `infra/grafana/provisioning/dashboards/*.json` — machine-generated
+
+Start from `src/domain/` or `src/presentation/http/routes/` when exploring a service.
+
 ## Conventions
 
 - Rust Cargo workspace, 14 crates
