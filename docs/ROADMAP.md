@@ -1,6 +1,6 @@
 # Hermes - Development Roadmap
 
-**Last Updated:** March 25, 2026
+**Last Updated:** May 25, 2026
 
 ## Table of Contents
 
@@ -31,16 +31,17 @@ Development is organized into four phases, each building on the last:
 ## Development Phases
 
 ```
-Phase 1 (MVP Core)           Phase 2 (Real-time)      Phase 3 (AI)         Phase 4 (Scale)
-+-------------------+        +-----------------+      +---------------+    +---------------+
-| Traefik (infra) ✅|        | presence-service|      | ai-service    |    | search-service|
-| auth-service    ✅|        | media-service   |      |  text xlat    |    | voice-service |
-| user-service    ✅|        | notification-svc|      |  STT          |    | moderation    |
-| guild-service   ✅|        +-----------------+      |  TTS          |    +---------------+
-| channel-service ✅|                                  +---------------+
-| chat-service    🔧|
-| realtime-service🔧|
-+-------------------+
+Phase 1 (MVP Core)            Phase 2 (Real-time)      Phase 3 (AI)         Phase 4 (Scale)
++--------------------+        +-----------------+      +---------------+    +---------------+
+| Traefik (infra)  ✅|        | presence-service|      | ai-service    |    | search-service|
+| auth-service     ✅|        | media-service   |      |  text xlat    |    | voice-service |
+| user-service     ✅|        | notification-svc|      |  STT          |    | moderation    |
+| guild-service    ✅|        +-----------------+      |  TTS          |    +---------------+
+| channel-service  ✅|                                  +---------------+
+| chat-service     🔧|
+| messaging-service🔧|
+| realtime-service 🔧|
++--------------------+
   ✅ = complete  🔧 = in progress  ⬜ = not started
 ```
 
@@ -140,7 +141,19 @@ Remaining work:
 - Full NATS event publishing for all message operations
 - Comprehensive test coverage
 
-### realtime-service (port 8080) — IN PROGRESS
+### messaging-service (port 8093) — IN PROGRESS
+
+| Layer | Status |
+|---|---|
+| Domain | Complete |
+| Application | Complete |
+| Infrastructure | In progress |
+| Presentation | In progress |
+| Tests | Partial |
+
+Covers: message delivery orchestration, reaction events. Publishes to `MESSAGING_EVENTS` stream via Transactional Outbox.
+
+### realtime-service (port 8092) — IN PROGRESS
 
 | Layer | Status |
 |---|---|
@@ -269,6 +282,7 @@ Cross-cutting concern, implemented as extensions to existing services:
 | **guild-service** | Done | Done | Done | Done | Done | **Complete** |
 | **channel-service** | Done | Done | Done | Done | Done | **Complete** |
 | **chat-service** | Done | Done | In progress | In progress | Partial | **~70%** |
+| **messaging-service** | Done | Done | In progress | In progress | Partial | **In progress** |
 | **realtime-service** | Done | In progress | In progress | In progress | Partial | **~50%** |
 | **presence-service** | Not started | Not started | Not started | Not started | Not started | **Stub** |
 | **media-service** | Not started | Not started | Not started | Not started | Not started | **Stub** |
@@ -288,7 +302,6 @@ Cross-cutting concern, implemented as extensions to existing services:
 | realtime-service typing indicator + heartbeat | High | Blocks MVP completion | Remaining WS features |
 | chat-service HTTP endpoints incomplete | High | Blocks MVP completion | Remaining handlers and DTOs |
 | No integration tests for gRPC flows | Medium | Quality risk | Cross-service gRPC communication untested end-to-end |
-| Centralized logging partially complete | Low | Ops risk | Loki + Promtail deployed; Prometheus metrics and health checks not on all services |
 | Shared database for all services | Low | Scale risk | Acceptable for MVP, plan migration post-MVP |
 | No Redis caching layer in use | Low | Performance risk | Infrastructure wired, caching logic not yet applied |
 
@@ -303,7 +316,6 @@ Cross-cutting concern, implemented as extensions to existing services:
 **Post-MVP:**
 - Split to database-per-service
 - Activate Redis caching (sessions, profiles, relationships)
-- Structured distributed tracing with request ID propagation
 - Load testing and performance profiling under real workloads
 
 ---
