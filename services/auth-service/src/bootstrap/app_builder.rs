@@ -2,8 +2,10 @@
 use crate::application::services::authentication::service::AuthService;
 use crate::bootstrap::error::BootstrapError;
 use crate::domain::auth_credential::EmailService;
+use crate::domain::password_policy::PasswordPolicy;
 use crate::infrastructure::persistence::postgres::{
-    PgAuthUnitOfWorkFactory, PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
+    PgAuthUnitOfWorkFactory, PgRateLimiter, PostgresAuthCredentialRepository,
+    PostgresPasswordHistoryRepository, PostgresAuthSessionRepository,
 };
 use crate::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use crate::infrastructure::security::token::sha256_service::Sha256TokenHasher;
@@ -195,6 +197,10 @@ impl AppBuilder {
         Ok(Repositories {
             credential: Arc::new(PostgresAuthCredentialRepository::new(infra.pool.clone())),
             session: Arc::new(PostgresAuthSessionRepository::new(infra.pool.clone())),
+            password_history: Arc::new(PostgresPasswordHistoryRepository::new(
+                infra.pool.clone(),
+            )),
+            rate_limiter: Arc::new(PgRateLimiter::new(infra.pool.clone())),
             uow_factory: Arc::new(PgAuthUnitOfWorkFactory::new(
                 infra.pool.clone(),
                 "auth-service",
@@ -226,6 +232,9 @@ impl AppBuilder {
             services.token_hasher,
             jwt_manager,
             email_service,
+            repos.password_history,
+            PasswordPolicy::default(),
+            repos.rate_limiter,
         ));
 
         Ok(Application {
@@ -279,6 +288,8 @@ struct Infrastructure {
 struct Repositories {
     credential: Arc<PostgresAuthCredentialRepository>,
     session: Arc<PostgresAuthSessionRepository>,
+    password_history: Arc<PostgresPasswordHistoryRepository>,
+    rate_limiter: Arc<PgRateLimiter>,
     uow_factory: Arc<PgAuthUnitOfWorkFactory>,
 }
 

@@ -6,9 +6,13 @@ use crate::domain::auth_credential::{
     AuthCredential, AuthCredentialRepository, Email, PasswordService,
 };
 use crate::domain::auth_session::{AuthSession, AuthSessionRepository, TokenHasher};
+use crate::domain::password_history::{PasswordHistory, PasswordHistoryRepository};
+use crate::domain::password_policy::PasswordPolicy;
+use crate::domain::rate_limit::{RateLimitResult, RateLimiter};
 use crate::presentation::http::dto::{
-    AuthResponse, ClientInfo, LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest,
-    RegisterResponse, UserProfile,
+    AuthResponse, ChangePasswordRequest, ClientInfo, ForgotPasswordRequest, ForgotPasswordResponse,
+    LoginRequest, LogoutResponse, RefreshTokenRequest, RegisterRequest, RegisterResponse,
+    ResetPasswordRequest, ResetPasswordResponse, UserProfile,
 };
 use chrono::Utc;
 use common::domain::event::IntoEventEnvelope;
@@ -71,6 +75,9 @@ pub struct AuthService {
     token_hasher: Arc<dyn TokenHasher>,
     jwt_manager: Arc<JwtManager>,
     email_service: Arc<dyn EmailService>,
+    password_history_repo: Arc<dyn PasswordHistoryRepository>,
+    password_policy: PasswordPolicy,
+    rate_limiter: Arc<dyn RateLimiter>,
 }
 
 // ============================================
@@ -86,6 +93,9 @@ impl AuthService {
         token_hasher: Arc<dyn TokenHasher>,
         jwt_manager: Arc<JwtManager>,
         email_service: Arc<dyn EmailService>,
+        password_history_repo: Arc<dyn PasswordHistoryRepository>,
+        password_policy: PasswordPolicy,
+        rate_limiter: Arc<dyn RateLimiter>,
     ) -> Self {
         Self {
             service_name: service_name.into(),
@@ -96,6 +106,9 @@ impl AuthService {
             token_hasher,
             jwt_manager,
             email_service,
+            password_history_repo,
+            password_policy,
+            rate_limiter,
         }
     }
 
@@ -139,6 +152,15 @@ impl AuthService {
             .map_err(|_| AuthApplicationError::InvalidEmail(request.email.clone()))?;
 
         // ═══════════════════════════════════════════════════
+        // STEP 1b: Validate Password Policy
+        // ═══════════════════════════════════════════════════
+        if let Err(violations) = self.password_policy.validate(&request.password) {
+            return Err(AuthApplicationError::PasswordPolicyViolation(
+                violations.join("; "),
+            ));
+        }
+
+        // ═══════════════════════════════════════════════════
         // STEP 2: Hash Password
         // ═══════════════════════════════════════════════════
         let password_hash = self
@@ -154,22 +176,6 @@ impl AuthService {
             user_id = %credential.user_id(),
             email = %credential.email(),
             "Auth credential created"
-        );
-
-        let user_profile = UserProfile {
-            user_id,
-            email: credential.email().as_str().to_string(),
-            username: request.username.clone(),
-            display_name: request.display_name.clone(),
-            avatar: None,
-            bio: None,
-            created_at: Utc::now(),
-        };
-
-        info!(
-            user_id = %credential.user_id(),
-            username = %user_profile.username,
-            "User profile creation queued via outbox"
         );
 
         // ═══════════════════════════════════════════════════
@@ -215,12 +221,29 @@ impl AuthService {
             client_info.device_id,
         );
 
+        let user_profile = UserProfile {
+            user_id,
+            email: credential.email().as_str().to_string(),
+            username: request.username.clone(),
+            display_name: request.display_name.clone(),
+            avatar: None,
+            bio: None,
+            created_at: Utc::now(),
+        };
+
+        info!(
+            user_id = %credential.user_id(),
+            username = %user_profile.username,
+            "User profile creation queued via outbox"
+        );
+
         let event = UserCreatedEvent::new(
             credential.user_id(),
             credential.email().as_str().to_string(),
-            request.username.clone(),
-            request.display_name.clone(),
+            user_profile.username.clone(),
+            user_profile.display_name.clone(),
         );
+
         let envelope = event.into_envelope(&self.service_name);
         let outbox_event = NewOutboxEvent {
             id: envelope.event_id,
@@ -308,6 +331,25 @@ impl AuthService {
         client_info: ClientInfo,
     ) -> Result<AuthResponse, AuthApplicationError> {
         info!(email = %request.email, "Login attempt");
+
+        // ═══════════════════════════════════════════════════
+        // RATE LIMIT CHECK
+        // ═══════════════════════════════════════════════════
+        let rate_key = format!("login:{}", request.email.to_lowercase());
+        match self.rate_limiter.check_rate_limit(&rate_key, 10, 300).await {
+            Ok(RateLimitResult::Exceeded {
+                retry_after_seconds,
+            }) => {
+                warn!(email = %request.email, "Login rate limited");
+                return Err(AuthApplicationError::RateLimited {
+                    retry_after_seconds,
+                });
+            }
+            Err(e) => {
+                warn!(error = %e, "Rate limiter error, proceeding without limit");
+            }
+            _ => {}
+        }
 
         // ═══════════════════════════════════════════════════
         // STEP 1: Find Credential
@@ -700,6 +742,230 @@ impl AuthService {
         Ok(LogoutResponse {
             message: "Logged out successfully".to_string(),
             sessions_revoked: revoked_count,
+        })
+    }
+
+    // ============================================
+    // FORGOT PASSWORD
+    // ============================================
+
+    pub async fn forgot_password(
+        &self,
+        request: ForgotPasswordRequest,
+    ) -> Result<ForgotPasswordResponse, AuthApplicationError> {
+        info!(email = %request.email, "Forgot password request");
+
+        let rate_key = format!("forgot_password:{}", request.email.to_lowercase());
+        match self.rate_limiter.check_rate_limit(&rate_key, 3, 600).await {
+            Ok(RateLimitResult::Exceeded {
+                retry_after_seconds,
+            }) => {
+                warn!(email = %request.email, "Forgot password rate limited");
+                return Err(AuthApplicationError::RateLimited {
+                    retry_after_seconds,
+                });
+            }
+            Err(e) => {
+                warn!(error = %e, "Rate limiter error, proceeding without limit");
+            }
+            _ => {}
+        }
+
+        let email = Email::new(&request.email)
+            .map_err(|_| AuthApplicationError::InvalidEmail(request.email.clone()))?;
+
+        // Always return success to prevent email enumeration
+        let credential = self.credential_repo.find_by_email(&email).await?;
+
+        if let Some(mut credential) = credential {
+            let token = credential.generate_password_reset_token();
+            self.credential_repo.update(&credential).await?;
+
+            if let Err(e) = self
+                .email_service
+                .send_password_reset_email(credential.email().as_str(), &token)
+                .await
+            {
+                error!(error = %e, "Failed to send password reset email (non-critical)");
+            }
+        }
+
+        Ok(ForgotPasswordResponse {
+            message: "If the email exists, a password reset link has been sent.".to_string(),
+        })
+    }
+
+    // ============================================
+    // RESET PASSWORD (via token)
+    // ============================================
+
+    pub async fn reset_password(
+        &self,
+        request: ResetPasswordRequest,
+    ) -> Result<ResetPasswordResponse, AuthApplicationError> {
+        info!("Password reset attempt");
+
+        if let Err(violations) = self.password_policy.validate(&request.new_password) {
+            return Err(AuthApplicationError::PasswordPolicyViolation(
+                violations.join("; "),
+            ));
+        }
+
+        let mut credential = self
+            .credential_repo
+            .find_by_password_reset_token(&request.token)
+            .await?
+            .ok_or(AuthApplicationError::InvalidToken)?;
+
+        // Check password history
+        let history = self
+            .password_history_repo
+            .find_recent_by_credential(credential.id(), self.password_policy.history_count as i64)
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        let new_hash = self
+            .password_service
+            .hash_password(&request.new_password)
+            .map_err(|_| AuthApplicationError::HashingFailed)?;
+
+        for entry in &history {
+            if self
+                .password_service
+                .verify_password(
+                    &request.new_password,
+                    &crate::domain::auth_credential::PasswordHash::from_hash(entry.password_hash()),
+                )
+                .unwrap_or(false)
+            {
+                return Err(AuthApplicationError::PasswordRecentlyUsed);
+            }
+        }
+
+        // Save current password to history before changing
+        let history_entry = PasswordHistory::new(
+            credential.id(),
+            credential.password_hash().as_str().to_string(),
+        );
+        self.password_history_repo
+            .save(&history_entry)
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        credential
+            .reset_password(&request.token, new_hash)
+            .map_err(|_| AuthApplicationError::InvalidToken)?;
+
+        self.credential_repo.update(&credential).await?;
+
+        // Prune old history entries
+        let _ = self
+            .password_history_repo
+            .delete_oldest_beyond_limit(credential.id(), self.password_policy.history_count as i64)
+            .await;
+
+        // Revoke all sessions on password reset
+        self.session_repo
+            .revoke_all_by_credential_id(credential.id())
+            .await?;
+
+        info!(user_id = %credential.user_id(), "Password reset successfully");
+
+        Ok(ResetPasswordResponse {
+            message: "Password has been reset successfully. Please log in again.".to_string(),
+        })
+    }
+
+    // ============================================
+    // CHANGE PASSWORD (authenticated)
+    // ============================================
+
+    pub async fn change_password(
+        &self,
+        user_id: Uuid,
+        request: ChangePasswordRequest,
+    ) -> Result<ResetPasswordResponse, AuthApplicationError> {
+        info!(user_id = %user_id, "Change password request");
+
+        if let Err(violations) = self.password_policy.validate(&request.new_password) {
+            return Err(AuthApplicationError::PasswordPolicyViolation(
+                violations.join("; "),
+            ));
+        }
+
+        let mut credential = self
+            .credential_repo
+            .find_by_user_id(user_id)
+            .await?
+            .ok_or(AuthApplicationError::UserNotFound(user_id))?;
+
+        // Verify current password
+        let is_valid = self
+            .password_service
+            .verify_password(&request.current_password, credential.password_hash())
+            .map_err(|_| AuthApplicationError::HashingFailed)?;
+
+        if !is_valid {
+            return Err(AuthApplicationError::InvalidCredentials);
+        }
+
+        // Check password history
+        let history = self
+            .password_history_repo
+            .find_recent_by_credential(credential.id(), self.password_policy.history_count as i64)
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        for entry in &history {
+            if self
+                .password_service
+                .verify_password(
+                    &request.new_password,
+                    &crate::domain::auth_credential::PasswordHash::from_hash(entry.password_hash()),
+                )
+                .unwrap_or(false)
+            {
+                return Err(AuthApplicationError::PasswordRecentlyUsed);
+            }
+        }
+
+        // Also check against current password
+        if self
+            .password_service
+            .verify_password(&request.new_password, credential.password_hash())
+            .unwrap_or(false)
+        {
+            return Err(AuthApplicationError::PasswordRecentlyUsed);
+        }
+
+        // Save current password to history
+        let history_entry = PasswordHistory::new(
+            credential.id(),
+            credential.password_hash().as_str().to_string(),
+        );
+        self.password_history_repo
+            .save(&history_entry)
+            .await
+            .map_err(|e| AuthApplicationError::RepositoryError(e.to_string()))?;
+
+        let new_hash = self
+            .password_service
+            .hash_password(&request.new_password)
+            .map_err(|_| AuthApplicationError::HashingFailed)?;
+
+        credential.change_password(new_hash);
+        self.credential_repo.update(&credential).await?;
+
+        // Prune old history
+        let _ = self
+            .password_history_repo
+            .delete_oldest_beyond_limit(credential.id(), self.password_policy.history_count as i64)
+            .await;
+
+        info!(user_id = %user_id, "Password changed successfully");
+
+        Ok(ResetPasswordResponse {
+            message: "Password changed successfully.".to_string(),
         })
     }
 }

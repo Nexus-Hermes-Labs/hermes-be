@@ -1,7 +1,9 @@
 use auth_service::application::services::authentication::service::AuthService;
 use auth_service::infrastructure::grpc::UserGrpcClient;
+use auth_service::domain::password_policy::PasswordPolicy;
 use auth_service::infrastructure::persistence::postgres::{
-    PgAuthUnitOfWorkFactory, PostgresAuthCredentialRepository, PostgresAuthSessionRepository,
+    PgAuthUnitOfWorkFactory, PgRateLimiter, PostgresAuthCredentialRepository,
+    PostgresPasswordHistoryRepository, PostgresAuthSessionRepository,
 };
 use auth_service::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use auth_service::infrastructure::security::token::sha256_service::Sha256TokenHasher;
@@ -72,6 +74,10 @@ const AUTH_OUTBOX_EVENTS_SQL: &str =
     include_str!("../../migrations/20260122000011_create_outbox_events.sql");
 const AUTH_OUTBOX_NEXT_RETRY_SQL: &str =
     include_str!("../../migrations/20260122000012_add_outbox_next_retry_at.sql");
+const AUTH_PASSWORD_HISTORY_SQL: &str =
+    include_str!("../../migrations/20260526000001_create_password_history.sql");
+const AUTH_RATE_LIMIT_BUCKETS_SQL: &str =
+    include_str!("../../migrations/20260526000002_create_rate_limit_buckets.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -111,6 +117,20 @@ impl auth_service::domain::auth_credential::EmailService for MockEmailService {
     {
         tracing::info!(
             "MockEmailService: Sending verification email to {} with token {}",
+            to,
+            token
+        );
+        Ok(())
+    }
+
+    async fn send_password_reset_email(
+        &self,
+        to: &str,
+        token: &str,
+    ) -> Result<(), auth_service::application::services::authentication::error::AuthApplicationError>
+    {
+        tracing::info!(
+            "MockEmailService: Sending password reset email to {} with token {}",
             to,
             token
         );
@@ -358,6 +378,8 @@ impl TestHarness {
             ("auth session device_id", AUTH_SESSION_DEVICE_ID_SQL),
             ("auth outbox events", AUTH_OUTBOX_EVENTS_SQL),
             ("auth outbox next_retry_at", AUTH_OUTBOX_NEXT_RETRY_SQL),
+            ("auth password history", AUTH_PASSWORD_HISTORY_SQL),
+            ("auth rate limit buckets", AUTH_RATE_LIMIT_BUCKETS_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)
@@ -438,6 +460,10 @@ impl TestHarness {
         let token_hasher = Arc::new(Sha256TokenHasher::new());
         let email_service = Arc::new(MockEmailService);
 
+        let password_history_repo =
+            Arc::new(PostgresPasswordHistoryRepository::new(pool.clone()));
+        let rate_limiter = Arc::new(PgRateLimiter::new(pool.clone()));
+
         let auth_service = Arc::new(AuthService::new(
             "test-auth-service",
             credential_repo.clone(),
@@ -447,6 +473,9 @@ impl TestHarness {
             token_hasher,
             jwt_manager.clone(),
             email_service.clone(),
+            password_history_repo,
+            PasswordPolicy::default(),
+            rate_limiter,
         ));
 
         let auth_state = AuthState::new(auth_service, jwt_manager, credential_repo, session_repo);

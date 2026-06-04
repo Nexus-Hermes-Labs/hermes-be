@@ -138,6 +138,33 @@ impl From<AuthApplicationError> for ApiError {
                 }
             }
 
+            // 400 Bad Request - Password Policy
+            AuthApplicationError::PasswordPolicyViolation(ref msg) => ApiError {
+                status: StatusCode::BAD_REQUEST,
+                message: msg.clone(),
+                code: "PASSWORD_POLICY_VIOLATION".to_string(),
+            },
+
+            // 409 Conflict - Password History
+            AuthApplicationError::PasswordRecentlyUsed => ApiError {
+                status: StatusCode::CONFLICT,
+                message: "This password was recently used. Please choose a different one."
+                    .to_string(),
+                code: "PASSWORD_RECENTLY_USED".to_string(),
+            },
+
+            // 429 Too Many Requests
+            AuthApplicationError::RateLimited {
+                retry_after_seconds,
+            } => ApiError {
+                status: StatusCode::TOO_MANY_REQUESTS,
+                message: format!(
+                    "Too many requests. Please try again in {} seconds.",
+                    retry_after_seconds
+                ),
+                code: "RATE_LIMITED".to_string(),
+            },
+
             // 500 Internal Server Error
             AuthApplicationError::HashingFailed
             | AuthApplicationError::TokenGenerationFailed(_)
