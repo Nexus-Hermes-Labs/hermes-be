@@ -84,6 +84,21 @@ pub enum AuthApplicationError {
     AccountDeleted,
 
     // =====================================================
+    // PASSWORD POLICY ERRORS
+    // =====================================================
+    #[error("Password policy violation: {0}")]
+    PasswordPolicyViolation(String),
+
+    #[error("Password was recently used")]
+    PasswordRecentlyUsed,
+
+    // =====================================================
+    // RATE LIMITING ERRORS
+    // =====================================================
+    #[error("Too many requests, retry after {retry_after_seconds} seconds")]
+    RateLimited { retry_after_seconds: i64 },
+
+    // =====================================================
     // USER SERVICE CLIENT ERRORS
     // =====================================================
     #[error("User service transport error: {0}")]

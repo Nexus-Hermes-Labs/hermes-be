@@ -77,4 +77,10 @@ pub trait EmailService: Send + Sync + Debug {
         to: &str,
         token: &str,
     ) -> Result<(), AuthApplicationError>;
+
+    async fn send_password_reset_email(
+        &self,
+        to: &str,
+        token: &str,
+    ) -> Result<(), AuthApplicationError>;
 }

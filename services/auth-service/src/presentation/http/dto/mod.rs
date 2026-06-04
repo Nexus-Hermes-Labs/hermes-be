@@ -17,6 +17,7 @@
 
 mod login;
 mod logout;
+mod password;
 mod refresh;
 mod register;
 mod shared;
@@ -34,6 +35,12 @@ pub use login::{LoginRequest, LoginResponse};
 
 // Logout endpoint
 pub use logout::{LogoutRequest, LogoutResponse};
+
+// Password management endpoints
+pub use password::{
+    ChangePasswordRequest, ForgotPasswordRequest, ForgotPasswordResponse, ResetPasswordRequest,
+    ResetPasswordResponse,
+};
 
 // Refresh endpoint
 pub use refresh::{RefreshTokenRequest, RefreshTokenResponse};

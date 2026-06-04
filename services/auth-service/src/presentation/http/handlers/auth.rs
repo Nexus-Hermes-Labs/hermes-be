@@ -1,7 +1,9 @@
 use crate::application::services::authentication::error::AuthApplicationError;
 use crate::presentation::http::dto::{
-    AuthResponse, AuthResponseWithUser, ClientInfo, LoginRequest, LogoutRequest, LogoutResponse,
-    RefreshTokenRequest, RegisterRequest, VerifyEmailRequest, VerifyEmailResponse,
+    AuthResponse, AuthResponseWithUser, ChangePasswordRequest, ClientInfo, ForgotPasswordRequest,
+    ForgotPasswordResponse, LoginRequest, LogoutRequest, LogoutResponse, RefreshTokenRequest,
+    RegisterRequest, ResetPasswordRequest, ResetPasswordResponse, VerifyEmailRequest,
+    VerifyEmailResponse,
 };
 use crate::presentation::http::error::ApiError;
 use crate::state::app_state::AppState;
@@ -200,6 +202,110 @@ pub async fn verify_email_handler(
     let response = crate::presentation::http::dto::VerifyEmailResponse {
         message: "Email verified successfully".to_string(),
     };
+
+    Ok((StatusCode::OK, Json(response)).into_response())
+}
+
+/// POST /api/v1/auth/forgot-password
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/forgot-password",
+    request_body = ForgotPasswordRequest,
+    responses(
+        (status = 200, description = "Reset email sent (if account exists)", body = ForgotPasswordResponse),
+        (status = 400, description = "Validation error"),
+        (status = 429, description = "Too many requests")
+    ),
+    tag = "auth"
+)]
+pub async fn forgot_password_handler(
+    State(state): State<AppState>,
+    Json(request): Json<ForgotPasswordRequest>,
+) -> Result<Response, ApiError> {
+    request.validate()?;
+
+    let response = state
+        .auth
+        .service
+        .forgot_password(request)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok((StatusCode::OK, Json(response)).into_response())
+}
+
+/// POST /api/v1/auth/reset-password
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/reset-password",
+    request_body = ResetPasswordRequest,
+    responses(
+        (status = 200, description = "Password reset successful", body = ResetPasswordResponse),
+        (status = 400, description = "Validation or policy error"),
+        (status = 401, description = "Invalid or expired token"),
+        (status = 409, description = "Password recently used")
+    ),
+    tag = "auth"
+)]
+pub async fn reset_password_handler(
+    State(state): State<AppState>,
+    Json(request): Json<ResetPasswordRequest>,
+) -> Result<Response, ApiError> {
+    request.validate()?;
+
+    let response = state
+        .auth
+        .service
+        .reset_password(request)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok((StatusCode::OK, Json(response)).into_response())
+}
+
+/// POST /api/v1/auth/change-password
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/change-password",
+    request_body = ChangePasswordRequest,
+    responses(
+        (status = 200, description = "Password changed", body = ResetPasswordResponse),
+        (status = 400, description = "Validation or policy error"),
+        (status = 401, description = "Invalid current password"),
+        (status = 409, description = "Password recently used")
+    ),
+    tag = "auth",
+    security(("bearer_auth" = []))
+)]
+pub async fn change_password_handler(
+    State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
+    Json(request): Json<ChangePasswordRequest>,
+) -> Result<Response, ApiError> {
+    request.validate()?;
+
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .ok_or(ApiError::from(AuthApplicationError::InvalidToken))?;
+
+    let claims = state
+        .auth
+        .jwt_manager
+        .verify_access_token(token)
+        .map_err(|_| ApiError::from(AuthApplicationError::InvalidToken))?;
+
+    let user_id = claims
+        .user_id()
+        .map_err(|_| ApiError::from(AuthApplicationError::InvalidToken))?;
+
+    let response = state
+        .auth
+        .service
+        .change_password(user_id, request)
+        .await
+        .map_err(ApiError::from)?;
 
     Ok((StatusCode::OK, Json(response)).into_response())
 }

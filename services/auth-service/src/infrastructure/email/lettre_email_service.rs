@@ -99,4 +99,37 @@ impl EmailService for LettreEmailService {
 
         Ok(())
     }
+
+    async fn send_password_reset_email(&self, to: &str, token: &str) -> Result<(), AppError> {
+        let to_mailbox = to
+            .parse::<Mailbox>()
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        let reset_link = format!(
+            "http://localhost:3000/reset-password?token={}",
+            token
+        );
+        let subject = "Hermes — Password Reset Request";
+        let body = format!(
+            "<h1>Password Reset</h1><p>Click the link below to reset your password. This link expires in 1 hour.</p><p><a href='{}'>Reset Password</a></p><p>If you did not request this, please ignore this email.</p>",
+            reset_link
+        );
+
+        let email = Message::builder()
+            .from(self.from_address.clone())
+            .to(to_mailbox)
+            .subject(subject)
+            .header(lettre::message::header::ContentType::TEXT_HTML)
+            .body(body)
+            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        self.mailer
+            .send(email)
+            .await
+            .map_err(|e| AppError::Internal(format!("Failed to send email: {}", e)))?;
+
+        tracing::info!("Sent password reset email to {}", to);
+
+        Ok(())
+    }
 }

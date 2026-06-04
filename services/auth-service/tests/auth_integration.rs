@@ -82,7 +82,7 @@ async fn test_register_success() {
         "alice@example.com",
         "alice",
         "Alice",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -104,7 +104,7 @@ async fn test_register_email_normalization() {
         "verify@example.com",
         "verifyuser",
         "Verify User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -116,7 +116,7 @@ async fn test_register_email_normalization() {
         "VERIFY@example.com",
         "verifyuser2",
         "Verify User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -128,7 +128,7 @@ async fn test_register_email_normalization() {
         "VERify@example.com",
         "verifyuser1",
         "Verify User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -144,7 +144,7 @@ async fn test_register_writes_user_created_outbox_event() {
         "outbox@example.com",
         "outboxuser",
         "Outbox User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -169,12 +169,12 @@ async fn test_email_verification_success() {
         "verify@example.com",
         "verifyuser",
         "Verify User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
     // 2. Try login (should fail because not verified)
-    let (status, body) = login_user(&harness, "verify@example.com", "strongpassword123").await;
+    let (status, body) = login_user(&harness, "verify@example.com", "StrongPassword123").await;
     assert_eq!(status, StatusCode::FORBIDDEN);
     assert_eq!(body["code"], "EMAIL_NOT_VERIFIED");
 
@@ -182,7 +182,7 @@ async fn test_email_verification_success() {
     verify_email(&harness, "verify@example.com").await;
 
     // 4. Try login again (should succeed)
-    let (status, _) = login_user(&harness, "verify@example.com", "strongpassword123").await;
+    let (status, _) = login_user(&harness, "verify@example.com", "StrongPassword123").await;
     assert_eq!(status, StatusCode::OK);
 }
 
@@ -195,7 +195,7 @@ async fn test_register_duplicate_email() {
         "dup@example.com",
         "user_one",
         "User One",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     assert_eq!(status, StatusCode::CREATED);
@@ -206,7 +206,7 @@ async fn test_register_duplicate_email() {
         "dup@example.com",
         "user_two",
         "User Two",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     assert_eq!(status, StatusCode::CONFLICT);
@@ -221,7 +221,7 @@ async fn test_register_invalid_email() {
         "not-an-email",
         "validuser",
         "Valid User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -252,7 +252,7 @@ async fn test_register_invalid_username() {
         "upper@example.com",
         "UpperCase",
         "Upper",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -263,7 +263,7 @@ async fn test_register_invalid_username() {
         "short@example.com",
         "ab",
         "Short",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
@@ -301,14 +301,14 @@ async fn test_login_success() {
         "login@example.com",
         "loginuser",
         "Login User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
     // Must verify email before login
     verify_email(&harness, "login@example.com").await;
 
-    let (status, body) = login_user(&harness, "login@example.com", "strongpassword123").await;
+    let (status, body) = login_user(&harness, "login@example.com", "StrongPassword123").await;
 
     assert_eq!(status, StatusCode::OK, "body: {body}");
     assert!(body["access_token"].is_string());
@@ -325,7 +325,7 @@ async fn test_login_wrong_password() {
         "wrongpw@example.com",
         "wrongpw",
         "Wrong PW",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -340,7 +340,7 @@ async fn test_login_wrong_password() {
 async fn test_login_nonexistent_email() {
     let harness = TestHarness::new().await;
 
-    let (status, _) = login_user(&harness, "nobody@example.com", "strongpassword123").await;
+    let (status, _) = login_user(&harness, "nobody@example.com", "StrongPassword123").await;
 
     // Should be 401 or 404
     assert!(
@@ -353,7 +353,7 @@ async fn test_login_nonexistent_email() {
 async fn test_login_invalid_email_format() {
     let harness = TestHarness::new().await;
 
-    let (status, _) = login_user(&harness, "not-an-email", "strongpassword123").await;
+    let (status, _) = login_user(&harness, "not-an-email", "StrongPassword123").await;
     assert_eq!(status, StatusCode::BAD_REQUEST);
 }
 
@@ -370,7 +370,7 @@ async fn test_refresh_token_success() {
         "refresh@example.com",
         "refreshuser",
         "Refresh User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -426,7 +426,7 @@ async fn test_refresh_rotates_token() {
         "rotate@example.com",
         "rotateuser",
         "Rotate User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     let original = reg_body["refresh_token"].as_str().expect("refresh_token");
@@ -454,7 +454,7 @@ async fn test_refresh_replay_in_grace_window_succeeds() {
         "grace@example.com",
         "graceuser",
         "Grace User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     let original = reg_body["refresh_token"].as_str().expect("refresh_token");
@@ -485,14 +485,14 @@ async fn test_refresh_reuse_after_grace_revokes_all_sessions() {
         "reuse@example.com",
         "reuseuser",
         "Reuse User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     let original = reg_body["refresh_token"].as_str().expect("refresh_token");
 
     // Verify so we can log in to add a second session.
     verify_email(&harness, "reuse@example.com").await;
-    let (_, login_body) = login_user(&harness, "reuse@example.com", "strongpassword123").await;
+    let (_, login_body) = login_user(&harness, "reuse@example.com", "StrongPassword123").await;
     let _other_refresh = login_body["refresh_token"].as_str().expect("login refresh");
 
     // Two active sessions exist.
@@ -544,7 +544,7 @@ async fn test_refresh_captures_client_ip_via_xff() {
         "ipaudit@example.com",
         "ipaudit",
         "IP Audit",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     let original = reg_body["refresh_token"].as_str().expect("refresh_token");
@@ -576,7 +576,7 @@ async fn test_refresh_slides_expiration() {
         "slide@example.com",
         "slideuser",
         "Slide User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     let original = reg_body["refresh_token"].as_str().expect("refresh_token");
@@ -637,7 +637,7 @@ async fn test_logout_success() {
         "logout@example.com",
         "logoutuser",
         "Logout User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -665,7 +665,7 @@ async fn test_logout_all_devices() {
         "logoutall@example.com",
         "logoutall",
         "Logout All",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
 
@@ -673,10 +673,10 @@ async fn test_logout_all_devices() {
     verify_email(&harness, "logoutall@example.com").await;
 
     // Login a first time to get tokens
-    let (_, reg_body) = login_user(&harness, "logoutall@example.com", "strongpassword123").await;
+    let (_, reg_body) = login_user(&harness, "logoutall@example.com", "StrongPassword123").await;
 
     // Login a second time (simulating another device)
-    let (_, _login_body) = login_user(&harness, "logoutall@example.com", "strongpassword123").await;
+    let (_, _login_body) = login_user(&harness, "logoutall@example.com", "StrongPassword123").await;
 
     let refresh_token = reg_body["refresh_token"].as_str().expect("refresh_token");
 
@@ -732,7 +732,7 @@ async fn test_full_auth_flow() {
         "flow@example.com",
         "flowuser",
         "Flow User",
-        "strongpassword123",
+        "StrongPassword123",
     )
     .await;
     assert_eq!(status, StatusCode::CREATED, "register failed: {reg_body}");
@@ -741,7 +741,7 @@ async fn test_full_auth_flow() {
     verify_email(&harness, "flow@example.com").await;
 
     // 2. Login
-    let (status, login_body) = login_user(&harness, "flow@example.com", "strongpassword123").await;
+    let (status, login_body) = login_user(&harness, "flow@example.com", "StrongPassword123").await;
     assert_eq!(status, StatusCode::OK, "login failed: {login_body}");
 
     // 3. Refresh
@@ -778,4 +778,581 @@ async fn test_full_auth_flow() {
     )
     .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+// ============================================
+// PASSWORD POLICY TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_register_password_policy_no_uppercase() {
+    let harness = TestHarness::new().await;
+
+    let (status, body) = register_user(
+        &harness,
+        "nouppercase@example.com",
+        "nouppercase",
+        "No Upper",
+        "alllowercase123",
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST, "body: {body}");
+    assert_eq!(body["code"], "PASSWORD_POLICY_VIOLATION");
+}
+
+#[tokio::test]
+async fn test_register_password_policy_no_digit() {
+    let harness = TestHarness::new().await;
+
+    let (status, body) = register_user(
+        &harness,
+        "nodigit@example.com",
+        "nodigit",
+        "No Digit",
+        "AllLettersNoDigit",
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST, "body: {body}");
+    assert_eq!(body["code"], "PASSWORD_POLICY_VIOLATION");
+}
+
+#[tokio::test]
+async fn test_register_password_policy_no_lowercase() {
+    let harness = TestHarness::new().await;
+
+    let (status, body) = register_user(
+        &harness,
+        "nolower@example.com",
+        "nolower",
+        "No Lower",
+        "ALLUPPERCASE123",
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST, "body: {body}");
+    assert_eq!(body["code"], "PASSWORD_POLICY_VIOLATION");
+}
+
+// ============================================
+// FORGOT PASSWORD TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_forgot_password_existing_user() {
+    let harness = TestHarness::new().await;
+
+    register_user(
+        &harness,
+        "forgot@example.com",
+        "forgotuser",
+        "Forgot User",
+        "StrongPassword123",
+    )
+    .await;
+
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "forgot@example.com" })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert!(body["message"].is_string());
+
+    // Verify token was written to DB
+    let row: (Option<String>,) =
+        sqlx::query_as("SELECT password_reset_token FROM auth_credentials WHERE email = $1")
+            .bind("forgot@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("fetch reset token");
+
+    assert!(row.0.is_some(), "password_reset_token should be set in DB");
+}
+
+#[tokio::test]
+async fn test_forgot_password_nonexistent_user_returns_ok() {
+    let harness = TestHarness::new().await;
+
+    // Should still return 200 to prevent email enumeration
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "nobody@example.com" })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+}
+
+#[tokio::test]
+async fn test_forgot_password_invalid_email() {
+    let harness = TestHarness::new().await;
+
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "not-an-email" })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+// ============================================
+// RESET PASSWORD TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_reset_password_success() {
+    let harness = TestHarness::new().await;
+
+    // 1. Register
+    register_user(
+        &harness,
+        "reset@example.com",
+        "resetuser",
+        "Reset User",
+        "StrongPassword123",
+    )
+    .await;
+
+    // 2. Forgot password
+    make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "reset@example.com" })),
+    )
+    .await;
+
+    // 3. Get token from DB
+    let row: (Option<String>,) =
+        sqlx::query_as("SELECT password_reset_token FROM auth_credentials WHERE email = $1")
+            .bind("reset@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("fetch reset token");
+    let token = row.0.expect("reset token should exist");
+
+    // 4. Reset password
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/reset-password",
+        Some(json!({
+            "token": token,
+            "new_password": "NewStrongPassword456"
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+
+    // 5. Verify email and login with new password
+    verify_email(&harness, "reset@example.com").await;
+
+    let (status, _) = login_user(&harness, "reset@example.com", "NewStrongPassword456").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // 6. Old password should not work
+    let (status, _) = login_user(&harness, "reset@example.com", "StrongPassword123").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_reset_password_invalid_token() {
+    let harness = TestHarness::new().await;
+
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/reset-password",
+        Some(json!({
+            "token": "invalid-token-12345",
+            "new_password": "NewStrongPassword456"
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "body: {body}");
+}
+
+#[tokio::test]
+async fn test_reset_password_policy_violation() {
+    let harness = TestHarness::new().await;
+
+    // Register + forgot password
+    register_user(
+        &harness,
+        "resetpolicy@example.com",
+        "resetpolicy",
+        "Reset Policy",
+        "StrongPassword123",
+    )
+    .await;
+
+    make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "resetpolicy@example.com" })),
+    )
+    .await;
+
+    let row: (Option<String>,) =
+        sqlx::query_as("SELECT password_reset_token FROM auth_credentials WHERE email = $1")
+            .bind("resetpolicy@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    let token = row.0.unwrap();
+
+    // Try to reset with weak password (no uppercase)
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/reset-password",
+        Some(json!({
+            "token": token,
+            "new_password": "weakpassword123"
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::BAD_REQUEST, "body: {body}");
+    assert_eq!(body["code"], "PASSWORD_POLICY_VIOLATION");
+}
+
+#[tokio::test]
+async fn test_reset_password_revokes_sessions() {
+    let harness = TestHarness::new().await;
+
+    // Register + verify + login to create a session
+    register_user(
+        &harness,
+        "revokesess@example.com",
+        "revokesess",
+        "Revoke Sess",
+        "StrongPassword123",
+    )
+    .await;
+    verify_email(&harness, "revokesess@example.com").await;
+    login_user(&harness, "revokesess@example.com", "StrongPassword123").await;
+
+    // Count active sessions before reset
+    let (before,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    assert!(before >= 2, "expected at least 2 active sessions");
+
+    // Forgot + reset
+    make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "revokesess@example.com" })),
+    )
+    .await;
+
+    let row: (Option<String>,) =
+        sqlx::query_as("SELECT password_reset_token FROM auth_credentials WHERE email = $1")
+            .bind("revokesess@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    let token = row.0.unwrap();
+
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/reset-password",
+        Some(json!({
+            "token": token,
+            "new_password": "BrandNewPassword789"
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // All sessions should be revoked
+    let (after,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_sessions WHERE is_revoked = FALSE")
+            .fetch_one(&harness.pool)
+            .await
+            .unwrap();
+    assert_eq!(after, 0, "all sessions should be revoked after password reset");
+}
+
+// ============================================
+// CHANGE PASSWORD TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_change_password_success() {
+    let harness = TestHarness::new().await;
+
+    // Register + verify + login to get access token
+    register_user(
+        &harness,
+        "changepw@example.com",
+        "changepwuser",
+        "Change PW",
+        "StrongPassword123",
+    )
+    .await;
+    verify_email(&harness, "changepw@example.com").await;
+
+    let (_, login_body) =
+        login_user(&harness, "changepw@example.com", "StrongPassword123").await;
+    let access_token = login_body["access_token"].as_str().expect("access_token");
+
+    // Change password
+    let (status, body) = make_json_request_with_headers(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/change-password",
+        Some(json!({
+            "current_password": "StrongPassword123",
+            "new_password": "NewChangedPassword456"
+        })),
+        &[("authorization", &format!("Bearer {}", access_token))],
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+
+    // Login with new password
+    let (status, _) = login_user(&harness, "changepw@example.com", "NewChangedPassword456").await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Old password should not work
+    let (status, _) = login_user(&harness, "changepw@example.com", "StrongPassword123").await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_change_password_wrong_current() {
+    let harness = TestHarness::new().await;
+
+    register_user(
+        &harness,
+        "wrongcurr@example.com",
+        "wrongcurr",
+        "Wrong Curr",
+        "StrongPassword123",
+    )
+    .await;
+    verify_email(&harness, "wrongcurr@example.com").await;
+
+    let (_, login_body) =
+        login_user(&harness, "wrongcurr@example.com", "StrongPassword123").await;
+    let access_token = login_body["access_token"].as_str().expect("access_token");
+
+    let (status, body) = make_json_request_with_headers(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/change-password",
+        Some(json!({
+            "current_password": "WrongPassword999",
+            "new_password": "NewStrongPassword456"
+        })),
+        &[("authorization", &format!("Bearer {}", access_token))],
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::UNAUTHORIZED, "body: {body}");
+}
+
+#[tokio::test]
+async fn test_change_password_no_auth_header() {
+    let harness = TestHarness::new().await;
+
+    let (status, _) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/change-password",
+        Some(json!({
+            "current_password": "StrongPassword123",
+            "new_password": "NewStrongPassword456"
+        })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_change_password_reuse_current() {
+    let harness = TestHarness::new().await;
+
+    register_user(
+        &harness,
+        "reusecurr@example.com",
+        "reusecurr",
+        "Reuse Curr",
+        "StrongPassword123",
+    )
+    .await;
+    verify_email(&harness, "reusecurr@example.com").await;
+
+    let (_, login_body) =
+        login_user(&harness, "reusecurr@example.com", "StrongPassword123").await;
+    let access_token = login_body["access_token"].as_str().expect("access_token");
+
+    // Try to change to the same password
+    let (status, body) = make_json_request_with_headers(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/change-password",
+        Some(json!({
+            "current_password": "StrongPassword123",
+            "new_password": "StrongPassword123"
+        })),
+        &[("authorization", &format!("Bearer {}", access_token))],
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "body: {body}");
+    assert_eq!(body["code"], "PASSWORD_RECENTLY_USED");
+}
+
+// ============================================
+// PASSWORD HISTORY TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_password_history_prevents_reuse() {
+    let harness = TestHarness::new().await;
+
+    register_user(
+        &harness,
+        "history@example.com",
+        "historyuser",
+        "History User",
+        "OriginalPassword1",
+    )
+    .await;
+    verify_email(&harness, "history@example.com").await;
+
+    // Change password once
+    let (_, login_body) =
+        login_user(&harness, "history@example.com", "OriginalPassword1").await;
+    let access_token = login_body["access_token"].as_str().expect("access_token");
+
+    let (status, _) = make_json_request_with_headers(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/change-password",
+        Some(json!({
+            "current_password": "OriginalPassword1",
+            "new_password": "SecondPassword2"
+        })),
+        &[("authorization", &format!("Bearer {}", access_token))],
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+
+    // Login with new password, get new token
+    let (_, login_body) =
+        login_user(&harness, "history@example.com", "SecondPassword2").await;
+    let access_token = login_body["access_token"].as_str().expect("access_token");
+
+    // Try to reuse the first password — should be rejected
+    let (status, body) = make_json_request_with_headers(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/change-password",
+        Some(json!({
+            "current_password": "SecondPassword2",
+            "new_password": "OriginalPassword1"
+        })),
+        &[("authorization", &format!("Bearer {}", access_token))],
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::CONFLICT, "body: {body}");
+    assert_eq!(body["code"], "PASSWORD_RECENTLY_USED");
+}
+
+// ============================================
+// RATE LIMITING TESTS
+// ============================================
+
+#[tokio::test]
+async fn test_forgot_password_rate_limit() {
+    let harness = TestHarness::new().await;
+
+    register_user(
+        &harness,
+        "ratelimit@example.com",
+        "ratelimituser",
+        "Rate Limit",
+        "StrongPassword123",
+    )
+    .await;
+
+    // Forgot password allows 3 requests per 10 minutes
+    for i in 0..3 {
+        let (status, _) = make_json_request(
+            harness.router.clone(),
+            Method::POST,
+            "/api/v1/auth/forgot-password",
+            Some(json!({ "email": "ratelimit@example.com" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "request {} should succeed", i + 1);
+    }
+
+    // 4th request should be rate limited
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/forgot-password",
+        Some(json!({ "email": "ratelimit@example.com" })),
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "body: {body}");
+    assert_eq!(body["code"], "RATE_LIMITED");
+}
+
+#[tokio::test]
+async fn test_login_rate_limit() {
+    let harness = TestHarness::new().await;
+
+    register_user(
+        &harness,
+        "loginrl@example.com",
+        "loginrluser",
+        "Login RL",
+        "StrongPassword123",
+    )
+    .await;
+    verify_email(&harness, "loginrl@example.com").await;
+
+    // Login allows 10 requests per 5 minutes
+    for i in 0..10 {
+        let (status, _) = login_user(&harness, "loginrl@example.com", "WrongPassword999").await;
+        // Each might be 401 (wrong password) or 403 (account locked after 5 fails)
+        assert!(
+            status == StatusCode::UNAUTHORIZED || status == StatusCode::FORBIDDEN,
+            "request {} expected 401 or 403, got {}",
+            i + 1,
+            status
+        );
+    }
+
+    // 11th request should be rate limited
+    let (status, body) = login_user(&harness, "loginrl@example.com", "WrongPassword999").await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "body: {body}");
+    assert_eq!(body["code"], "RATE_LIMITED");
 }
