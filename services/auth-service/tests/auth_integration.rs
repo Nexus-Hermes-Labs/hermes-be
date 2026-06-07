@@ -1356,3 +1356,213 @@ async fn test_login_rate_limit() {
     assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "body: {body}");
     assert_eq!(body["code"], "RATE_LIMITED");
 }
+
+// ============================================
+// OAUTH (GOOGLE) — Architecture A end-to-end
+//
+// The flow is exercised through the real router, repos, Unit of Work and Redis
+// state store; only the Google provider is faked (see common::fake_google).
+// ============================================
+
+use auth_service::application::ports::oauth_provider::OAuthUserInfo;
+
+/// Pull the CSRF `state` out of the authorize URL the fake echoes it into.
+fn extract_state(authorize_url: &str) -> String {
+    authorize_url
+        .split("state=")
+        .nth(1)
+        .expect("authorize_url contains state")
+        .to_string()
+}
+
+/// Run the full Google dance: start authorization (to seed Redis state), then
+/// POST the brokered `{code, state}` to the callback.
+async fn google_login(harness: &TestHarness) -> (StatusCode, serde_json::Value) {
+    let (status, body) = make_json_request(
+        harness.router.clone(),
+        Method::GET,
+        "/api/v1/auth/oauth/google",
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "authorize body: {body}");
+
+    let authorize_url = body["authorize_url"]
+        .as_str()
+        .expect("authorize_url present");
+    let state = extract_state(authorize_url);
+
+    make_json_request(
+        harness.router.clone(),
+        Method::POST,
+        "/api/v1/auth/oauth/google/callback",
+        Some(json!({ "code": "fake-auth-code", "state": state })),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn test_oauth_google_new_user_creates_verified_credential() {
+    let harness = TestHarness::new().await;
+    harness.google_client.set_user_info(OAuthUserInfo {
+        provider_user_id: "google-sub-new".to_string(),
+        email: "newoauth@example.com".to_string(),
+        email_verified: true,
+        display_name: Some("New OAuth User".to_string()),
+    });
+
+    let (status, body) = google_login(&harness).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+    assert!(body["access_token"].as_str().is_some(), "body: {body}");
+    assert!(body["refresh_token"].as_str().is_some(), "body: {body}");
+
+    // A verified credential was created.
+    let (verified,): (bool,) =
+        sqlx::query_as("SELECT email_verified FROM auth_credentials WHERE email = $1")
+            .bind("newoauth@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("credential exists");
+    assert!(verified, "OAuth credential should be email-verified");
+
+    // The oauth link was recorded.
+    let (link_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM oauth_accounts WHERE provider = 'google' AND provider_user_id = $1",
+    )
+    .bind("google-sub-new")
+    .fetch_one(&harness.pool)
+    .await
+    .expect("count oauth accounts");
+    assert_eq!(link_count, 1);
+
+    // A user.created event was queued for user-service.
+    let (event_count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM outbox_events WHERE event_type = 'user.created'")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("count outbox events");
+    assert_eq!(event_count, 1);
+}
+
+#[tokio::test]
+async fn test_oauth_google_links_existing_password_account() {
+    let harness = TestHarness::new().await;
+
+    // Existing verified password user.
+    register_user(
+        &harness,
+        "linkme@example.com",
+        "linkuser",
+        "Link User",
+        "StrongPassword123",
+    )
+    .await;
+    verify_email(&harness, "linkme@example.com").await;
+
+    let (credential_id,): (uuid::Uuid,) =
+        sqlx::query_as("SELECT id FROM auth_credentials WHERE email = $1")
+            .bind("linkme@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("existing credential");
+
+    // Google returns the same (verified) email under a fresh subject.
+    harness.google_client.set_user_info(OAuthUserInfo {
+        provider_user_id: "google-sub-link".to_string(),
+        email: "linkme@example.com".to_string(),
+        email_verified: true,
+        display_name: Some("Link User".to_string()),
+    });
+
+    let (status, body) = google_login(&harness).await;
+    assert_eq!(status, StatusCode::OK, "body: {body}");
+
+    // No second credential was created.
+    let (credential_count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_credentials WHERE email = $1")
+            .bind("linkme@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("count credentials");
+    assert_eq!(credential_count, 1);
+
+    // The link points at the pre-existing credential.
+    let (linked_credential_id,): (uuid::Uuid,) = sqlx::query_as(
+        "SELECT credential_id FROM oauth_accounts WHERE provider = 'google' AND provider_user_id = $1",
+    )
+    .bind("google-sub-link")
+    .fetch_one(&harness.pool)
+    .await
+    .expect("oauth link exists");
+    assert_eq!(linked_credential_id, credential_id);
+}
+
+#[tokio::test]
+async fn test_oauth_google_unverified_email_rejected() {
+    let harness = TestHarness::new().await;
+    harness.google_client.set_user_info(OAuthUserInfo {
+        provider_user_id: "google-sub-unverified".to_string(),
+        email: "unverified@example.com".to_string(),
+        email_verified: false,
+        display_name: None,
+    });
+
+    let (status, body) = google_login(&harness).await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "body: {body}");
+    assert_eq!(body["code"], "OAUTH_EMAIL_NOT_VERIFIED");
+
+    let (credential_count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_credentials WHERE email = $1")
+            .bind("unverified@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("count credentials");
+    assert_eq!(credential_count, 0, "no credential should be created");
+}
+
+#[tokio::test]
+async fn test_oauth_google_repeat_login_reuses_account() {
+    let harness = TestHarness::new().await;
+    harness.google_client.set_user_info(OAuthUserInfo {
+        provider_user_id: "google-sub-repeat".to_string(),
+        email: "repeat@example.com".to_string(),
+        email_verified: true,
+        display_name: Some("Repeat User".to_string()),
+    });
+
+    let (status1, _) = google_login(&harness).await;
+    assert_eq!(status1, StatusCode::OK);
+
+    let (status2, body2) = google_login(&harness).await;
+    assert_eq!(status2, StatusCode::OK, "body: {body2}");
+
+    // Still exactly one credential and one link.
+    let (credential_count,): (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM auth_credentials WHERE email = $1")
+            .bind("repeat@example.com")
+            .fetch_one(&harness.pool)
+            .await
+            .expect("count credentials");
+    assert_eq!(credential_count, 1);
+
+    let (link_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM oauth_accounts WHERE provider = 'google' AND provider_user_id = $1",
+    )
+    .bind("google-sub-repeat")
+    .fetch_one(&harness.pool)
+    .await
+    .expect("count oauth accounts");
+    assert_eq!(link_count, 1);
+
+    // Two sessions (one per login) for the credential.
+    let (session_count,): (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM auth_sessions s \
+         JOIN auth_credentials c ON c.id = s.credential_id \
+         WHERE c.email = $1",
+    )
+    .bind("repeat@example.com")
+    .fetch_one(&harness.pool)
+    .await
+    .expect("count sessions");
+    assert_eq!(session_count, 2);
+}

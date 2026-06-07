@@ -1,10 +1,14 @@
 use auth_service::application::services::authentication::service::AuthService;
+use auth_service::application::services::oauth::OAuthService;
 use auth_service::infrastructure::grpc::UserGrpcClient;
 use auth_service::domain::password_policy::PasswordPolicy;
+use auth_service::infrastructure::oauth::RedisOAuthStateStore;
 use auth_service::infrastructure::persistence::postgres::{
     PgAuthUnitOfWorkFactory, PgRateLimiter, PostgresAuthCredentialRepository,
-    PostgresPasswordHistoryRepository, PostgresAuthSessionRepository,
+    PostgresAuthSessionRepository, PostgresOAuthAccountRepository,
+    PostgresPasswordHistoryRepository,
 };
+use super::fake_google::FakeGoogleClient;
 use auth_service::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use auth_service::infrastructure::security::token::sha256_service::Sha256TokenHasher;
 use auth_service::presentation::grpc::proto::user::v1::user_service_server::{
@@ -78,6 +82,8 @@ const AUTH_PASSWORD_HISTORY_SQL: &str =
     include_str!("../../migrations/20260526000001_create_password_history.sql");
 const AUTH_RATE_LIMIT_BUCKETS_SQL: &str =
     include_str!("../../migrations/20260526000002_create_rate_limit_buckets.sql");
+const AUTH_OAUTH_ACCOUNTS_SQL: &str =
+    include_str!("../../migrations/20260607000001_create_oauth_accounts.sql");
 
 // JWT secrets (test-only, 32+ chars)
 const TEST_ACCESS_SECRET: &str = "test_access_secret_for_integration_tests_min_32_chars";
@@ -319,6 +325,9 @@ async fn start_mock_grpc_server(mode: UserServiceMode) -> String {
 pub struct TestHarness {
     pub router: Router,
     pub pool: PgPool,
+    /// Faked Google provider; tests set the profile it returns before calling
+    /// the OAuth callback.
+    pub google_client: Arc<FakeGoogleClient>,
     // Keep containers alive for the test duration
     _pg_container: ContainerAsync<Postgres>,
     _redis_container: ContainerAsync<GenericImage>,
@@ -380,6 +389,7 @@ impl TestHarness {
             ("auth outbox next_retry_at", AUTH_OUTBOX_NEXT_RETRY_SQL),
             ("auth password history", AUTH_PASSWORD_HISTORY_SQL),
             ("auth rate limit buckets", AUTH_RATE_LIMIT_BUCKETS_SQL),
+            ("auth oauth accounts", AUTH_OAUTH_ACCOUNTS_SQL),
         ];
         for (name, sql) in migrations {
             sqlx::raw_sql(sql)
@@ -455,6 +465,7 @@ impl TestHarness {
         );
         let credential_repo = Arc::new(PostgresAuthCredentialRepository::new(pool.clone()));
         let session_repo = Arc::new(PostgresAuthSessionRepository::new(pool.clone()));
+        let oauth_account_repo = Arc::new(PostgresOAuthAccountRepository::new(pool.clone()));
         let uow_factory = Arc::new(PgAuthUnitOfWorkFactory::new(pool.clone(), "auth-service"));
         let password_service = Arc::new(Argon2PasswordService::new());
         let token_hasher = Arc::new(Sha256TokenHasher::new());
@@ -468,9 +479,9 @@ impl TestHarness {
             "test-auth-service",
             credential_repo.clone(),
             session_repo.clone(),
-            uow_factory,
-            password_service,
-            token_hasher,
+            uow_factory.clone(),
+            password_service.clone(),
+            token_hasher.clone(),
             jwt_manager.clone(),
             email_service.clone(),
             password_history_repo,
@@ -478,7 +489,29 @@ impl TestHarness {
             rate_limiter,
         ));
 
-        let auth_state = AuthState::new(auth_service, jwt_manager, credential_repo, session_repo);
+        // OAuth: real repos/UoW/state-store (Redis from the test container); only
+        // the Google provider is faked so tests control the returned profile.
+        let google_client = Arc::new(FakeGoogleClient::default());
+        let state_store = Arc::new(RedisOAuthStateStore::new(redis_conn.clone()));
+        let oauth_service = Arc::new(OAuthService::new(
+            "test-auth-service",
+            oauth_account_repo,
+            credential_repo.clone(),
+            uow_factory,
+            password_service,
+            token_hasher,
+            jwt_manager.clone(),
+            state_store,
+            google_client.clone(),
+        ));
+
+        let auth_state = AuthState::new(
+            auth_service,
+            oauth_service,
+            jwt_manager,
+            credential_repo,
+            session_repo,
+        );
 
         let metrics = get_or_init_metrics();
 
@@ -512,6 +545,7 @@ impl TestHarness {
         Self {
             router,
             pool,
+            google_client,
             _pg_container: pg_container,
             _redis_container: redis_container,
             _nats_container: nats_container,

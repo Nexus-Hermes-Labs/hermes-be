@@ -25,4 +25,13 @@ pub fn public_routes() -> Router<AppState> {
             "/change-password",
             post(handlers::auth::change_password_handler),
         )
+        // OAuth (Google) — frontend owns redirect_uri; callback is brokered here
+        .route(
+            "/oauth/google",
+            get(handlers::oauth::google_authorize_handler),
+        )
+        .route(
+            "/oauth/google/callback",
+            post(handlers::oauth::google_callback_handler),
+        )
 }

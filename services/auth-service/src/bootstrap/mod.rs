@@ -1,8 +1,10 @@
 mod app_builder;
 pub mod error;
 
+use crate::application::ports::oauth_provider::GoogleOAuthClient;
 use crate::bootstrap::error::BootstrapError;
 use crate::infrastructure::email::LettreEmailService;
+use crate::infrastructure::oauth::ReqwestGoogleClient;
 use common::infrastructure::outbox::{OutboxPublisherTask, OutboxRepository, OutboxStreamConfig};
 use common::observability;
 use common_config::config;
@@ -74,12 +76,23 @@ pub async fn run(service_name: &'static str) -> Result<(), BootstrapError> {
         })?,
     );
 
+    // Google OAuth client. Credentials are optional: when unset the client
+    // reports `ProviderNotConfigured` (503) at request time rather than failing
+    // startup, so deployments without social login still boot.
+    let google_client: Arc<dyn GoogleOAuthClient> =
+        Arc::new(ReqwestGoogleClient::new(config().oauth.google.clone()));
+    if config().oauth.google.is_some() {
+        info!("✅ Google OAuth configured");
+    } else {
+        info!("ℹ️  Google OAuth not configured (social login disabled)");
+    }
+
     let (server, grpc_router, credential_repo) = AppBuilder::new()
         .with_service_name(service_name)
         .with_database(db_pool.clone())
         .with_redis(redis_manager)
         .with_metrics(metrics)
-        .build(email_service)
+        .build(email_service, google_client)
         .await?;
 
     info!("🎯 Application ready!");

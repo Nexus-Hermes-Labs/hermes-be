@@ -6,17 +6,18 @@ use common::infrastructure::persistence::unit_of_work::{
     run_in_transaction, UnitOfWork, UowCallback,
 };
 
-use crate::domain::unit_of_work::{CredentialWriter, SessionWriter};
+use crate::domain::unit_of_work::{CredentialWriter, OAuthAccountWriter, SessionWriter};
 
 /// Per-call transaction callback for the auth UoW.
 pub type AuthTransactionCallback<'a> = UowCallback<'a, dyn AuthUnitOfWork>;
 
 /// Unit of Work that coordinates atomic writes to credentials + sessions +
-/// outbox. Inherits [`UnitOfWork`] for commit/rollback.
+/// oauth accounts + outbox. Inherits [`UnitOfWork`] for commit/rollback.
 #[async_trait]
 pub trait AuthUnitOfWork: UnitOfWork {
     fn credentials(&self) -> &dyn CredentialWriter;
     fn sessions(&self) -> &dyn SessionWriter;
+    fn oauth_accounts(&self) -> &dyn OAuthAccountWriter;
     fn outbox(&self) -> &dyn OutboxWriter;
 }
 

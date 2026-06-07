@@ -2,6 +2,7 @@ use utoipa::OpenApi;
 
 use crate::presentation::http::dto::*;
 use crate::presentation::http::handlers::auth::*;
+use crate::presentation::http::handlers::oauth::*;
 use common::observability::health::*;
 
 #[derive(OpenApi)]
@@ -12,6 +13,8 @@ use common::observability::health::*;
         refresh_token_handler,
         logout_handler,
         verify_email_handler,
+        google_authorize_handler,
+        google_callback_handler,
         health_handler,
         liveness_handler,
         readiness_handler
@@ -21,6 +24,7 @@ use common::observability::health::*;
             LoginRequest, AuthResponse, LogoutRequest, LogoutResponse,
             RefreshTokenRequest, RegisterRequest, AuthResponseWithUser,
             UserProfile, VerifyEmailResponse,
+            AuthorizeUrlResponse, GoogleCallbackRequest,
             HealthResponse, HealthChecks, ComponentHealth
         )
     ),

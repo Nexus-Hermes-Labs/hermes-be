@@ -1,5 +1,6 @@
 // presentation/api/errors/api_error.rs
 use crate::application::services::authentication::error::AuthApplicationError;
+use crate::application::services::oauth::OAuthApplicationError;
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -170,6 +171,69 @@ impl From<AuthApplicationError> for ApiError {
             | AuthApplicationError::TokenGenerationFailed(_)
             | AuthApplicationError::Internal(_)
             | AuthApplicationError::RepositoryError(_) => ApiError {
+                status: StatusCode::INTERNAL_SERVER_ERROR,
+                message: "An error occurred. Please try again later.".to_string(),
+                code: "INTERNAL_ERROR".to_string(),
+            },
+        }
+    }
+}
+
+impl From<OAuthApplicationError> for ApiError {
+    fn from(err: OAuthApplicationError) -> Self {
+        match err {
+            // 401 Unauthorized
+            OAuthApplicationError::InvalidState => ApiError {
+                status: StatusCode::UNAUTHORIZED,
+                message: "Invalid or expired OAuth state".to_string(),
+                code: "OAUTH_INVALID_STATE".to_string(),
+            },
+
+            // 403 Forbidden
+            OAuthApplicationError::EmailNotVerifiedByProvider => ApiError {
+                status: StatusCode::FORBIDDEN,
+                message: "Email is not verified by the provider".to_string(),
+                code: "OAUTH_EMAIL_NOT_VERIFIED".to_string(),
+            },
+            OAuthApplicationError::AccountSuspended => ApiError {
+                status: StatusCode::FORBIDDEN,
+                message: "Account is suspended".to_string(),
+                code: "ACCOUNT_SUSPENDED".to_string(),
+            },
+            OAuthApplicationError::AccountDeleted => ApiError {
+                status: StatusCode::FORBIDDEN,
+                message: "Account is deleted".to_string(),
+                code: "ACCOUNT_DELETED".to_string(),
+            },
+
+            // 400 Bad Request
+            OAuthApplicationError::InvalidEmail(email) => ApiError {
+                status: StatusCode::BAD_REQUEST,
+                message: format!("Invalid email from provider: {}", email),
+                code: "OAUTH_INVALID_EMAIL".to_string(),
+            },
+
+            // 502 Bad Gateway (upstream provider failure)
+            OAuthApplicationError::ProviderError(ref msg) => {
+                tracing::error!("OAuth provider error: {}", msg);
+                ApiError {
+                    status: StatusCode::BAD_GATEWAY,
+                    message: "OAuth provider is unavailable. Please try again later.".to_string(),
+                    code: "OAUTH_PROVIDER_ERROR".to_string(),
+                }
+            }
+
+            // 503 Service Unavailable (provider not configured)
+            OAuthApplicationError::ProviderNotConfigured => ApiError {
+                status: StatusCode::SERVICE_UNAVAILABLE,
+                message: "OAuth provider is not configured".to_string(),
+                code: "OAUTH_NOT_CONFIGURED".to_string(),
+            },
+
+            // 500 Internal Server Error
+            OAuthApplicationError::TokenGenerationFailed(_)
+            | OAuthApplicationError::RepositoryError(_)
+            | OAuthApplicationError::Internal(_) => ApiError {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 message: "An error occurred. Please try again later.".to_string(),
                 code: "INTERNAL_ERROR".to_string(),

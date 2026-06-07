@@ -1,11 +1,16 @@
 // src/bootstrap/app_builder.rs
+use crate::application::ports::oauth_provider::GoogleOAuthClient;
+use crate::application::ports::oauth_state_store::OAuthStateStore;
 use crate::application::services::authentication::service::AuthService;
+use crate::application::services::oauth::OAuthService;
 use crate::bootstrap::error::BootstrapError;
 use crate::domain::auth_credential::EmailService;
 use crate::domain::password_policy::PasswordPolicy;
+use crate::infrastructure::oauth::RedisOAuthStateStore;
 use crate::infrastructure::persistence::postgres::{
     PgAuthUnitOfWorkFactory, PgRateLimiter, PostgresAuthCredentialRepository,
-    PostgresPasswordHistoryRepository, PostgresAuthSessionRepository,
+    PostgresAuthSessionRepository, PostgresOAuthAccountRepository,
+    PostgresPasswordHistoryRepository,
 };
 use crate::infrastructure::security::password::argon2_service::Argon2PasswordService;
 use crate::infrastructure::security::token::sha256_service::Sha256TokenHasher;
@@ -72,6 +77,7 @@ impl AppBuilder {
     pub async fn build(
         self,
         email_service: Arc<dyn EmailService>,
+        google_client: Arc<dyn GoogleOAuthClient>,
     ) -> Result<
         (
             Server,
@@ -120,11 +126,16 @@ impl AppBuilder {
         // ========================================
         // APPLICATION LAYER
         // ========================================
+        let state_store: Arc<dyn OAuthStateStore> =
+            Arc::new(RedisOAuthStateStore::new(infrastructure.redis.clone()));
+
         let application = self.build_application(
             repositories,
             domain_services,
             infrastructure.jwt_manager.clone(),
             infrastructure.email_service.clone(),
+            state_store,
+            google_client,
         )?;
 
         info!("✅ Application layer ready");
@@ -197,6 +208,7 @@ impl AppBuilder {
         Ok(Repositories {
             credential: Arc::new(PostgresAuthCredentialRepository::new(infra.pool.clone())),
             session: Arc::new(PostgresAuthSessionRepository::new(infra.pool.clone())),
+            oauth_account: Arc::new(PostgresOAuthAccountRepository::new(infra.pool.clone())),
             password_history: Arc::new(PostgresPasswordHistoryRepository::new(
                 infra.pool.clone(),
             )),
@@ -222,23 +234,38 @@ impl AppBuilder {
         services: DomainServices,
         jwt_manager: Arc<JwtManager>,
         email_service: Arc<dyn EmailService>,
+        state_store: Arc<dyn OAuthStateStore>,
+        google_client: Arc<dyn GoogleOAuthClient>,
     ) -> Result<Application, BootstrapError> {
         let auth_service = Arc::new(AuthService::new(
             config().service.name.clone(),
             repos.credential.clone(),
             repos.session.clone(),
             repos.uow_factory.clone(),
-            services.password,
-            services.token_hasher,
-            jwt_manager,
+            services.password.clone(),
+            services.token_hasher.clone(),
+            jwt_manager.clone(),
             email_service,
             repos.password_history,
             PasswordPolicy::default(),
             repos.rate_limiter,
         ));
 
+        let oauth_service = Arc::new(OAuthService::new(
+            config().service.name.clone(),
+            repos.oauth_account,
+            repos.credential.clone(),
+            repos.uow_factory,
+            services.password,
+            services.token_hasher,
+            jwt_manager,
+            state_store,
+            google_client,
+        ));
+
         Ok(Application {
             auth_service,
+            oauth_service,
             credential_repo: repos.credential,
             session_repo: repos.session,
         })
@@ -251,6 +278,7 @@ impl AppBuilder {
     ) -> Result<AppState, BootstrapError> {
         let auth_state = AuthState::new(
             app.auth_service,
+            app.oauth_service,
             infra.jwt_manager,
             app.credential_repo,
             app.session_repo,
@@ -288,6 +316,7 @@ struct Infrastructure {
 struct Repositories {
     credential: Arc<PostgresAuthCredentialRepository>,
     session: Arc<PostgresAuthSessionRepository>,
+    oauth_account: Arc<PostgresOAuthAccountRepository>,
     password_history: Arc<PostgresPasswordHistoryRepository>,
     rate_limiter: Arc<PgRateLimiter>,
     uow_factory: Arc<PgAuthUnitOfWorkFactory>,
@@ -302,6 +331,7 @@ struct DomainServices {
 #[derive(Clone)]
 struct Application {
     auth_service: Arc<AuthService>,
+    oauth_service: Arc<OAuthService>,
     credential_repo: Arc<PostgresAuthCredentialRepository>,
     session_repo: Arc<PostgresAuthSessionRepository>,
 }

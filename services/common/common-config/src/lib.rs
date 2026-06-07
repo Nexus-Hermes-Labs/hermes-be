@@ -5,6 +5,7 @@ pub mod error;
 pub mod grpc_endpoints;
 pub mod logging;
 pub mod messaging;
+pub mod oauth;
 pub mod secrets;
 pub mod service;
 pub mod smtp;
@@ -14,6 +15,7 @@ pub use database::DatabaseConfig;
 pub use grpc_endpoints::GrpcEndpointsConfig;
 pub use logging::LoggingConfig;
 pub use messaging::MessagingConfig;
+pub use oauth::OAuthConfig;
 pub use secrets::SecretsConfig;
 pub use service::ServiceConfig;
 pub use smtp::SmtpConfig;
@@ -44,6 +46,8 @@ pub struct Config {
     pub secrets: SecretsConfig,
     #[serde(default)]
     pub grpc_endpoints: GrpcEndpointsConfig,
+    #[serde(default)]
+    pub oauth: OAuthConfig,
 }
 
 impl Config {
@@ -157,6 +161,11 @@ impl Config {
             .password
             .validate()
             .map_err(|e| ConfigError::Validation(format!("Password config error: {}", e)))?;
+
+        // Validate OAuth providers only when configured.
+        self.oauth
+            .validate()
+            .map_err(|e| ConfigError::Validation(format!("OAuth config error: {}", e)))?;
 
         Ok(())
     }

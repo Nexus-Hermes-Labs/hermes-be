@@ -69,6 +69,17 @@ impl AuthCredential {
         }
     }
 
+    /// Create a credential for an OAuth-only user (e.g. Google sign-in).
+    ///
+    /// The provider has already verified the email, so `email_verified` starts
+    /// as `true`. `password_hash` should be an unguessable random hash — these
+    /// users authenticate via the provider, not a password.
+    pub fn new_oauth(user_id: Uuid, email: Email, password_hash: PasswordHash) -> Self {
+        let mut credential = Self::new(user_id, email, password_hash);
+        credential.email_verified = true;
+        credential
+    }
+
     /// Reconstruct from database
     #[allow(clippy::too_many_arguments)]
     pub fn from_persisted(

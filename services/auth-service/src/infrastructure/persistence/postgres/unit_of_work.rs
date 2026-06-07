@@ -15,7 +15,8 @@ use common::infrastructure::persistence::unit_of_work::UnitOfWork;
 use crate::application::ports::unit_of_work::{AuthUnitOfWork, AuthUnitOfWorkFactory};
 use crate::domain::auth_credential::AuthCredential;
 use crate::domain::auth_session::AuthSession;
-use crate::domain::unit_of_work::{CredentialWriter, SessionWriter};
+use crate::domain::oauth_account::OAuthAccount;
+use crate::domain::unit_of_work::{CredentialWriter, OAuthAccountWriter, SessionWriter};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PgCredentialWriter
@@ -34,6 +35,26 @@ impl CredentialWriter for PgCredentialWriter {
             r"
             INSERT INTO auth_credentials (id, user_id, email, password_hash, system_role)
             VALUES ($1, $2, $3, $4, $5::system_role)
+            ",
+        )
+        .bind(credential.id())
+        .bind(credential.user_id())
+        .bind(credential.email().as_str())
+        .bind(credential.password_hash().as_str())
+        .bind("user")
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+
+    async fn save_verified(&self, credential: &AuthCredential) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        sqlx::query(
+            r"
+            INSERT INTO auth_credentials
+                (id, user_id, email, password_hash, system_role, email_verified)
+            VALUES ($1, $2, $3, $4, $5::system_role, TRUE)
             ",
         )
         .bind(credential.id())
@@ -184,6 +205,37 @@ impl SessionWriter for PgSessionWriter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PgOAuthAccountWriter
+// ─────────────────────────────────────────────────────────────────────────────
+
+struct PgOAuthAccountWriter {
+    tx: SharedTx,
+}
+
+#[async_trait]
+impl OAuthAccountWriter for PgOAuthAccountWriter {
+    async fn save(&self, account: &OAuthAccount) -> Result<(), RepositoryError> {
+        let mut lock = self.tx.lock().await;
+        let tx = lock.as_mut().ok_or_else(tx_consumed_err)?;
+        sqlx::query(
+            r"
+            INSERT INTO oauth_accounts
+                (id, credential_id, provider, provider_user_id, email)
+            VALUES ($1, $2, $3, $4, $5)
+            ",
+        )
+        .bind(account.id())
+        .bind(account.credential_id())
+        .bind(account.provider().as_str())
+        .bind(account.provider_user_id())
+        .bind(account.email())
+        .execute(&mut **tx)
+        .await?;
+        Ok(())
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // PgAuthUnitOfWork
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -195,6 +247,7 @@ pub struct PgAuthUnitOfWork {
     tx: SharedTx,
     credentials: PgCredentialWriter,
     sessions: PgSessionWriter,
+    oauth_accounts: PgOAuthAccountWriter,
     outbox: PgOutboxWriter,
 }
 
@@ -204,6 +257,7 @@ impl PgAuthUnitOfWork {
         Self {
             credentials: PgCredentialWriter { tx: shared.clone() },
             sessions: PgSessionWriter { tx: shared.clone() },
+            oauth_accounts: PgOAuthAccountWriter { tx: shared.clone() },
             outbox: PgOutboxWriter::new(shared.clone(), source_service),
             tx: shared,
         }
@@ -243,6 +297,10 @@ impl AuthUnitOfWork for PgAuthUnitOfWork {
 
     fn sessions(&self) -> &dyn SessionWriter {
         &self.sessions
+    }
+
+    fn oauth_accounts(&self) -> &dyn OAuthAccountWriter {
+        &self.oauth_accounts
     }
 
     fn outbox(&self) -> &dyn OutboxWriter {

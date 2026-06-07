@@ -17,6 +17,7 @@
 
 mod login;
 mod logout;
+mod oauth;
 mod password;
 mod refresh;
 mod register;
@@ -35,6 +36,9 @@ pub use login::{LoginRequest, LoginResponse};
 
 // Logout endpoint
 pub use logout::{LogoutRequest, LogoutResponse};
+
+// OAuth (Google) endpoints
+pub use oauth::{AuthorizeUrlResponse, GoogleCallbackRequest};
 
 // Password management endpoints
 pub use password::{

@@ -5,6 +5,7 @@ use common::infrastructure::persistence::error::RepositoryError;
 
 use crate::domain::auth_credential::AuthCredential;
 use crate::domain::auth_session::AuthSession;
+use crate::domain::oauth_account::OAuthAccount;
 
 /// Transactional writer for the `auth_credentials` table.
 ///
@@ -14,6 +15,14 @@ use crate::domain::auth_session::AuthSession;
 #[async_trait]
 pub trait CredentialWriter: Send + Sync {
     async fn save(&self, credential: &AuthCredential) -> Result<(), RepositoryError>;
+
+    /// Insert a credential whose email is already verified.
+    ///
+    /// Used by the OAuth login path: the provider (e.g. Google) has already
+    /// confirmed ownership of the email, so the new credential skips the
+    /// email-verification step.
+    async fn save_verified(&self, credential: &AuthCredential) -> Result<(), RepositoryError>;
+
     async fn update(&self, credential: &AuthCredential) -> Result<(), RepositoryError>;
     async fn set_verification_token(
         &self,
@@ -21,6 +30,12 @@ pub trait CredentialWriter: Send + Sync {
         token: &str,
         expires_in_hours: i64,
     ) -> Result<(), RepositoryError>;
+}
+
+/// Transactional writer for the `oauth_accounts` table.
+#[async_trait]
+pub trait OAuthAccountWriter: Send + Sync {
+    async fn save(&self, account: &OAuthAccount) -> Result<(), RepositoryError>;
 }
 
 /// Transactional writer for the `auth_sessions` table.
